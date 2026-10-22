@@ -1,8 +1,9 @@
 -- PoB's own options (the Options dialog). Saved to PoB's Settings.xml in the live window.
 return function(ops, util)
 	local OPTIONS = {
-		{ key = 'defaultCharLevel', type = 'integer', min = 1, max = 100, label = 'Default character level for new builds' },
-		{ key = 'defaultGemQuality', type = 'integer', min = 0, max = 23, label = 'Default gem quality' },
+		-- PoB sets these two only from Settings.xml and falls back to 1 / 0 (Main.lua SaveSettings).
+		{ key = 'defaultCharLevel', type = 'integer', min = 1, max = 100, default = 1, label = 'Default character level for new builds' },
+		{ key = 'defaultGemQuality', type = 'integer', min = 0, max = 23, default = 0, label = 'Default gem quality' },
 		{ key = 'defaultItemAffixQuality', type = 'number', min = 0, max = 1, label = 'Default roll for item ranges (0-1)' },
 		{ key = 'showThousandsSeparators', type = 'boolean', label = 'Show thousands separators' },
 		{ key = 'thousandsSeparator', type = 'string', label = 'Thousands separator' },
@@ -20,8 +21,10 @@ return function(ops, util)
 		local main = POBAI_MAIN
 		local out = {}
 		for _, option in ipairs(OPTIONS) do
-			if main[option.key] ~= nil then
-				out[#out + 1] = { key = option.key, label = option.label, type = option.type, value = main[option.key] }
+			local value = main[option.key]
+			if value == nil then value = option.default end
+			if value ~= nil then
+				out[#out + 1] = { key = option.key, label = option.label, type = option.type, value = value }
 			end
 		end
 		return out
@@ -35,7 +38,7 @@ return function(ops, util)
 		local main = POBAI_MAIN
 		local option
 		for _, o in ipairs(OPTIONS) do if o.key == args.key then option = o end end
-		util.check(option and main[args.key] ~= nil, 'NOT_FOUND', ('Unknown option "%s". See `pob options list`.'):format(tostring(args.key)))
+		util.check(option and (main[args.key] ~= nil or option.default ~= nil), 'NOT_FOUND', ('Unknown option "%s". See `pob options list`.'):format(tostring(args.key)))
 		local value = args.value
 		if option.type == 'boolean' then
 			util.check(type(value) == 'boolean', 'BAD_VALUE', args.key .. ' takes true or false.')
