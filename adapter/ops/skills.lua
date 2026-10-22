@@ -164,11 +164,12 @@ return function(ops, util)
 	ops['gems.search'] = function(args)
 		local build = util.build()
 		local hits = {}
+		local match = util.matchSet(args.match)
 		for id, gem in pairs(build.data.gems) do
 			local effect = gem.grantedEffect
 			local support = effect and effect.support or false
 			local text = (gem.name or '') .. ' ' .. (gem.tagString or '') .. ' ' .. (effect and effect.description or '')
-			if util.contains(text, args.text) and (not args.kind or (args.kind == 'support') == support) then
+			if (match and match[gem.name] or (not match and util.contains(text, args.text))) and (not args.kind or (args.kind == 'support') == support) then
 				hits[#hits + 1] = { name = gem.name, id = id, support = support, tags = gem.tagString, maxLevel = gem.naturalMaxLevel,
 					requires = { str = gem.reqStr, dex = gem.reqDex, int = gem.reqInt }, nameMatch = util.contains(gem.name, args.text) }
 			end

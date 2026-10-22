@@ -20,11 +20,28 @@ function util.waitFrame(count)
 	end
 end
 
+--- Runs fn on PoB's main Lua thread. Operations run in coroutines, but PoB's host functions that
+--- start background work (LaunchSubScript: downloads, sign-in, popups that fetch data) crash
+--- the renderer when called from a coroutine.
+function util.onMain(fn, ...)
+	local args = { ... }
+	local call = function() return fn(unpack(args)) end
+	if POBAI_MODE ~= 'live' or not coroutine.running() then return call() end
+	local result = coroutine.yield(call)
+	if not result[1] then error(result[2], 0) end
+	return unpack(result, 2)
+end
+
 function util.build()
 	local main = POBAI_MAIN
 	local build = main.modes and main.modes.BUILD
 	if main.mode ~= 'BUILD' or not build or not build.spec or not build.calcsTab then
 		util.fail('NO_BUILD', 'No build is open in PoB. Open or import one first (`pob build list`, `pob build open`, `pob build import`).')
+	end
+	-- New builds and new tree sets start with an empty undo history, so their first change could
+	-- not be undone (in PoB too). Record the current state as the starting point.
+	for _, owner in ipairs({ build.spec, build.skillsTab, build.itemsTab, build.configTab, build.calcsTab }) do
+		if owner.undo and not owner.undo[1] and owner.ResetUndo then owner:ResetUndo() end
 	end
 	return build
 end
@@ -113,6 +130,17 @@ function util.pick(list, query, nameOf, idOf, what)
 	local names = {}
 	for i = 1, math.min(#matches, 15) do names[i] = nameOf(matches[i]) end
 	util.fail('AMBIGUOUS', ('"%s" matches %d %ss. Use a fuller name.'):format(tostring(query), #matches, what), { candidates = names })
+end
+
+--- A set from a list of names or ids (numbers stay numbers), or nil when no list was given.
+function util.matchSet(list)
+	if type(list) ~= 'table' then return nil end
+	local set = {}
+	for _, v in ipairs(list) do
+		set[v] = true
+		if tonumber(v) then set[tonumber(v)] = true end
+	end
+	return set
 end
 
 function util.sortedKeys(tbl)

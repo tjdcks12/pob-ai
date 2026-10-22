@@ -11,6 +11,7 @@ Ask in plain words. The agent reads your build, changes it, calculates, and poin
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-2b2b2b.svg)
 ![Node 22+](https://img.shields.io/badge/node-22%2B-3c873a.svg)
 ![PoB PoE2 0.22–0.23](https://img.shields.io/badge/PoB%20PoE2-0.22%20%E2%80%93%200.23-8a5a2b.svg)
+![10 languages](https://img.shields.io/badge/languages-10-5a7a9a.svg)
 
 English · [한국어](README.ko.md)
 
@@ -27,45 +28,60 @@ English · [한국어](README.ko.md)
 ## Why
 
 Path of Building is the most precise tool for Path of Exile 2 builds, and it takes years to learn
-where everything lives. PoB AI lets an AI agent do the clicking for you — through a complete
+where everything lives. PoB AI lets an AI agent do the clicking for you, through a complete
 command line, so every step is real PoB work you can see, undo and save.
 
-- **Your PoB, untouched.** PoB AI starts the Path of Building you already installed through an
-  external entry script. No PoB file is modified, so PoB keeps updating itself and you never
-  download a patched copy.
-- **The whole editor from the command line.** 90+ commands cover builds, character, passive tree,
-  skills and gems, items, configuration, calculations and notes.
+- **Download once.** PoB AI attaches to the Path of Building you already have, without changing a
+  single PoB file. PoB keeps updating itself and PoB AI follows; PoB AI updates itself with one click.
+- **The whole editor from the command line.** 140 commands cover builds and folders, loadouts,
+  character import, passive tree, skills and gems, items (crafting, anoints, runes, corruption),
+  trade searches, configuration, calculations, party, notes and PoB's own options.
 - **It shows you where.** Ask "where do I set the enemy type?" and the agent switches PoB to the
   Configuration tab and highlights the option. Nodes, item slots, gem groups and stats work the same way.
 - **Real numbers only.** What-if calculations, passive node ranking and build comparison use PoB's
   own calculator.
-- **Game text in your language.** Paste an item copied from the game in any of ten client
-  languages; it is converted to the English text PoB reads, and lines that cannot be converted
-  are reported instead of silently dropped.
+- **Your language, everywhere.** The PoB window, the panel and the agent's answers in ten languages,
+  with the official in-game names. Items copied from the game in any client language are converted
+  to the English text PoB reads.
 - **Uses the agent you already have.** Claude Code (or Codex) runs with your existing sign-in.
   No API keys.
 
-## Quick start
+<p align="center">
+  <img src="docs/images/window-ko.jpg" width="96%" alt="The PoB Calcs tab shown in Korean by PoB AI">
+</p>
+<p align="center"><sub>PoB's Calcs tab in Korean: <code>pob ui language ko</code>. Game names come from the game client; PoB's own interface text is translated by PoB AI.</sub></p>
 
-**Requirements:** Windows 10/11, [Node.js 22+](https://nodejs.org),
-[Path of Building Community (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases),
-and for chat, [Claude Code](https://docs.claude.com/en/docs/claude-code) signed in.
+## Install
+
+**Requirements:** Windows 10/11 and, for chat, [Claude Code](https://docs.claude.com/en/docs/claude-code)
+(or Codex) signed in.
+
+1. Download `pob-ai-<version>-win-x64.zip` from **Releases** and unzip it anywhere. Node.js is included.
+2. Double-click **`PoB AI.cmd`**. It opens your PoB and the agent panel.
+
+PoB AI finds [Path of Building Community (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases)
+in the usual install locations. Point it at a portable copy once, or let it install PoB for you:
+
+```bash
+pob setup "D:\Games\Path of Building PoE2"   # use this PoB
+pob setup --install-pob                      # download the latest portable PoB from its GitHub releases
+```
+
+`bin\pob.cmd` is the command line; add the `bin` folder to `PATH` to use `pob` anywhere.
+
+<details>
+<summary>Run from source</summary>
 
 ```bash
 git clone https://github.com/<you>/pob-ai.git
 cd pob-ai
-npm install
+npm install          # Node.js 22+
+npm start            # service, PoB window and panel
+node bin/pob.mjs help
 ```
 
-Then double-click **`PoB AI.cmd`** — it opens your PoB and the agent panel.
-
-PoB AI finds PoB in the usual install locations. For a portable copy, tell it once:
-
-```bash
-node bin/pob.mjs setup "D:\Games\Path of Building PoE2"
-```
-
-To use `pob` from any terminal, run `npm link` once.
+`npm link` puts `pob` on your `PATH`.
+</details>
 
 ## Talk to it
 
@@ -75,7 +91,9 @@ To use `pob` from any terminal, run `npm link` once.
 
 > Import https://pobb.in/… and compare it with my build.
 
-> Add this item and tell me what it changes — *(paste the item copied in game)*
+> Add this item and tell me what it changes. *(paste the item copied in game)*
+
+> Find rings like the one I'm wearing on the trade site.
 
 The agent answers in your language and uses the official in-game names.
 
@@ -86,31 +104,57 @@ Every command prints JSON, so agents and scripts can use it directly.
 ```bash
 pob build import https://pobb.in/abc123          # code or link: pobb.in, poe.ninja, Maxroll, poe2db, pastebin
 pob tree allocate "Essence of the Storm" --attribute int
+pob tree allocate 태풍의 정수                      # game names work in any of the ten languages
 pob skills add Spark "Controlled Destruction" --level 20
 pob config set enemyIsBoss Pinnacle
 pob calc whatif --node "Clean Shot"              # numbers without keeping the change
 pob calc node-power --limit 5                    # best nearby notables by Full DPS
 pob items add --text "<item copied in game>" --equip "Ring 1"
+pob items trade "Ring 1" --min-percent 90        # trade search link for items like this one
 pob ui show-config enemyIsBoss                   # highlight it in the PoB window
 pob build save --name "Spark Ranger v2"
 ```
 
 | Group | What it covers |
 | --- | --- |
-| `build` | new, open, list, import, export, save / save as, rename |
-| `character` | level, class, ascendancy |
-| `tree` | search, allocate (with weapon sets and attributes), deallocate, reset, tree sets, version conversion |
+| `build` | new, open, list, import, export, save / save as, share, rename, delete, move, folders, loadouts, undo / redo, spectre & companion library |
+| `account` · `character` | PoE account sign-in and character import (through PoB), level, class, ascendancy |
+| `tree` | search, allocate (weapon sets, attributes), deallocate, reset, tree sets, tree links, node notes, version conversion |
 | `skills` · `gems` | groups, gems, levels, quality, main skill, skill parts, minions, skill sets |
-| `items` | add from game text, uniques, custom crafts, equip, flasks & charms, weapon swap, item sets |
-| `config` | every configuration option, configuration sets |
-| `calc` | stats, per-skill DPS, warnings, what-if, node power, build comparison |
-| `notes` | read and write build notes |
-| `ui` | switch tabs and highlight nodes, slots, gems, options and stats in the PoB window; window themes |
+| `items` | add from game text, uniques, custom crafts, edit, mods, anoints, runes, corruption, equip, flasks & charms, weapon swap, item sets, trade search |
+| `config` · `calc` | every configuration option and set; stats, per-skill DPS, warnings, what-if, node power, build comparison, Calcs tab options |
+| `party` · `notes` · `options` | party member buffs and curses, build notes, PoB's own settings |
+| `ui` | switch tabs, highlight nodes, slots, gems, options and stats, tree search and heat map, Trade for / Buy similar, window language and theme |
+| `setup` · `update` · `doctor` | find or install PoB, update PoB AI, check everything |
 
 Full reference: **[docs/COMMANDS.md](docs/COMMANDS.md)**. `pob help <group> <action>` shows the same in the terminal.
 
 When the PoB window is open, commands change what you see there. Without it, they work on a
 background copy of your build, so agents can explore ideas without touching your screen.
+PoB's *Find Timeless Jewel* search is switched off in PoB PoE2 itself, so it has no command yet.
+
+## Your language
+
+| | |
+| --- | --- |
+| **PoB window** | `pob ui language ko` (or the panel's settings): English, 한국어, 日本語, 繁體中文, Русский, Deutsch, Français, Español, Português (Brasil), ไทย. Official names from the game client; about 2,000 PoB interface phrases translated by PoB AI. |
+| **Agent and commands** | Answers in your language; game names are accepted and returned in it (`--lang`). |
+| **Items** | Text copied from the game client in any of the ten languages is converted for PoB. Lines that cannot be converted are reported, never dropped silently. |
+| **Themes** | Four panel themes; the PoB window gets the same ones: `pob ui theme ember\|vaal\|midnight\|parchment`. |
+
+PoB's bitmap fonts only contain ASCII, so translated text is drawn as small images with a Windows
+font for the language. Text without a translation stays in English.
+
+## Updates
+
+- **PoB** updates itself as always. PoB AI attaches to whichever version is installed, and after
+  PoB restarts for its own update, PoB AI is attached again automatically.
+- **PoB AI** checks for a new version once a day and offers it in the panel. Click **Update** or run
+  `pob update apply --restart`. The update is verified (SHA-256), unpacked into your data folder
+  and used from the next start. The PoB window stays open and reconnects.
+
+Something off? `pob doctor` checks the PoB install, the adapter against your PoB version, the
+window connection, updates and agents, and says what to do. Logs are in `%LOCALAPPDATA%\pob-ai\logs`.
 
 ## How it works
 
@@ -125,44 +169,49 @@ flowchart LR
 
 The PoB launcher accepts an entry script as its first argument. PoB AI starts your PoB with
 `adapter/shim.lua`, which loads PoB normally and adds a small bridge that runs commands between
-frames and draws the highlights. The same Lua operations also run without a window, inside PoB's
-own LuaJIT, for background work. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+frames and draws the highlights, the themes and the translated text. The same Lua operations also
+run without a window, inside PoB's own LuaJIT, for background work.
+Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/POB_INTERNALS.md](docs/POB_INTERNALS.md).
 
 It also speaks **MCP**: any MCP client can use the same commands as tools at the service's `/mcp` endpoint.
 
-## Languages and themes
-
-- The panel is available in English, 한국어, 日本語, 繁體中文, Русский, Deutsch, Français,
-  Español, Português (Brasil) and ไทย.
-- Item text copied from the game in those languages is converted for PoB.
-- The panel has four themes; the PoB window can be recoloured with `pob ui theme ember|vaal|midnight`
-  (remembered for next time; `default` restores PoB's colours).
-
-PoB's own editor text stays in English: its bitmap fonts only contain ASCII characters.
-
 ## Privacy
 
-Everything runs on your PC. PoB AI connects to the internet only to download a build you ask
-it to import, and — for Korean item text — to fetch the official trade stat lists from Grinding
-Gear Games / Kakao (cached for a day). Chats go to the agent you chose, under its own terms.
+Everything runs on your PC. PoB AI goes online only:
+
+- to download a build you ask it to import, or to upload one you ask it to share;
+- for Korean item text, to fetch the official trade stat lists from Grinding Gear Games / Kakao (cached for a day);
+- to check its update feed once a day, and to download an update or PoB when you ask;
+- through PoB itself, for what PoB does online (account import, trade, PoB's own update check).
+
+Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-Early preview. The commands, the PoB window bridge and the background engine are verified with
-PoB PoE2 0.22.0 and 0.23.1 on Windows 11. The agent chat is implemented for Claude Code and Codex
-and tested end to end with a stand-in agent; a full run with a live Claude Code or Codex session
-is still to be verified. Not yet automated: PoE account character
-import (use PoB's Import tab — `pob ui tab import` takes you there), trade searches and timeless
-jewel search.
+Early preview, verified on Windows 11 with PoB PoE2 0.22.0 and 0.23.1: every command against the
+background engine (`npm test`), the PoB window bridge, highlights, themes and window translation,
+PoB's in-place restart (the path of PoB's usual updates) and a simulated relaunch by PoB's updater,
+PoB AI self-update and PoB installation against a local release server.
+
+Not yet verified: a full chat with a signed-in Claude Code or Codex (tested with a stand-in agent),
+PoE account character import with a real sign-in, and a published release (the update feed goes
+live with the first GitHub release).
+
+## Development
 
 ```bash
-npm test     # unit tests, plus engine tests against your PoB (set POB_PATH if it is not found)
+npm test                          # unit tests, plus engine tests against your PoB (set POB_PATH if it is not found)
+node scripts/package.mjs          # dist/pob-ai-<version>-win-x64.zip and dist/latest.json
+node scripts/gen-commands.mjs     # regenerate docs/COMMANDS.md
 ```
+
+Pushing a `v<version>` tag builds and publishes a release (`.github/workflows/release.yml`). A daily
+workflow runs the tests against the latest PoB release.
 
 ## License
 
-[MIT](LICENSE), like Path of Building. PoB AI does not include Path of Building or game data;
-see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[MIT](LICENSE), like Path of Building. PoB AI does not include Path of Building; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled components and game text.
 
 PoB AI is an unofficial community project, not affiliated with Grinding Gear Games or the Path of
 Building Community. Path of Exile is a trademark of Grinding Gear Games.

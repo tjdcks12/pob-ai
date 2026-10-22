@@ -5,10 +5,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { prepareItemText } from '../items/prepare.mjs';
+import { runDoctor } from '../doctor.mjs';
+import { installPob } from '../pob/install.mjs';
 import { inspectInstall, locatePob } from '../pob/locate.mjs';
-import { readJson, statePath, updateConfig } from '../state.mjs';
+import { statePath, updateConfig } from '../state.mjs';
+import { APP_ROOT, applyUpdate, checkForUpdate, installedUpdate, VERSION } from '../update/updater.mjs';
 
 const SERVICE_MAIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../service/main.mjs');
+const LAUNCHER = path.join(APP_ROOT, 'launcher.mjs');
 
 // Same sites and download rules as PoB's Modules/BuildSiteTools.lua.
 export const BUILD_SITES = [
@@ -20,6 +24,21 @@ export const BUILD_SITES = [
   { label: 'PastebinP', match: /pastebinp\.com\/(?:raw\/)?(\w+)/, raw: id => `https://pastebinp.com/raw/${id}` },
   { label: 'Rentry', match: /rentry\.co\/(?:paste\/)?(\w+)/, raw: id => `https://rentry.co/paste/${id}/raw` },
 ];
+
+// Upload endpoints, from the same file (postUrl, postFields, codeOut).
+export const SHARE_SITES = {
+  'pobb.in': { url: 'https://pobb.in/pob/', field: '', link: body => `https://pobb.in/${body.trim()}` },
+  'poe.ninja': { url: 'https://poe.ninja/poe2/pob/api/upload', field: 'code=', link: body => body.trim() },
+  maxroll: { url: 'https://maxroll.gg/poe2/api/pob', field: 'pobCode=', link: body => `https://maxroll.gg/poe2/pob/${body.trim()}` },
+  poe2db: { url: 'https://poe2db.tw/pob/api/gen', field: '', link: body => body.trim() },
+};
+
+export const TRADE_HOSTS = { global: 'https://www.pathofexile.com', kakao: 'https://poe.kakaogames.com' };
+
+/** Official trade site search URL; the site accepts the query as JSON in `q`. */
+export function tradeSearchUrl(query, { site = 'global', league = 'Standard' } = {}) {
+  return `${TRADE_HOSTS[site]}/trade2/search/poe2/${encodeURIComponent(league)}?q=${encodeURIComponent(JSON.stringify(query))}`;
+}
 
 export function decodeBuildCode(code) {
   const clean = code.trim().replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
@@ -57,6 +76,27 @@ export async function resolveBuildSource(source, runtime) {
   throw Object.assign(new Error('Give a PoB build code, a supported link, a saved build name or an .xml file.'), { code: 'BAD_SOURCE' });
 }
 
+const safeFileName = name => {
+  const clean = String(name).replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim();
+  if (!clean) throw Object.assign(new Error('The name is empty after removing characters files cannot use.'), { code: 'BAD_NAME' });
+  return clean;
+};
+
+/** A saved build by name, and whether it is the build currently open. */
+async function findSavedBuild(query, runtime) {
+  const { result } = await runtime.run('build.paths', {});
+  const root = result.buildPath;
+  const builds = scanBuilds(root, {});
+  const wanted = query.toLowerCase();
+  const exact = builds.filter(b => b.name.toLowerCase() === wanted || b.relative.toLowerCase() === wanted);
+  const matches = exact.length ? exact : builds.filter(b => b.name.toLowerCase().includes(wanted));
+  if (!matches.length) throw Object.assign(new Error(`No saved build matches "${query}".`), { code: 'NOT_FOUND' });
+  if (matches.length > 1) throw Object.assign(new Error(`"${query}" matches ${matches.length} builds.`), { code: 'AMBIGUOUS', details: { candidates: matches.slice(0, 15).map(b => b.relative) } });
+  const summary = (await runtime.run('build.summary', {})).result;
+  const open = Boolean(summary.file) && path.resolve(summary.file) === path.resolve(matches[0].file);
+  return { file: matches[0].file, open, root };
+}
+
 /** Saved builds under PoB's build folder, newest first, with level and class from each file. */
 export function scanBuilds(root, { search, folder } = {}) {
   const base = folder ? path.join(root, folder) : root;
@@ -89,7 +129,9 @@ export function scanBuilds(root, { search, folder } = {}) {
 }
 
 async function startServiceDetached() {
-  const child = spawn(process.execPath, [SERVICE_MAIN, '--quiet'], { detached: true, stdio: 'ignore', windowsHide: true });
+  // Through the launcher when there is one, so the newest installed version starts.
+  const entry = fs.existsSync(LAUNCHER) ? LAUNCHER : SERVICE_MAIN;
+  const child = spawn(process.execPath, [entry, '--quiet'], { detached: true, stdio: 'ignore', windowsHide: true });
   child.unref();
   const { serviceInfo } = await import('../service/client.mjs');
   for (let i = 0; i < 60; i++) {
@@ -116,16 +158,55 @@ export const LOCAL = {
   async status(_args, runtime) {
     let pob;
     try { pob = locatePob(); } catch (error) { pob = { found: false, message: error.message, ...error.details }; }
-    const service = readJson(statePath('service.json'), null);
+    const { serviceInfo } = await import('../service/client.mjs');
+    const service = runtime.service ? null : await serviceInfo();
     return { target: 'app', result: { pob, service: runtime.service ? { running: true, port: runtime.service.port } : { running: Boolean(service), ...service, token: undefined },
       window: runtime.service ? { connected: runtime.liveConnected, ...runtime.bridge?.info } : { connected: null, note: 'Run inside the service to know.' }, dataFolder: statePath() } };
   },
 
   async setup(args) {
+    if (args.installPob) return { target: 'app', result: await installPob() };
+    if (!args.pobPath) throw Object.assign(new Error('Give the PoB folder, or use --install-pob to download PoB.'), { code: 'BAD_ARGS' });
     const install = inspectInstall(args.pobPath);
     if (!install) throw Object.assign(new Error(`No PoB (PoE2) install in ${args.pobPath}. Pick the folder that contains "Path of Building-PoE2.exe".`), { code: 'POB_NOT_FOUND' });
     updateConfig({ pobPath: install.dir });
     return { target: 'app', result: install };
+  },
+
+  async version() {
+    let pob = null;
+    try { const found = locatePob(); pob = { version: found.version, branch: found.branch, dir: found.dir }; } catch { /* not installed */ }
+    const update = installedUpdate();
+    return { target: 'app', result: { pobAi: VERSION, node: process.versions.node, pob, ...(update ? { updateInstalled: update.version } : {}) } };
+  },
+
+  async doctor(_args, runtime) {
+    return { target: 'app', result: await runDoctor({ runtime }) };
+  },
+
+  async updateCheck() {
+    return { target: 'app', result: await checkForUpdate() };
+  },
+
+  async updateApply(args, runtime) {
+    const result = await applyUpdate();
+    if (result.updated && args.restart && runtime.service) return LOCAL.restart({}, runtime).then(r => ({ ...r, result: { ...result, ...r.result } }));
+    return { target: 'app', result };
+  },
+
+  /** Restarts the service through the launcher; the open PoB window and panel reconnect. */
+  async restart(_args, runtime) {
+    const service = runtime.service;
+    if (!service) throw Object.assign(new Error('PoB AI is not running; `pob open` starts it.'), { code: 'SERVICE_NOT_RUNNING' });
+    const launcher = process.env.POB_AI_LAUNCHER || LAUNCHER;
+    if (!fs.existsSync(launcher)) throw Object.assign(new Error('This copy has no launcher.mjs; start PoB AI again by hand.'), { code: 'NO_LAUNCHER' });
+    setTimeout(() => {
+      service.close();
+      const line = `/d /c start "PoB AI" /min "${process.execPath}" "${launcher}" --open --no-browser`;
+      spawn('cmd.exe', [line], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
+      setTimeout(() => process.exit(0), 300);
+    }, 300);
+    return { target: 'app', result: { restarting: true } };
   },
 
   async importBuild(args, runtime) {
@@ -169,6 +250,13 @@ export const LOCAL = {
     return runtime.run('build.load_xml', { xml, name: path.basename(file, '.xml'), file: relative, discard: args.discard });
   },
 
+  async windowLanguage(args, runtime) {
+    updateConfig({ pobLanguage: args.language });
+    let applied = null;
+    if (runtime.liveConnected && runtime.service?.windowLanguage) applied = await runtime.service.windowLanguage(args.language);
+    return { target: runtime.liveConnected ? 'live' : 'app', result: { language: args.language, applied: Boolean(applied), entries: applied?.entries, remembered: true } };
+  },
+
   async theme(args, runtime) {
     updateConfig({ pobTheme: args.theme });
     if (runtime.liveConnected) await runtime.run('ui.theme_apply', { theme: args.theme });
@@ -186,6 +274,69 @@ export const LOCAL = {
     if (args.item) ({ text: args.item, conversion } = await prepareItemText(args.item, { log: runtime.log }));
     const outcome = await runtime.run('calc.whatif_english', args);
     return conversion ? { ...outcome, conversion } : outcome;
+  },
+
+  async shareBuild(args, runtime, { fetchImpl = fetch } = {}) {
+    const site = SHARE_SITES[args.site];
+    const { result } = await runtime.run('build.xml', {});
+    const response = await fetchImpl(site.url, {
+      method: 'POST', body: site.field + encodeBuildCode(result.xml),
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': 'PoB-AI (Path of Building companion)' },
+      signal: AbortSignal.timeout(20000),
+    });
+    const body = await response.text();
+    if (!response.ok || !body.trim()) throw Object.assign(new Error(`${args.site} answered ${response.status}.`), { code: 'UPLOAD_FAILED' });
+    return { target: 'app', result: { site: args.site, url: site.link(body), name: result.name } };
+  },
+
+  async deleteBuild(args, runtime) {
+    const { file, open } = await findSavedBuild(args.build, runtime);
+    if (!args.yes) throw Object.assign(new Error(`This deletes ${path.basename(file)} permanently. Repeat with --yes to confirm.`), { code: 'CONFIRM_REQUIRED' });
+    if (open) throw Object.assign(new Error('That build is open in PoB. Open another build first.'), { code: 'BUILD_OPEN' });
+    fs.rmSync(file);
+    return { target: 'app', result: { deleted: file } };
+  },
+
+  async renameBuildFile(args, runtime) {
+    const { file, open } = await findSavedBuild(args.build, runtime);
+    if (open) throw Object.assign(new Error('That build is open in PoB; use `pob build save --name` to save it under a new name.'), { code: 'BUILD_OPEN' });
+    const name = safeFileName(args.name);
+    const target = path.join(path.dirname(file), `${name}.xml`);
+    if (fs.existsSync(target)) throw Object.assign(new Error(`${name}.xml already exists.`), { code: 'EXISTS' });
+    fs.renameSync(file, target);
+    return { target: 'app', result: { from: file, to: target } };
+  },
+
+  async moveBuild(args, runtime) {
+    const { file, open, root } = await findSavedBuild(args.build, runtime);
+    if (open) throw Object.assign(new Error('That build is open in PoB. Open another build first.'), { code: 'BUILD_OPEN' });
+    const folder = path.resolve(root, args.folder || '.');
+    if (!folder.startsWith(path.resolve(root))) throw Object.assign(new Error('The folder must be inside the build folder.'), { code: 'BAD_FOLDER' });
+    fs.mkdirSync(folder, { recursive: true });
+    const target = path.join(folder, path.basename(file));
+    if (fs.existsSync(target)) throw Object.assign(new Error(`${path.basename(file)} already exists there.`), { code: 'EXISTS' });
+    fs.renameSync(file, target);
+    return { target: 'app', result: { from: file, to: target } };
+  },
+
+  async newBuildFolder(args, runtime) {
+    const { result } = await runtime.run('build.paths', {});
+    const folder = path.resolve(result.buildPath, args.folder.split(/[\\/]/).map(safeFileName).join(path.sep));
+    if (!folder.startsWith(path.resolve(result.buildPath))) throw Object.assign(new Error('The folder must be inside the build folder.'), { code: 'BAD_FOLDER' });
+    fs.mkdirSync(folder, { recursive: true });
+    return { target: 'app', result: { folder } };
+  },
+
+  async editItem(args, runtime) {
+    const { text, conversion } = await prepareItemText(args.text, { log: runtime.log });
+    const outcome = await runtime.run('items.edit_english', { item: args.item, text });
+    return conversion ? { ...outcome, conversion } : outcome;
+  },
+
+  async trade(args, runtime) {
+    const outcome = await runtime.run('items.trade_query', { item: args.item, minPercent: args.minPercent, base: args.base, status: args.status });
+    const { query, ...rest } = outcome.result;
+    return { ...outcome, result: { ...rest, url: tradeSearchUrl(query, { site: args.site, league: args.league }), league: args.league } };
   },
 
   async compare(args, runtime) {

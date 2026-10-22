@@ -2,6 +2,7 @@
 // Starts the local service, optionally opens the PoB window and the agent panel.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import { listPobProcesses } from '../pob/processes.mjs';
 import { statePath } from '../state.mjs';
 import { createService } from './server.mjs';
 
@@ -18,7 +19,12 @@ const service = await createService({ log });
 log(`PoB AI service on ${service.url.replace(/token=.*/, 'token=…')}`);
 
 if (argv.has('--open')) {
-  try { service.openPob(); } catch (error) { log(`Could not open PoB: ${error.message}`); }
+  try {
+    // After a restart (an update) the PoB window that is still open reconnects within seconds.
+    const attached = (await listPobProcesses(service.runtime.install()).catch(() => [])).some(p => p.shim);
+    if (attached) await service.waitForPob(8000).catch(() => {});
+    service.openPob();
+  } catch (error) { log(`Could not open PoB: ${error.message}`); }
 }
 if (!argv.has('--no-browser')) openPanel(service.url);
 

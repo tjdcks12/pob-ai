@@ -15,11 +15,11 @@ export async function serviceInfo() {
   } catch { return null; }
 }
 
-export async function callService(info, command, args, target) {
+export async function callService(info, command, args, target, lang) {
   const response = await fetch(`http://127.0.0.1:${info.port}/api/run`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${info.token}` },
-    body: JSON.stringify({ command, args, target }),
+    body: JSON.stringify({ command, args, target, lang }),
   });
   const body = await response.json();
   if (!body.ok) throw Object.assign(new Error(body.error?.message ?? 'Service error'), body.error ?? {});

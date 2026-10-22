@@ -16,7 +16,7 @@ const api = async (path, body) => {
   const response = await fetch(path, body === undefined ? { headers } : { method: 'POST', headers, body: JSON.stringify(body) });
   return response.json();
 };
-const run = (command, args = {}) => api('/api/run', { command, args });
+const run = (command, args = {}) => api('/api/run', { command, args, lang: locale() });
 
 const state = { live: false, sessionId: null, busy: false, controller: null, providers: [] };
 
@@ -28,6 +28,7 @@ function applyI18n() {
   document.querySelectorAll('[data-suggest]').forEach(el => { el.textContent = t(el.dataset.suggest); });
   renderStatus();
   refreshBuild();
+  showUpdate(state.update);
 }
 $('locale').innerHTML = Object.entries(LOCALES).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
 $('locale').value = locale();
@@ -57,7 +58,8 @@ async function refreshBuild() {
     return;
   }
   $('build-name').textContent = summary.name || 'Build';
-  $('build-sub').textContent = [summary.ascendancy || summary.class, `${t('level')} ${summary.level}`, summary.mainSkill && `${t('mainSkill')}: ${summary.mainSkill}`].filter(Boolean).join(' · ');
+  const loc = key => summary[`${key}_${locale()}`] ?? summary[key];
+  $('build-sub').textContent = [loc('ascendancy') || loc('class'), `${t('level')} ${summary.level}`, summary.mainSkill && `${t('mainSkill')}: ${loc('mainSkill')}`].filter(Boolean).join(' · ');
   const s = summary.stats ?? {};
   const dps = s.FullDPS || s.CombinedDPS || s.TotalDPS || s['Minion.CombinedDPS'] || s['Minion.TotalDPS'];
   const cells = [['dps', dps], ['life', s.Life], ['es', s.EnergyShield], ['ehp', s.TotalEHP]];
@@ -68,6 +70,30 @@ function listenEvents() {
   const source = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
   source.addEventListener('pob', e => { state.live = JSON.parse(e.data).connected; renderStatus(); refreshBuild(); });
   source.addEventListener('build-changed', () => refreshBuild());
+  source.addEventListener('update', e => showUpdate(JSON.parse(e.data)));
+}
+
+// ---------- PoB window settings & PoB AI updates ----------
+$('window-language').innerHTML = Object.entries(LOCALES).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+$('window-language').addEventListener('change', e => run('ui.language', { language: e.target.value }));
+$('window-theme').addEventListener('change', e => run('ui.theme', { theme: e.target.value }));
+function showUpdate(update) {
+  state.update = update?.available ? update : null;
+  $('update-banner').hidden = !state.update;
+  if (state.update) $('update-text').textContent = t('updateAvailable').replace('{version}', state.update.latest);
+}
+$('update-now').addEventListener('click', async () => {
+  $('update-now').disabled = true;
+  $('update-text').textContent = t('updating');
+  const reply = await run('update.apply', { restart: true });
+  if (!reply.ok) { $('update-now').disabled = false; showUpdate(state.update); showNotice(`${t('error')}: ${reply.error?.message ?? ''}`); }
+});
+async function loadStatus() {
+  const reply = await api('/api/status').catch(() => null);
+  if (!reply?.ok) return;
+  $('window-language').value = reply.settings?.pobLanguage ?? 'en';
+  $('window-theme').value = reply.settings?.pobTheme || 'default';
+  showUpdate(reply.update);
 }
 
 // ---------- agents ----------
@@ -257,4 +283,5 @@ $('toggle-settings').addEventListener('click', () => { $('settings').hidden = !$
 applyI18n();
 loadProviders();
 loadHistory();
+loadStatus();
 listenEvents();

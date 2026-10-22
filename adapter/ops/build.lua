@@ -246,4 +246,170 @@ return function(ops, util)
 		util.recalc(build)
 		return { ascendancy = spec.curAscendClassName }
 	end
+
+	-- ---- loadouts (a passive tree, item, skill and config set sharing one name) ----
+	local function loadouts(build)
+		if build.SyncLoadouts then build:SyncLoadouts() end
+		local names = {}
+		local control = build.controls.buildLoadouts
+		for _, entry in ipairs(control and control.list or {}) do
+			if type(entry) == 'string' and not entry:match('^%^7%^7') and entry ~= 'No Loadouts' then names[#names + 1] = entry end
+		end
+		return names
+	end
+	local function loadoutsResult(build)
+		local active = build.controls.buildLoadouts and build.controls.buildLoadouts.list[build.controls.buildLoadouts.selIndex]
+		return { loadouts = loadouts(build), active = type(active) == 'string' and not active:match('^%^7') and active or nil }
+	end
+	local function hasLoadouts(build)
+		util.check(build.NewLoadout and build.GetLoadoutByName, 'NOT_AVAILABLE', 'This PoB version has no loadouts.')
+	end
+	local function pickLoadout(build, query)
+		return util.pick(loadouts(build), query, function(n) return n end, nil, 'loadout')
+	end
+
+	ops['build.loadouts'] = function()
+		local build = util.build()
+		hasLoadouts(build)
+		return loadoutsResult(build)
+	end
+
+	ops['build.loadout_select'] = function(args)
+		local build = util.build()
+		hasLoadouts(build)
+		build:SetActiveLoadout(build:GetLoadoutByName(pickLoadout(build, args.loadout)))
+		util.recalc(build)
+		return loadoutsResult(build)
+	end
+
+	ops['build.loadout_new'] = function(args)
+		local build = util.build()
+		hasLoadouts(build)
+		if args.copy then
+			local current = loadoutsResult(build).active
+			util.check(current, 'NO_LOADOUT', 'The current sets do not form a loadout to copy; select one first.')
+			build:CopyLoadout(current, args.name)
+		else
+			build:NewLoadout(args.name)
+		end
+		build.modFlag = true
+		util.recalc(build)
+		return loadoutsResult(build)
+	end
+
+	ops['build.loadout_rename'] = function(args)
+		local build = util.build()
+		hasLoadouts(build)
+		build:RenameLoadout(pickLoadout(build, args.loadout), args.name)
+		return loadoutsResult(build)
+	end
+
+	ops['build.loadout_delete'] = function(args)
+		local build = util.build()
+		hasLoadouts(build)
+		local names = loadouts(build)
+		util.check(#names > 1, 'NOT_ALLOWED', 'The last loadout cannot be deleted.')
+		local name = pickLoadout(build, args.loadout)
+		local nextName = names[1] == name and names[2] or names[1]
+		build:DeleteLoadout(name, nextName)
+		util.recalc(build)
+		return loadoutsResult(build)
+	end
+
+	-- ---- undo / redo, per area like Ctrl+Z on each tab ----
+	local AREAS = { tree = function(b) return b.spec end, skills = function(b) return b.skillsTab end,
+		items = function(b) return b.itemsTab end, config = function(b) return b.configTab end, calcs = function(b) return b.calcsTab end }
+
+	local function undoable(args)
+		local build = util.build()
+		local owner = util.check(AREAS[args.area], 'BAD_ARGS', 'Area must be tree, skills, items, config or calcs.')(build)
+		return build, owner
+	end
+
+	ops['build.undo'] = function(args)
+		local build, owner = undoable(args)
+		util.check(owner.undo and owner.undo[2], 'NOTHING_TO_UNDO', 'There is nothing to undo in ' .. args.area .. '.')
+		owner:Undo()
+		if args.area == 'items' then build.itemsTab:PopulateSlots() end
+		if args.area == 'config' and build.configTab.UpdateControls then build.configTab:UpdateControls() build.configTab:BuildModList() end
+		util.recalc(build)
+		return { area = args.area, remaining = #owner.undo - 1, canRedo = owner.redo and #owner.redo > 0 }
+	end
+
+	ops['build.redo'] = function(args)
+		local build, owner = undoable(args)
+		util.check(owner.redo and owner.redo[1], 'NOTHING_TO_REDO', 'There is nothing to redo in ' .. args.area .. '.')
+		owner:Redo()
+		if args.area == 'items' then build.itemsTab:PopulateSlots() end
+		if args.area == 'config' and build.configTab.UpdateControls then build.configTab:UpdateControls() build.configTab:BuildModList() end
+		util.recalc(build)
+		return { area = args.area, canRedo = #owner.redo > 0 }
+	end
+
+	-- ---- spectre and companion (beast) libraries ----
+	local function library(build, kind)
+		return kind == 'beast' and build.beastList or build.spectreList
+	end
+	local function minionName(build, id)
+		local minion = build.data.minions[id]
+		return minion and minion.name or id
+	end
+	local function libraryResult(build, kind)
+		local out = {}
+		for i, id in ipairs(library(build, kind)) do out[i] = { id = id, name = minionName(build, id) } end
+		return { library = kind, minions = out }
+	end
+
+	ops['build.minions'] = function(args)
+		local build = util.build()
+		local kind = args.library or 'spectre'
+		if args.search then
+			local hits = {}
+			for id in pairs(build.data.spectres or {}) do
+				local minion = build.data.minions[id]
+				local category = minion and minion.monsterCategory
+				if (kind ~= 'beast' or category == 'Beast') and util.contains((minion and minion.name or id) .. ' ' .. tostring(category), args.search) then
+					hits[#hits + 1] = { id = id, name = minionName(build, id), category = category }
+				end
+			end
+			table.sort(hits, function(a, b) return a.name < b.name end)
+			local page, total = util.take(hits, args.limit or 25)
+			return { library = kind, total = total, available = page }
+		end
+		return libraryResult(build, kind)
+	end
+
+	local function findMinion(build, kind, query)
+		local list = {}
+		for id in pairs(build.data.spectres or {}) do
+			local minion = build.data.minions[id]
+			if kind ~= 'beast' or (minion and minion.monsterCategory == 'Beast') then list[#list + 1] = { id = id, name = minionName(build, id) } end
+		end
+		return util.pick(list, query, function(m) return m.name end, function(m) return m.id end, kind)
+	end
+
+	ops['build.minion_add'] = function(args)
+		local build = util.build()
+		local kind = args.library or 'spectre'
+		local minion = findMinion(build, kind, args.minion)
+		local list = library(build, kind)
+		for _, id in ipairs(list) do if id == minion.id then return libraryResult(build, kind) end end
+		table.insert(list, minion.id)
+		build.modFlag = true
+		util.recalc(build)
+		return libraryResult(build, kind)
+	end
+
+	ops['build.minion_remove'] = function(args)
+		local build = util.build()
+		local kind = args.library or 'spectre'
+		local list = library(build, kind)
+		local entries = {}
+		for i, id in ipairs(list) do entries[i] = { index = i, id = id, name = minionName(build, id) } end
+		local entry = util.pick(entries, args.minion, function(m) return m.name end, function(m) return m.id end, kind)
+		table.remove(list, entry.index)
+		build.modFlag = true
+		util.recalc(build)
+		return libraryResult(build, kind)
+	end
 end

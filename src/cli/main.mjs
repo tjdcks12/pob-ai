@@ -5,7 +5,7 @@ import { ArgError, validateArgs } from '../commands/schema.mjs';
 import { Runtime } from '../runtime.mjs';
 import { callService, serviceInfo } from '../service/client.mjs';
 
-const GLOBAL_FLAGS = new Set(['target', 'args', 'pretty']);
+const GLOBAL_FLAGS = new Set(['target', 'args', 'pretty', 'lang']);
 
 /** Splits argv into command words, positionals and --flags. */
 export function parseArgv(argv) {
@@ -72,7 +72,7 @@ function helpText(name) {
     if (command.examples?.length) lines.push('', 'Examples:', ...command.examples.map(e => `  ${e}`));
     return lines.join('\n');
   }
-  const lines = ['pob - drive Path of Building (PoE2) from the command line', '', 'Usage: pob <group> <action> [values] [--flags]', 'Every command prints JSON. Add --pretty for indented output.', ''];
+  const lines = ['pob - drive Path of Building (PoE2) from the command line', '', 'Usage: pob <group> <action> [values] [--flags]', 'Every command prints JSON. Add --pretty for indented output, --lang <ko|ja|…> for game names in another language.', ''];
   for (const [group, commands] of groups()) {
     lines.push(`${group}:`);
     for (const c of commands) lines.push(`  ${c.name.split('.').map(w => w.replace(/_/g, '-')).join(' ').padEnd(30)} ${c.summary}`);
@@ -99,12 +99,14 @@ export async function main(argv) {
   try {
     const args = validateArgs(command, buildArgs(command, rest, flags));
     const target = typeof flags.target === 'string' ? flags.target : undefined;
+    // Agents started by PoB AI get the user's language in POB_AI_LOCALE.
+    const lang = typeof flags.lang === 'string' ? flags.lang : process.env.POB_AI_LOCALE || undefined;
     let outcome;
     const service = await serviceInfo();
-    if (service) outcome = await callService(service, command.name, args, target);
+    if (service) outcome = await callService(service, command.name, args, target, lang);
     else {
       runtime = new Runtime();
-      outcome = await runtime.run(command.name, args, { target });
+      outcome = await runtime.run(command.name, args, { target, lang });
     }
     print({ ok: true, command: command.name, ...outcome });
     return 0;

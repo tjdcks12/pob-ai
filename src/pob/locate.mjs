@@ -48,7 +48,7 @@ export function locatePob() {
     if (found) return { ...found, source: candidate.source };
     tried.push(`${candidate.source}: ${candidate.dir}`);
   }
-  const error = new Error('Path of Building (PoE2) was not found. Install it, or run `pob setup --pob-path "<folder>"`.');
+  const error = new Error('Path of Building (PoE2) was not found. Run `pob setup "<PoB folder>"`, or `pob setup --install-pob` to install it.');
   error.code = 'POB_NOT_FOUND';
   error.details = { tried };
   throw error;

@@ -18,7 +18,7 @@ return function(ops, util)
 	local function openTab(build, tab)
 		local mode = util.check(TABS[tab], 'BAD_ARGS', 'Unknown tab ' .. tostring(tab))
 		if build.viewMode ~= mode then
-			if mode == 'IMPORT' and build.importTab and build.importTab.RefreshAuthStatus then pcall(build.importTab.RefreshAuthStatus, build.importTab) end
+			if mode == 'IMPORT' and build.importTab and build.importTab.RefreshAuthStatus then pcall(util.onMain, build.importTab.RefreshAuthStatus, build.importTab) end
 			build.viewMode = mode
 			util.waitFrame(2)
 		end
@@ -196,6 +196,94 @@ return function(ops, util)
 		util.check(control, 'NOT_FOUND', 'No control named ' .. args.control .. ' on this tab. See `pob ui state`.')
 		POBAI_OVERLAY.show({ control = control }, caption(args.caption), 8)
 		return { tab = build.viewMode, control = args.control }
+	end
+
+	ops['ui.tree_search'] = function(args)
+		local build = live()
+		openTab(build, 'tree')
+		local viewer = build.treeTab.viewer
+		viewer.searchStr = args.text or ''
+		if build.treeTab.controls.treeSearch then build.treeTab.controls.treeSearch:SetText(viewer.searchStr) end
+		util.waitFrame()
+		local matches = 0
+		for _ in pairs(viewer.searchStrResults or {}) do matches = matches + 1 end
+		if build.treeTab.controls.treeSearch then POBAI_OVERLAY.show({ control = build.treeTab.controls.treeSearch }, caption(args.caption) or (matches .. ' matches circled in red'), 6) end
+		return { tab = 'TREE', search = viewer.searchStr, matches = matches }
+	end
+
+	ops['ui.heatmap'] = function(args)
+		local build = live()
+		openTab(build, 'tree')
+		local tab = build.treeTab
+		if util.lower(args.stat) == 'off' then
+			tab.viewer.showHeatMap = false
+			if tab.controls.treeHeatMap then tab.controls.treeHeatMap.state = false end
+			return { heatmap = false }
+		end
+		local entry
+		for _, e in ipairs(data.powerStatList or {}) do
+			if e.stat and (util.lower(e.stat) == util.lower(args.stat) or util.lower(e.label) == util.lower(args.stat)) then entry = e end
+		end
+		util.check(entry, 'NOT_FOUND', 'Unknown heat map stat. Try FullDPS, Life, EnergyShield, Armour, Evasion, Spirit.')
+		tab:SetPowerCalc(entry)
+		if tab.controls.treeHeatMap then tab.controls.treeHeatMap.state = true end
+		if tab.controls.treeHeatMapStatSelect then
+			for i, e in ipairs(tab.controls.treeHeatMapStatSelect.list or {}) do if e == entry or e.stat == entry.stat then tab.controls.treeHeatMapStatSelect.selIndex = i end end
+		end
+		return { heatmap = entry.label, note = 'PoB calculates the heat map over the next seconds; brighter nodes gain more.' }
+	end
+
+	ops['ui.trade'] = function(args)
+		local build = live()
+		openTab(build, 'items')
+		local query = util.check(build.itemsTab.tradeQuery, 'NOT_AVAILABLE', 'This PoB version has no trade window.')
+		util.onMain(query.PriceItem, query)
+		return { opened = 'PoB trade window', note = 'PoB asks you to sign in to the trade site in its own window.' }
+	end
+
+	ops['ui.buy_similar'] = function(args)
+		local build = live()
+		local tab = build.itemsTab
+		local item = tab.items[tonumber(args.item) or -1]
+		if not item then
+			for name, slot in pairs(tab.slots) do
+				if util.lower(name) == util.lower(args.item) and tab.items[slot.selItemId] then item = tab.items[slot.selItemId] end
+			end
+		end
+		util.check(item, 'NOT_FOUND', 'Give an item id or an equipped slot name.')
+		local ok, similar = pcall(LoadModule, 'Classes/CompareBuySimilar')
+		util.check(ok and similar and similar.openPopup, 'NOT_AVAILABLE', 'This PoB version has no Buy Similar window.')
+		util.onMain(similar.openPopup, item, item:GetPrimarySlot(), build)
+		return { opened = 'Buy similar', item = item.title or item.name }
+	end
+
+	-- Development aid (not a CLI command): restart the PoB script like PoB's own updater does.
+	ops['engine.restart'] = function()
+		live()
+		-- Same path PoB's own update takes: launch:OnFrame calls Restart() while doRestart is set.
+		launch.doRestart = 'Restarting...'
+		return { restarting = true }
+	end
+
+	-- Development aid (not a CLI command): PoB's own screenshot, written under the PoB folder.
+	ops['ui.screenshot'] = function()
+		live()
+		util.onMain(function()
+			ConExecute('set r_screenshotFormat png')
+			TakeScreenshot()
+		end)
+		util.waitFrame(3)
+		return { folder = POBAI_ROOT .. '/SimpleGraphic/Screenshots' }
+	end
+
+	ops['ui.language_apply'] = function(args)
+		live()
+		if not args.locale or args.locale == 'en' then
+			POBAI_TRANSLATE.disable()
+			return { language = 'en' }
+		end
+		local entries = POBAI_TRANSLATE.enable(args.locale, args.dict)
+		return { language = args.locale, entries = entries }
 	end
 
 	ops['ui.theme'] = function(args)

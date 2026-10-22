@@ -55,6 +55,11 @@ function pobai_job(text)
 	return {
 		step = function()
 			local ok, result = coroutine.resume(co)
+			-- util.onMain yields a function: run it on PoB's main thread and hand back its result.
+			while ok and coroutine.status(co) == 'suspended' and type(result) == 'function' do
+				local packed = { pcall(result) }
+				ok, result = coroutine.resume(co, packed)
+			end
 			if ok and coroutine.status(co) == 'suspended' then return nil end
 			if ok then return encode({ id = request.id, ok = true, result = sanitize(result, {}, 0) }) end
 			if type(result) ~= 'table' then result = debug.traceback(co, tostring(result)) end

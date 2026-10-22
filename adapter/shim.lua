@@ -30,7 +30,13 @@ PLoadModule = function(name, ...)
 end
 package.path = package.path .. ';' .. adapter .. '/?.lua'
 
-function pobai_log(text) ConPrintf('%s', '[pob-ai] ' .. tostring(text)) end
+local logFile = os.getenv('POBAI_LOG')
+function pobai_log(text)
+	ConPrintf('%s', '[pob-ai] ' .. tostring(text))
+	if not logFile or logFile == '' then return end
+	local file = io.open(logFile, 'ab')
+	if file then file:write(os.date('!%Y-%m-%dT%H:%M:%SZ '), tostring(text), '\n') file:close() end
+end
 function pobai_read_file(name)
 	local file = io.open(name, 'rb')
 	if not file then return nil end
@@ -49,8 +55,26 @@ dofile('Launch.lua')
 local launchInit = launch.OnInit
 launch.OnInit = function(self, ...)
 	launchInit(self, ...)
-	if not self.main then return end
+	if not self.main then pobai_log('PoB did not start its main module') return end
 	POBAI_MAIN = self.main
 	local ok, err = pcall(dofile, adapter .. '/live/bridge.lua')
-	if not ok then pobai_log('bridge failed to load: ' .. tostring(err)) end
+	pobai_log(ok and 'bridge loaded' or ('bridge failed to load: ' .. tostring(err)))
+end
+
+-- PoB's Restart() (dev F5, "normal" self-update) reloads the entry script from the script
+-- working directory, which SetWorkDir above moved to the PoB folder; point it back at the
+-- adapter once PoB has shut down so the restart runs this shim again.
+local launchExit = launch.OnExit
+launch.OnExit = function(self, ...)
+	launchExit(self, ...)
+	SetWorkDir(adapter)
+end
+
+-- Tells the PoB AI service that PoB is applying its own update. A "basic" update exits and PoB's
+-- updater starts PoB again without this shim; the service then reopens PoB with it.
+local applyUpdate = launch.ApplyUpdate
+launch.ApplyUpdate = function(self, mode, ...)
+	pobai_log('PoB update: ' .. tostring(mode))
+	if pobai_emit then pcall(pobai_emit, { kind = 'pob-updating', mode = mode }) end
+	return applyUpdate(self, mode, ...)
 end

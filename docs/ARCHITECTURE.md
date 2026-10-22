@@ -37,10 +37,16 @@ as its first argument. PoB AI starts
 3. After the frame: draw the agent's highlight overlay (`adapter/live/overlay.lua`).
 
 Operations that need PoB to lay out or recalculate (switching tabs, opening a build) wait for a
-frame with `util.waitFrame()`; requests run as coroutines so the window never blocks.
+frame with `util.waitFrame()`; requests run as coroutines so the window never blocks. Calls that
+start PoB sub-scripts (trade, account import) must not run inside a coroutine; `util.onMain()`
+hands them back to the frame loop.
 
 Because nothing in the PoB folder is modified, PoB's own update check keeps working and its
-updates are never overwritten.
+updates are never overwritten. PoB applies most updates by restarting its Lua state in place
+(`Restart()`); the shim makes that restart run the shim again, so the bridge reconnects by itself.
+A "basic" update exits and PoB's updater starts plain PoB; the shim reports the update first, and
+the service closes that window and opens PoB again with the shim (`src/pob/processes.mjs`).
+The window writes its own log to `logs/pob-window.log` in the data folder.
 
 ## The headless engine
 
@@ -61,6 +67,20 @@ both modes. `src/commands/registry.mjs` defines names, arguments and help once; 
 API, the MCP server and [COMMANDS.md](COMMANDS.md) are generated from it. A few commands run in
 Node first (`local` in the registry): downloads, build files, item text conversion.
 
+## The PoB window in other languages and colours
+
+PoB draws all text with `DrawString` and bitmap fonts that only hold ASCII glyphs (SimpleGraphic
+keeps 128 glyphs per font size). `adapter/live/translate.lua` wraps `DrawString` and
+`DrawStringWidth`: a phrase found in the language's dictionary is drawn as an image instead.
+The service builds the dictionary (`src/live/window-language.mjs`) from official names in the
+game client data (`data/terms`, `data/items`) and PoB's interface text translated in
+`data/ui/<language>.json` (extracted with `scripts/extract-ui-strings.mjs`), and renders each
+phrase to a PNG with a Windows font for the script (`src/live/text-renderer.ps1`, GDI+). Images
+are cached on disk; text with no translation is drawn by PoB as before.
+
+`adapter/live/theme.lua` recolours the window by mapping the colours passed to `SetDrawColor`,
+the colour codes inside text and the clear colour.
+
 ## Item text in other languages
 
 PoB reads English item text only. `src/items/` converts game copy text (Ctrl+C) from ten client
@@ -75,10 +95,25 @@ once per chat turn, and resumes the same conversation on the next turn. The agen
 folder whose `CLAUDE.md` / `AGENTS.md` explain the `pob` command line. Claude Code may only run
 `pob …` commands; file editing tools are disabled.
 
+## Distribution and updates
+
+The release is one zip with Node.js included (`scripts/package.mjs`). `PoB AI.cmd` runs
+`launcher.mjs`, which starts the newest PoB AI on the computer: its own copy or a newer one that
+`pob update apply` unpacked into the data folder (`app/<version>`, recorded in `app/current.json`).
+The updater (`src/update/updater.mjs`) reads `latest.json` (`{ version, url, sha256, size }`),
+downloads and verifies the zip and never touches the folder the user unzipped.
+
+The service keeps its HTTP address and the bridge address (`service.json`, `bridge.json`) across
+restarts, so after an update the open PoB window and agent panel reconnect to the new service.
+`pob doctor` checks the install, runs a headless self-test of the adapter against the installed
+PoB, and reports the window connection, updates and agents. `pob setup --install-pob` installs
+the portable PoB from its GitHub releases into the data folder.
+
 ## Data folder
 
-`%LOCALAPPDATA%\pob-ai` (override with `POB_AI_HOME`): settings, the service address, the
-headless session build, agent chats, caches and logs. Nothing is written to the PoB folder except
+`%LOCALAPPDATA%\pob-ai` (override with `POB_AI_HOME`): settings, the service and bridge
+addresses, the headless session build, agent chats, window language dictionaries and images,
+caches, installed updates, an optional PoB install and logs. Nothing is written to the PoB folder except
 builds the user asks to save.
 
 ## Version support

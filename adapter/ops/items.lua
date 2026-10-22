@@ -179,9 +179,10 @@ return function(ops, util)
 		util.build()
 		local list = loadUniques()
 		local hits = {}
+		local match = util.matchSet(args.match)
 		for name, item in pairs(list) do
 			local text = name .. ' ' .. (item.baseName or '') .. ' ' .. table.concat((lines(item.explicitModLines)), ' ')
-			if util.contains(text, args.text) then
+			if (match and match[name:match('^(.-), ') or name]) or (not match and util.contains(text, args.text)) then
 				hits[#hits + 1] = { name = name, base = item.baseName, type = item.type, variants = item.variantList and #item.variantList or nil, nameMatch = util.contains(name, args.text) }
 			end
 		end
@@ -284,9 +285,10 @@ return function(ops, util)
 	ops['items.bases'] = function(args)
 		local build = util.build()
 		local hits = {}
+		local match = util.matchSet(args.match)
 		for name, base in pairs(build.data.itemBases) do
 			local text = name .. ' ' .. (base.type or '') .. ' ' .. (base.subType or '')
-			if util.contains(text, args.text) then
+			if (match and match[name]) or (not match and util.contains(text, args.text)) then
 				hits[#hits + 1] = { name = name, type = base.type, subType = base.subType, level = base.req and base.req.level or nil, implicit = base.implicit }
 			end
 		end
@@ -307,6 +309,204 @@ return function(ops, util)
 	ops['items.set_select'] = function(args) return itemSets.select(args.set) end
 	ops['items.set_new'] = function(args) return itemSets.create(args.name, args.copy) end
 	ops['items.set_delete'] = function(args) return itemSets.delete(args.set) end
+
+	-- ---- editing an existing item (keeps its id, so slots that hold it keep it) ----
+	local function replaceItem(build, old, text)
+		local tab = build.itemsTab
+		local item = parse(text)
+		item.id = old.id
+		tab:AddItem(item, true)
+		finish(build)
+		return itemInfo(tab, item, true)
+	end
+
+	local function rawLines(item)
+		local lines = {}
+		for line in (item:BuildRaw() .. '\n'):gmatch('([^\n]*)\n') do lines[#lines + 1] = line end
+		return lines
+	end
+
+	--- Position after the item's property and requirement header, where modifier lines start.
+	local function modStart(lines)
+		for i, line in ipairs(lines) do
+			if line:match('^Implicits: %d+') then return i + 1 + tonumber(line:match('%d+')) end
+		end
+		return #lines + 1
+	end
+
+	ops['items.edit'] = function(args)
+		local build = util.build()
+		return replaceItem(build, findItem(build.itemsTab, args.item), args.text)
+	end
+
+	ops['items.mod_add'] = function(args)
+		local build = util.build()
+		local item = findItem(build.itemsTab, args.item)
+		local lines = rawLines(item)
+		local kind = args.kind or 'explicit'
+		if kind == 'implicit' then
+			for i, line in ipairs(lines) do
+				local n = line:match('^Implicits: (%d+)')
+				if n then
+					lines[i] = 'Implicits: ' .. (tonumber(n) + 1)
+					table.insert(lines, i + 1 + tonumber(n), args.line)
+					break
+				end
+			end
+		else
+			local prefix = ({ explicit = '', crafted = '{crafted}', enchant = '{enchant}', rune = '{rune}', fractured = '{fractured}', desecrated = '{desecrated}' })[kind] or ''
+			-- Enchants and runes sit with the implicits in PoB's text; explicit lines go at the end.
+			table.insert(lines, (kind == 'enchant' or kind == 'rune') and modStart(lines) or #lines + 1, prefix .. args.line)
+		end
+		local result = replaceItem(build, item, table.concat(lines, '\n'))
+		if result.unsupported then result.warning = 'PoB does not understand some lines; they have no effect on calculations.' end
+		return result
+	end
+
+	ops['items.mod_remove'] = function(args)
+		local build = util.build()
+		local item = findItem(build.itemsTab, args.item)
+		local lines = rawLines(item)
+		local start = modStart(lines)
+		local implicitIndex
+		for i, line in ipairs(lines) do if line:match('^Implicits: %d+') then implicitIndex = i end end
+		local candidates = {}
+		for i = (implicitIndex or start - 1) + 1, #lines do
+			local text = lines[i]:gsub('^{[^}]*}', ''):gsub('^{[^}]*}', '')
+			if text ~= '' and text ~= 'Corrupted' then candidates[#candidates + 1] = { index = i, text = text } end
+		end
+		local hit = util.pick(candidates, args.line, function(c) return c.text end, nil, 'modifier line on ' .. (item.title or item.name))
+		table.remove(lines, hit.index)
+		if implicitIndex and hit.index < start then
+			lines[implicitIndex] = 'Implicits: ' .. (tonumber(lines[implicitIndex]:match('%d+')) - 1)
+		end
+		return replaceItem(build, item, table.concat(lines, '\n'))
+	end
+
+	ops['items.anoint'] = function(args)
+		local build = util.build()
+		local item = findItem(build.itemsTab, args.item)
+		local node = ops.findNode(build.spec, args.notable, 'read')
+		util.check(node.type == 'Notable', 'NOT_NOTABLE', node.dn .. ' is not a notable passive.')
+		local lines = rawLines(item)
+		for i = #lines, 1, -1 do
+			if lines[i]:match('^{enchant}.*Allocates ') then table.remove(lines, i) end
+		end
+		table.insert(lines, modStart(lines), '{enchant}Allocates ' .. node.dn)
+		return replaceItem(build, item, table.concat(lines, '\n'))
+	end
+
+	ops['items.corrupt'] = function(args)
+		local build = util.build()
+		local item = findItem(build.itemsTab, args.item)
+		local lines = rawLines(item)
+		local corrupted = false
+		for _, line in ipairs(lines) do if line == 'Corrupted' then corrupted = true end end
+		for _, implicit in ipairs(args.implicit or {}) do
+			for i, line in ipairs(lines) do
+				local n = line:match('^Implicits: (%d+)')
+				if n then
+					lines[i] = 'Implicits: ' .. (tonumber(n) + 1)
+					table.insert(lines, i + 1 + tonumber(n), implicit)
+					break
+				end
+			end
+		end
+		if not corrupted then lines[#lines + 1] = 'Corrupted' end
+		return replaceItem(build, item, table.concat(lines, '\n'))
+	end
+
+	ops['items.runes'] = function(args)
+		util.build()
+		local hits = {}
+		local match = util.matchSet(args.match)
+		for name, rune in pairs(data.itemMods.Runes or {}) do
+			local text = name
+			for _, mod in pairs(type(rune) == 'table' and rune or {}) do
+				if type(mod) == 'table' and mod[1] then text = text .. ' ' .. tostring(mod[1]) end
+			end
+			if (match and match[name]) or (not match and util.contains(text, args.search)) then hits[#hits + 1] = name end
+		end
+		table.sort(hits)
+		local page, total = util.take(hits, args.limit or 30)
+		return { total = total, runes = page }
+	end
+
+	ops['items.set_rune'] = function(args)
+		local build = util.build()
+		local item = findItem(build.itemsTab, args.item)
+		local lines = rawLines(item)
+		local runeLines = {}
+		for i, line in ipairs(lines) do if line:match('^Rune: ') then runeLines[#runeLines + 1] = i end end
+		util.check(#runeLines > 0, 'NO_SOCKETS', (item.title or item.name) .. ' has no rune sockets.')
+		util.check(runeLines[args.socket], 'NOT_FOUND', ('%s has %d sockets.'):format(item.title or item.name, #runeLines))
+		local name = 'None'
+		if util.lower(args.rune) ~= 'none' then
+			local names = {}
+			for n in pairs(data.itemMods.Runes or {}) do names[#names + 1] = n end
+			table.sort(names)
+			name = util.pick(names, args.rune, function(n) return n end, nil, 'rune')
+		end
+		lines[runeLines[args.socket]] = 'Rune: ' .. name
+		-- Rune modifier lines are rebuilt from the socketed runes.
+		for i = #lines, 1, -1 do if lines[i]:match('^{rune}') then table.remove(lines, i) end end
+		local result = replaceItem(build, item, table.concat(lines, '\n'))
+		local saved = build.itemsTab.items[item.id]
+		if saved.UpdateRunes then saved:UpdateRunes() saved:BuildModList() util.changed(build, build.itemsTab) end
+		return result
+	end
+
+	--- Trade site search for items like this one (PoB's "Buy similar" query with every modifier).
+	ops['items.trade_query'] = function(args)
+		local build = util.build()
+		local tab = build.itemsTab
+		local item = findItem(tab, args.item)
+		local ok, similar = pcall(LoadModule, 'Classes/CompareBuySimilar')
+		util.check(ok and similar and similar.addModEntries, 'NOT_AVAILABLE', 'This PoB version cannot build trade searches.')
+		local helpers = LoadModule('Classes/TradeHelpers')
+		local unique = item.rarity == 'UNIQUE' or item.rarity == 'RELIC'
+		local entries = similar.addModEntries(item, {
+			{ list = item.enchantModLines, type = 'enchant' }, { list = item.implicitModLines, type = 'implicit' }, { list = item.explicitModLines, type = 'explicit' } })
+		local query = { status = { option = args.status or 'available' }, stats = { { type = 'and', filters = {} } } }
+		local filters = {}
+		if unique then
+			query.name = (item.title or item.name):gsub('^Foulborn%s+', '')
+			query.type = item.baseName
+		else
+			local slot = equippedIn(tab, item)[1] or item:GetPrimarySlot()
+			local category = helpers.getTradeCategory and helpers.getTradeCategory(slot, item)
+			if category then filters.type_filters = { filters = { category = { option = category } } } end
+			if args.base then query.type = item.baseName end
+		end
+		local used, skipped = {}, {}
+		local scale = (args.minPercent or 90) / 100
+		for _, entry in ipairs(entries) do
+			if not unique and #entry.tradeIds >= 1 then
+				local function filterFor(id)
+					local filter = { id = id }
+					if entry.isOption then filter.value = { min = entry.value, max = entry.value }
+					elseif entry.value then
+						local v = entry.value * scale
+						if entry.invert then filter.value = { max = -math.floor(v) } else filter.value = { min = math.floor(v * 100 + 0.5) / 100 } end
+					end
+					return filter
+				end
+				if #entry.tradeIds == 1 then
+					table.insert(query.stats[1].filters, filterFor(entry.tradeIds[1]))
+				else
+					local count = { type = 'count', value = { min = 1 }, filters = {} }
+					for _, id in ipairs(entry.tradeIds) do table.insert(count.filters, filterFor(id)) end
+					table.insert(query.stats, count)
+				end
+				used[#used + 1] = table.concat(entry.formattedLines or {}, ' / ')
+			elseif #entry.tradeIds == 0 then
+				skipped[#skipped + 1] = table.concat(entry.formattedLines or {}, ' / ')
+			end
+		end
+		if next(filters) then query.filters = filters end
+		return { item = item.title or item.name, query = { query = query, sort = { price = 'asc' } }, modifiers = used,
+			notSearchable = #skipped > 0 and skipped or nil }
+	end
 
 	ops.itemInfo = itemInfo
 	ops.parseItem = parse

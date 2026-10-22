@@ -3,8 +3,11 @@
 local socket = require('socket')
 local json = require('dkjson')
 dofile(POBAI_ADAPTER .. '/core/dispatch.lua')
+POBAI_RAW = { SetDrawColor = SetDrawColor, DrawString = DrawString, DrawStringWidth = DrawStringWidth }
+POBAI_TEXT_DRAW = POBAI_RAW.DrawString
 POBAI_OVERLAY = dofile(POBAI_ADAPTER .. '/live/overlay.lua')
 POBAI_THEME = dofile(POBAI_ADAPTER .. '/live/theme.lua')
+POBAI_TRANSLATE = dofile(POBAI_ADAPTER .. '/live/translate.lua')
 local savedTheme = os.getenv('POBAI_THEME')
 if savedTheme and savedTheme ~= '' then POBAI_THEME.apply(savedTheme) end
 
@@ -49,16 +52,25 @@ local function poll()
 		if reply then finish(reply) end
 		return
 	end
-	local line, err, partial = client:receive('*l')
-	if line then
+	while true do
+		local line, err, partial = client:receive('*l')
+		if not line then
+			if partial and #partial > 0 then buffer = buffer .. partial end
+			if err == 'closed' then client:close() client = nil job = nil end
+			return
+		end
 		line = buffer .. line
 		buffer = ''
-		job = pobai_job(line)
-		local reply = job.step()
-		if reply then finish(reply) end
-	else
-		if partial and #partial > 0 then buffer = buffer .. partial end
-		if err == 'closed' then client:close() client = nil job = nil end
+		-- Rendered text images for the window translation arrive between requests.
+		if line:find('^{"type":"rendered"') then
+			local message = json.decode(line)
+			if message then POBAI_TRANSLATE.onRendered(message) end
+		else
+			job = pobai_job(line)
+			local reply = job.step()
+			if reply then finish(reply) end
+			return
+		end
 	end
 end
 

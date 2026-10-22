@@ -2,7 +2,7 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { ADAPTER_DIR } from '../engine/engine.mjs';
-import { readConfig } from '../state.mjs';
+import { readConfig, statePath } from '../state.mjs';
 import { EXE_NAME } from './locate.mjs';
 
 /**
@@ -17,7 +17,7 @@ export function launchPob(install, bridge, { buildFile } = {}) {
     cwd: install.dir,
     detached: true,
     stdio: 'ignore',
-    env: { ...process.env, POBAI_BRIDGE_PORT: String(bridge.port), POBAI_BRIDGE_TOKEN: bridge.token, POBAI_THEME: readConfig().pobTheme ?? '' },
+    env: { ...process.env, POBAI_BRIDGE_PORT: String(bridge.port), POBAI_BRIDGE_TOKEN: bridge.token, POBAI_THEME: readConfig().pobTheme ?? '', POBAI_LOG: statePath('logs', 'pob-window.log') },
   });
   child.unref();
   return child;

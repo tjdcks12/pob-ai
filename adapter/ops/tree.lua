@@ -120,11 +120,12 @@ return function(ops, util)
 	ops['tree.search'] = function(args)
 		local spec = util.build().spec
 		local hits = {}
+		local match = util.matchSet(args.match)
 		for _, node in pairs(spec.nodes) do
 			if not HIDDEN[node.type] and node.dn then
 				local k = kind(node)
 				local text = node.dn .. '\n' .. table.concat(node.sd or {}, '\n')
-				if util.contains(text, args.text)
+				if (match and match[node.id] or (not match and util.contains(text, args.text)))
 					and (not args.type or args.type == k)
 					and (args.allocated == nil or (node.alloc or false) == args.allocated) then
 					hits[#hits + 1] = node
@@ -296,6 +297,36 @@ return function(ops, util)
 		local list = {}
 		for _, v in ipairs(treeVersionList or {}) do list[#list + 1] = { id = v, name = treeVersions[v] and treeVersions[v].display or v } end
 		return { current = spec.treeVersion, latest = latestTreeVersion, versions = list }
+	end
+
+	ops['tree.url_export'] = function()
+		local build = util.build()
+		local spec = build.spec
+		local version = treeVersions[spec.treeVersion]
+		util.check(spec.EncodeURL, 'NOT_AVAILABLE', 'This PoB version cannot make tree links.')
+		-- PoE2 tree versions carry no site URL; PoB itself uses the official planner address.
+		local prefix = version and version.url or 'https://www.pathofexile.com/passive-skill-tree/'
+		return { url = spec:EncodeURL(prefix), treeVersion = spec.treeVersion }
+	end
+
+	ops['tree.url_import'] = function(args)
+		local build = util.build()
+		local spec = build.spec
+		local err = spec:DecodeURL(args.url)
+		util.check(not err, 'BAD_URL', tostring(err))
+		spec:BuildAllDependsAndPaths()
+		util.changed(build, spec)
+		return { class = spec.curClassName, ascendancy = spec.curAscendClassName, points = (spec:CountAllocNodes()) }
+	end
+
+	ops['tree.note'] = function(args)
+		local build = util.build()
+		local spec = build.spec
+		util.check(spec.nodeNotes, 'NOT_AVAILABLE', 'Node notes need PoB 0.23 or newer.')
+		local node = ops.findNode(spec, args.node, 'read')
+		spec.nodeNotes[node.id] = (args.text and args.text ~= '') and args.text or nil
+		util.changed(build, spec)
+		return { node = node.dn, note = spec.nodeNotes[node.id] }
 	end
 
 	ops['tree.convert'] = function(args)

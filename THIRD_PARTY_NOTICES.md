@@ -37,12 +37,22 @@ Source: https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
 
 Node.js foreign function interface used to load PoB's `lua51.dll`.
 MIT License, Copyright (c) Niels Martignène. https://koffi.dev
+The release zip contains only its Windows x64 binary (`node_modules/koffi`, with its LICENSE.txt).
+
+## Node.js
+
+The Windows release bundles the Node.js runtime in `runtime/node/` so nothing has to be installed.
+Node.js is MIT licensed and includes third-party components under their own licenses; the full
+text ships next to it as `runtime/node/LICENSE`. https://nodejs.org
 
 ## Game content
 
 Path of Exile and Path of Exile 2 are trademarks of Grinding Gear Games.
 
-`data/items/` holds item, base and stat names in the ten game client languages,
-extracted from the game client to convert copied item text for PoB. That text is
-© Grinding Gear Games and is not covered by this project's license. Game text
-shown at run time comes from your PoB installation and the official trade data.
+`data/items/` and `data/terms/` hold item, base, skill, passive and stat text in the ten game
+client languages, extracted from the game client to convert copied item text for PoB and to show
+official names. That text is © Grinding Gear Games and is not covered by this project's license.
+Game text shown at run time otherwise comes from your PoB installation and the official trade data.
+
+`data/ui/<language>.json` are PoB AI's translations of Path of Building's interface text (MIT,
+like the rest of this project); `data/ui/source.json` lists the English originals from PoB.

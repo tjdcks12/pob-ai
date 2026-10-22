@@ -112,3 +112,19 @@ versions; search by function name. When PoB changes one of these, update the mat
 - Colours are set through the globals `SetDrawColor` and colour codes in `DrawString` text; PoB
   keeps no local copies of them. The window background is the renderer clear colour
   (`SetClearColor`).
+
+## Host (SimpleGraphic.dll)
+
+Read from the shipped DLL with a disassembler; there is no Lua source for these.
+
+- `Restart()` only sets a flag. After the current frame the host calls `OnExit`, closes the Lua
+  state, restores the *script working directory* and loads the entry script again with the
+  original arguments. `SetWorkDir()` changes that directory, so the shim moves it back to the
+  adapter folder in `OnExit`.
+- `launch:ApplyUpdate(mode)` (Launch.lua): `"normal"` applies the files and calls `Restart()`;
+  `"basic"` spawns `Update.exe` and exits, and the updater starts the exe without arguments.
+- Fonts: one bitmap atlas per size with glyphs below 128 only; other characters are not drawn.
+- `LaunchSubScript` (HTTP downloads, OAuth) crashes the process when called from inside a Lua
+  coroutine; call it from the frame callback.
+- `TakeScreenshot()` writes the next frame to `<user path>/Screenshots` (`set r_screenshotFormat png`);
+  the adapter's `ui.screenshot` diagnostic uses it so tests never capture the user's screen.

@@ -8,41 +8,107 @@ import { fileURLToPath } from 'node:url';
 import { AgentHub } from '../agent/hub.mjs';
 import { COMMANDS, findCommand } from '../commands/registry.mjs';
 import { BridgeServer } from '../live/bridge-server.mjs';
+import { TextRenderer, writeDictionary } from '../live/window-language.mjs';
 import { launchPob } from '../pob/launch.mjs';
+import { closePob, listPobProcesses } from '../pob/processes.mjs';
 import { Runtime } from '../runtime.mjs';
-import { statePath, writeJson } from '../state.mjs';
+import { readConfig, readJson, statePath, writeJson } from '../state.mjs';
 import { SERVICE_FILE } from './client.mjs';
+import { checkForUpdate, updateCheckDue } from '../update/updater.mjs';
 import { handleMcp } from './mcp.mjs';
 
 const UI_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../ui');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
 
-export async function createService({ port = 0, log = line => process.stderr.write(`${line}\n`) } = {}) {
-  const token = randomBytes(24).toString('hex');
+export async function createService({ port, log = line => process.stderr.write(`${line}\n`) } = {}) {
+  // The address of the previous run is reused when free, so an open agent panel reconnects
+  // after a restart (an update) instead of pointing at a dead port.
+  const previous = readJson(SERVICE_FILE(), {});
+  const token = /^[0-9a-f]{48}$/.test(previous.token ?? '') ? previous.token : randomBytes(24).toString('hex');
   const events = new Set();
   const broadcast = (type, data) => {
     const frame = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
     for (const res of events) res.write(frame);
   };
 
-  const bridge = new BridgeServer({ log });
-  await bridge.listen();
+  // The PoB window keeps the bridge address it was started with, so the address is reused
+  // across service restarts (updates) and an open PoB window reconnects by itself.
+  const saved = readJson(statePath('bridge.json'), {});
+  const bridge = new BridgeServer({ log, token: /^[0-9a-f]{36}$/.test(saved.token ?? '') ? saved.token : undefined });
+  await bridge.listen(saved.port ?? 0);
+  if (bridge.port !== saved.port || bridge.token !== saved.token) writeJson(statePath('bridge.json'), { port: bridge.port, token: bridge.token });
   const runtime = new Runtime({ bridge, log });
   const service = { token, bridge, runtime, broadcast, log, pobProcess: null };
   runtime.service = service;
   service.openPob = (options = {}) => {
     if (bridge.connected) return { alreadyOpen: true, ...bridge.info };
-    service.pobProcess = launchPob(runtime.install(), { port: bridge.port, token: bridge.token }, options);
-    return { launched: true, pid: service.pobProcess.pid };
+    const child = launchPob(runtime.install(), { port: bridge.port, token: bridge.token }, options);
+    service.pobProcess = child;
+    // A PoB that exits before connecting may be applying an update on its first run.
+    child.on('exit', () => { if (!child.bridgeConnected && service.pobProcess === child && !service.closed) reopenAfterUpdate(); });
+    return { launched: true, pid: child.pid };
   };
+  // After a "basic" self-update PoB's updater starts PoB without the shim: close that window
+  // and open PoB again through PoB AI so the agent keeps working.
+  let reopening = null;
+  const reopenAfterUpdate = (timeoutMs = 180000) => reopening ??= (async () => {
+    const deadline = Date.now() + timeoutMs;
+    try {
+      while (Date.now() < deadline && !bridge.connected && !service.closed) {
+        runtime.refreshInstall();
+        const plain = (await listPobProcesses(runtime.install()).catch(() => [])).filter(p => !p.shim);
+        if (plain.length) {
+          for (const p of plain) await closePob(p.pid);
+          service.openPob();
+          log('Reopened PoB with PoB AI after its update.');
+          return true;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      return false;
+    } finally { reopening = null; }
+  })();
+  service.reopenAfterUpdate = reopenAfterUpdate;
   service.waitForPob = (timeoutMs = 45000) => bridge.connected ? Promise.resolve(bridge.info) : new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(Object.assign(new Error('The PoB window did not connect in time.'), { code: 'LIVE_TIMEOUT' })), timeoutMs);
     bridge.once('connected', info => { clearTimeout(timer); resolve(info); });
   });
-  bridge.on('connected', info => broadcast('pob', { connected: true, ...info }));
-  bridge.on('disconnected', () => broadcast('pob', { connected: false }));
-  bridge.on('event', event => broadcast('pob-event', event));
+  // PoB window translation: the window asks for phrase images; the language is remembered.
+  const renderer = new TextRenderer({ log });
+  service.windowLanguage = async locale => {
+    if (!locale || locale === 'en') return bridge.call('ui.language_apply', { locale: 'en' });
+    const { file } = writeDictionary(locale);
+    return bridge.call('ui.language_apply', { locale, dict: file }, { timeoutMs: 120000 });
+  };
+  let updating = null;
+  bridge.on('connected', info => {
+    updating = null;
+    if (service.pobProcess) service.pobProcess.bridgeConnected = true;
+    if (runtime.cachedInstall && info.version && info.version !== runtime.cachedInstall.version) runtime.refreshInstall();
+    broadcast('pob', { connected: true, ...info });
+    const language = readConfig().pobLanguage;
+    if (language && language !== 'en') service.windowLanguage(language).catch(error => log(`window language: ${error.message}`));
+  });
+  bridge.on('disconnected', () => {
+    broadcast('pob', { connected: false, updating: updating?.mode });
+    // A "normal" update restarts PoB in place and the shim reconnects by itself.
+    if (updating?.mode === 'basic') reopenAfterUpdate();
+  });
+  bridge.on('event', event => {
+    if (event?.kind === 'pob-updating') {
+      updating = { mode: event.mode };
+      log(`PoB is applying an update (${event.mode}).`);
+    }
+    if (event?.kind === 'render') {
+      const locale = String(event.key).split('|')[0];
+      renderer.render(event, locale)
+        .then(image => bridge.send({ type: 'rendered', ...image }))
+        .catch(error => bridge.send({ type: 'rendered', key: event.key, error: error.message }));
+      return;
+    }
+    broadcast('pob-event', event);
+  });
   const agents = new AgentHub(service);
   service.agents = agents;
 
@@ -85,7 +151,8 @@ export async function createService({ port = 0, log = line => process.stderr.wri
     if (route === 'GET /api/status') {
       let install = null;
       try { install = runtime.install(); } catch (error) { install = { error: error.message }; }
-      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers() });
+      const { pobLanguage = 'en', pobTheme = 'default' } = readConfig();
+      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers(), settings: { pobLanguage, pobTheme }, update: service.update ?? null });
     }
     if (route === 'GET /api/commands') {
       return send(res, 200, { ok: true, commands: COMMANDS.map(({ local, ...c }) => c) });
@@ -93,7 +160,7 @@ export async function createService({ port = 0, log = line => process.stderr.wri
     if (route === 'POST /api/run') {
       const body = await readBody(req);
       try {
-        const outcome = await runtime.run(body.command, body.args ?? {}, { target: body.target });
+        const outcome = await runtime.run(body.command, body.args ?? {}, { target: body.target, lang: body.lang });
         if (findCommand(body.command)?.mutates) broadcast('build-changed', { command: body.command });
         return send(res, 200, { ok: true, ...outcome });
       } catch (error) {
@@ -122,18 +189,34 @@ export async function createService({ port = 0, log = line => process.stderr.wri
     fs.createReadStream(file).pipe(res);
   }
 
-  await new Promise(resolve => server.listen(port, '127.0.0.1', resolve));
+  const listen = p => new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(p, '127.0.0.1', () => { server.removeListener('error', reject); resolve(); });
+  });
+  await listen(port ?? previous.port ?? 0).catch(error => {
+    if (error.code !== 'EADDRINUSE' || port) throw error;
+    return listen(0);
+  });
   service.port = server.address().port;
   service.url = `http://127.0.0.1:${service.port}/?token=${token}`;
   writeJson(SERVICE_FILE(), { port: service.port, token, pid: process.pid, startedAt: new Date().toISOString() });
   fs.mkdirSync(statePath('logs'), { recursive: true });
+  // A quiet daily check; the panel offers the update, nothing is downloaded without a click.
+  if (updateCheckDue()) {
+    checkForUpdate().then(update => {
+      service.update = update;
+      if (update.available) { log(`PoB AI ${update.latest} is available.`); broadcast('update', update); }
+    }).catch(error => log(`update check: ${error.message}`));
+  }
   service.close = () => {
+    service.closed = true;
+    renderer.close();
     agents.close();
     runtime.close();
     bridge.close();
     server.close();
     for (const res of events) res.end();
-    try { if (JSON.parse(fs.readFileSync(SERVICE_FILE(), 'utf8')).pid === process.pid) fs.rmSync(SERVICE_FILE()); } catch { /* already gone */ }
+    // service.json stays: the next start reuses its address, and clients check it is alive.
   };
   return service;
 }

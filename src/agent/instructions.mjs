@@ -19,7 +19,12 @@ appears there immediately; otherwise it works on a background copy of the build.
 - Search before you guess names: \`pob tree search <text>\`, \`pob gems search <text>\`,
   \`pob items uniques <text>\`, \`pob config list --search <text>\`.
 - To compare an idea without keeping it, use the what-if commands (\`pob calc whatif ...\`).
+- Game names may be given in the user's language (\`pob tree allocate 태풍의 정수\`). Results include
+  official names in the user's language next to the English ones (\`name_ko\`, \`stats_ko\`); use those
+  when you answer. \`--lang <code>\` picks the language; PoB AI sets it for you.
 - A request to change, import or save something is permission to do it. Do not ask again.
+- Ask before deleting a saved build (\`pob build delete … --yes\`) or publishing one (\`pob build share\`).
+- \`pob build undo <area>\` reverts the last change in tree, skills, items, config or calcs.
 - Saving: \`pob build save\` (current file) or \`pob build save --name "..."\`.
 
 ## Showing the user where things are
@@ -30,6 +35,12 @@ in the PoB window with the \`pob ui ...\` commands (they need the window; open i
 - \`pob ui show-slot <slot>\`, \`pob ui show-gem <group>\`, \`pob ui show-config <key>\`,
   \`pob ui show-stat <stat>\` highlight an item slot, a skill group, a configuration option or a stat.
 Highlight first, then explain in one or two sentences what the user sees.
+
+## PoB itself
+- \`pob ui language <code>\` shows the PoB window in the user's language; \`pob ui theme <name>\` recolours it.
+- When something does not work (PoB missing, the window not connecting, odd errors), run \`pob doctor\`
+  and follow its \`fix\` hints. \`pob setup --install-pob\` downloads PoB; only run it when the user
+  agrees. \`pob update check\` / \`pob update apply\` update PoB AI; ask before applying.
 
 ## Answers
 - Reply in the user's language. Use the official in-game names for skills, items and stats.

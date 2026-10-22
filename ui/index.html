@@ -23,7 +23,13 @@
     <label><span data-i18n="theme"></span><select id="theme">
       <option value="ember">Ember</option><option value="vaal">Vaal</option><option value="midnight">Midnight</option><option value="parchment">Parchment</option>
     </select></label>
+    <label><span data-i18n="windowLanguage"></span><select id="window-language"></select></label>
+    <label><span data-i18n="windowTheme"></span><select id="window-theme">
+      <option value="default" data-i18n="pobDefault"></option><option value="ember">Ember</option><option value="vaal">Vaal</option><option value="midnight">Midnight</option><option value="parchment">Parchment</option>
+    </select></label>
   </section>
+
+  <div id="update-banner" class="update-banner" hidden><span id="update-text"></span><button id="update-now" type="button" class="primary" data-i18n="updateNow"></button></div>
 
   <section id="history" class="drawer" hidden><ul id="history-list"></ul></section>
 

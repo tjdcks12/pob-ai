@@ -8,6 +8,7 @@ The same commands are MCP tools named `pob_<group>_<action>` on the service's `/
 `target` tells where the command ran: `live` = the open PoB window, `headless` = PoB AI's background copy of the build, `app` = PoB AI itself.
 
 - [App](#app)
+- [update](#update)
 - [Engine](#engine)
 - [Build](#build)
 - [Character](#character)
@@ -17,6 +18,9 @@ The same commands are MCP tools named `pob_<group>_<action>` on the service's `/
 - [Items](#items)
 - [Configuration](#configuration)
 - [Calculations](#calculations)
+- [party](#party)
+- [options](#options)
+- [account](#account)
 - [Notes](#notes)
 - [PoB window](#pob-window)
 
@@ -34,9 +38,41 @@ Open the PoB window with PoB AI attached (starts the service if needed)
 
 Show the PoB install, the service and whether the PoB window is connected
 
-### `pob setup <pobPath>`
+### `pob setup [pobPath]`
 
-Remember where PoB is installed
+Remember where PoB is installed, or install PoB (--install-pob)
+
+PoB updates itself after that; PoB AI follows because it attaches to whatever PoB version is installed.
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--install-pob` | boolean | Download the latest portable PoB (PoE2) from its GitHub releases into the PoB AI data folder |
+
+### `pob version`
+
+PoB AI, Node.js and PoB versions
+
+### `pob doctor`
+
+Check the PoB install, the adapter, the window connection, updates and agents
+
+### `pob restart`
+
+Restart the PoB AI service (the PoB window and panel reconnect)
+
+## update
+
+### `pob update check`
+
+Check for a newer PoB AI
+
+### `pob update apply`
+
+Download and install the newer PoB AI (used from the next start)
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--restart` | boolean | Restart PoB AI right away (the PoB window stays open and reconnects) |
 
 ## Engine
 
@@ -121,6 +157,94 @@ Without --name it saves to the current file (the first save picks the build name
 
 Rename the current build *(changes the build)*
 
+### `pob build share`
+
+Upload the build and return a share link (pobb.in, poe.ninja, Maxroll, poe2db)
+
+This publishes the build on the chosen site. Only run it when the user asks to share.
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--site` | `pobb.in` \| `poe.ninja` \| `maxroll` \| `poe2db` | Where to upload (default "pobb.in") |
+
+### `pob build delete <build>`
+
+Delete a saved build file (needs --yes)
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--yes` | boolean | Confirm the deletion |
+
+### `pob build rename-file <build> <name>`
+
+Rename a saved build file
+
+### `pob build move <build> <folder>`
+
+Move a saved build into a folder of the build folder
+
+### `pob build folder-new <folder>`
+
+Create a folder in the build folder
+
+### `pob build loadouts`
+
+Loadouts (a tree, item, skill and config set sharing one name)
+
+### `pob build loadout-select <loadout>`
+
+Switch to a loadout *(changes the build)*
+
+### `pob build loadout-new <name>`
+
+Create a loadout (new sets, or a copy of the current loadout) *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--copy` | boolean | Copy the current loadout |
+
+### `pob build loadout-rename <loadout> <name>`
+
+Rename a loadout *(changes the build)*
+
+### `pob build loadout-delete <loadout>`
+
+Delete a loadout and its sets *(changes the build)*
+
+### `pob build undo <area>`
+
+Undo the last change in one area (like Ctrl+Z on that tab) *(changes the build)*
+
+### `pob build redo <area>`
+
+Redo the last undone change in one area *(changes the build)*
+
+### `pob build minions`
+
+Spectres or companions in the build library; with --search, the ones you can add
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--library` | `spectre` \| `beast` | spectre or beast (companions) (default "spectre") |
+| `--search` | string | Search the available minions |
+| `--limit` | integer | Maximum results (default 25) |
+
+### `pob build minion-add <minion>`
+
+Add a spectre or companion to the build library *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--library` | `spectre` \| `beast` | spectre or beast (companions) (default "spectre") |
+
+### `pob build minion-remove <minion>`
+
+Remove a spectre or companion from the build library *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--library` | `spectre` \| `beast` | spectre or beast (companions) (default "spectre") |
+
 ### `pob build load-xml`
 
 Load a build from PoB XML text (advanced) *(changes the build)*
@@ -177,6 +301,7 @@ Find passive nodes by name or stat text
 | `--type` | `normal` \| `notable` \| `keystone` \| `socket` \| `ascendancy` \| `attribute` | Only this node type |
 | `--allocated` | boolean | Only allocated (true) or unallocated (false) nodes |
 | `--limit` | integer | Maximum results (default 25) |
+| `--match` | string[] | Exact English names or node ids to match instead of text (filled in for searches in other languages) |
 
 ### `pob tree node <node>`
 
@@ -231,6 +356,18 @@ Rename the active passive tree set *(changes the build)*
 ### `pob tree set-delete <set>`
 
 Delete a passive tree set *(changes the build)*
+
+### `pob tree url-export`
+
+Passive tree as a shareable tree link
+
+### `pob tree url-import <url>`
+
+Replace the active passive tree from a tree link *(changes the build)*
+
+### `pob tree note <node> [text]`
+
+Attach a note to a passive node (PoB 0.23+; empty text removes it) *(changes the build)*
 
 ### `pob tree versions`
 
@@ -318,6 +455,7 @@ Find gems by name, tag or description
 | --- | --- | --- |
 | `--kind` | `active` \| `support` | active or support |
 | `--limit` | integer | Maximum results (default 25) |
+| `--match` | string[] | Exact English names or node ids to match instead of text (filled in for searches in other languages) |
 
 ### `pob gems add <group> <gem>`
 
@@ -398,6 +536,81 @@ Create a custom item from a base type and modifier lines *(changes the build)*
 | `--quality` | integer | Quality |
 | `--equip` | string | Slot to equip it in |
 
+### `pob items edit <item>`
+
+Replace an item with new item text (keeps it equipped) *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--text` (required) | string | New item text (game copy text in any supported language) |
+
+### `pob items edit-english <item>`
+
+Replace an item with English PoB item text (advanced) *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--text` (required) | string | English item text |
+
+### `pob items mod-add <item> <line>`
+
+Add a modifier line to an item *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--kind` | `explicit` \| `implicit` \| `crafted` \| `enchant` \| `rune` \| `fractured` \| `desecrated` | explicit, implicit, crafted, enchant, rune, fractured or desecrated (default "explicit") |
+
+### `pob items mod-remove <item> <line>`
+
+Remove a modifier line from an item *(changes the build)*
+
+### `pob items anoint <item> <notable>`
+
+Anoint an item with a notable passive (Allocates …) *(changes the build)*
+
+### `pob items corrupt <item>`
+
+Mark an item corrupted, optionally adding corruption implicits *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--implicit` | string[] | Implicit line to add; repeat for several |
+
+### `pob items runes [search]`
+
+Search rune and soul core names
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--limit` | integer | Maximum results (default 30) |
+| `--match` | string[] | Exact English names or node ids to match instead of text (filled in for searches in other languages) |
+
+### `pob items set-rune <item> <socket> <rune>`
+
+Socket a rune into an item (or "none" to empty the socket) *(changes the build)*
+
+### `pob items trade <item>`
+
+Trade site search link for items like this one
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--league` | string | League name (default "Standard") |
+| `--site` | `global` \| `kakao` | global or kakao (Korea) (default "global") |
+| `--min-percent` | integer | Minimum values as a percent of this item (default 90) |
+| `--base` | boolean | Also require the same base type |
+| `--status` | `available` \| `securable` \| `online` \| `any` | Listing status (default "available") |
+
+### `pob items trade-query <item>`
+
+Trade search query for items like this one (advanced)
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--min-percent` | integer | Minimum values as a percent of this item |
+| `--base` | boolean | Also require the same base type |
+| `--status` | string | Listing status |
+
 ### `pob items equip <item> <slot>`
 
 Equip an item from the build in a slot *(changes the build)*
@@ -425,6 +638,7 @@ Search PoB's unique item list
 | Option | Type | Description |
 | --- | --- | --- |
 | `--limit` | integer | Maximum results (default 20) |
+| `--match` | string[] | Exact English names or node ids to match instead of text (filled in for searches in other languages) |
 
 ### `pob items bases <text>`
 
@@ -433,6 +647,7 @@ Search base item types
 | Option | Type | Description |
 | --- | --- | --- |
 | `--limit` | integer | Maximum results (default 20) |
+| `--match` | string[] | Exact English names or node ids to match instead of text (filled in for searches in other languages) |
 
 ### `pob items slots`
 
@@ -585,6 +800,90 @@ Compare the current build with another build given as XML (advanced)
 | `--xml` (required) | string | PoB build XML |
 | `--keys` | string[] | Stat keys to compare |
 
+### `pob calc calcs-options`
+
+Calcs tab settings: which skill group it breaks down and the buff mode
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--group` | integer | Skill group for the Calcs tab |
+| `--mode` | `UNBUFFED` \| `BUFFED` \| `COMBAT` \| `EFFECTIVE` | Buff mode |
+| `--show-minion` | boolean | Show minion numbers |
+
+## party
+
+### `pob party get`
+
+Party tab: buffs, curses and enemy effects from other players
+
+### `pob party set <field> <text>`
+
+Set one party field *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--append` | boolean | Append instead of replacing |
+
+### `pob party clear`
+
+Clear the party tab *(changes the build)*
+
+### `pob party import <code>`
+
+Import a party member from their build code *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--destination` | string | All, Aura, Curse, … (as in the Party tab) |
+| `--append` | boolean | Append instead of replacing |
+
+## options
+
+### `pob options list`
+
+PoB options (default level, gem quality, separators, …)
+
+### `pob options set <key> <value>`
+
+Change a PoB option (saved in the PoB window)
+
+## account
+
+### `pob account status`
+
+Whether PoB is signed in to your Path of Exile account *(needs the PoB window)*
+
+### `pob account login`
+
+Sign PoB in to Path of Exile (opens your browser to approve) *(needs the PoB window)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--timeout` | integer | Seconds to wait for the approval (default 180) |
+
+### `pob account characters`
+
+Characters on your account *(needs the PoB window)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--league` | string | Only this league |
+| `--realm` | `PC` \| `Xbox` \| `PS4` | PC, Xbox or PS4 |
+
+### `pob account import <character>`
+
+Import a character (passive tree, jewels, items and skills) into the open build *(needs the PoB window)* *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--realm` | `PC` \| `Xbox` \| `PS4` | PC, Xbox or PS4 |
+| `--tree` | boolean | Import the passive tree and jewels (default true) |
+| `--items` | boolean | Import items and skills (default true) |
+| `--clear-jewels` | boolean | Delete existing jewels (default true) |
+| `--clear-skills` | boolean | Delete existing skills (default true) |
+| `--clear-items` | boolean | Delete equipped items (default true) |
+| `--ignore-weapon-swap` | boolean | Skip weapon swap items and skills |
+
 ## Notes
 
 ### `pob notes get`
@@ -666,9 +965,44 @@ Highlight a named control of the current tab (advanced) *(needs the PoB window)*
 
 Remove highlights *(needs the PoB window)*
 
+### `pob ui tree-search [text]`
+
+Type into the passive tree search so PoB circles every match *(needs the PoB window)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--caption` | string | Short caption |
+
+### `pob ui heatmap <stat>`
+
+Show the passive tree heat map for a stat (or "off") *(needs the PoB window)*
+
+### `pob ui trade`
+
+Open PoB's trade window (it signs in to the trade site itself) *(needs the PoB window)*
+
+### `pob ui buy-similar <item>`
+
+Open PoB's Buy Similar window for an item *(needs the PoB window)*
+
 ### `pob ui theme <theme>`
 
 Recolor the PoB window (remembered for next time)
+
+### `pob ui language <language>`
+
+Show the PoB window in another language (remembered for next time)
+
+Game names come from the game client; the interface text of PoB is translated by PoB AI. Text without a translation stays in English.
+
+### `pob ui language-apply`
+
+Apply a window language dictionary now (advanced) *(needs the PoB window)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--locale` (required) | string | Language |
+| `--dict` | string | Dictionary file |
 
 ### `pob ui theme-apply <theme>`
 

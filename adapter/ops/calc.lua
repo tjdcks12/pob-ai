@@ -169,6 +169,23 @@ return function(ops, util)
 		return { stat = stat, base = baseValue, evaluated = math.min(#candidates, 80), candidates = #candidates, nodes = page }
 	end
 
+	--- Calcs tab inputs: which skill the breakdown shows and the buff mode of the numbers.
+	ops['calc.calcs_options'] = function(args)
+		local build = util.build()
+		local input = build.calcsTab.input
+		if args.group then
+			util.check(build.skillsTab.socketGroupList[args.group], 'NOT_FOUND', 'There is no skill group ' .. args.group .. '.')
+			input.skill_number = args.group
+		end
+		if args.mode then input.misc_buffMode = args.mode end
+		if args.showMinion ~= nil then input.showMinion = args.showMinion end
+		if args.group or args.mode or args.showMinion ~= nil then
+			if build.calcsTab.AddUndoState then build.calcsTab:AddUndoState() end
+			util.recalc(build)
+		end
+		return { group = input.skill_number, mode = input.misc_buffMode, showMinion = input.showMinion or false }
+	end
+
 	ops['calc.compare_xml'] = function(args)
 		local build = util.build()
 		local keys = (args.keys and #args.keys > 0) and args.keys or DELTA_STATS
