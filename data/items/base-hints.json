@@ -1,0 +1,127 @@
+{
+ "generatedAt": "2026-10-14T22:46:26.638Z",
+ "source": {
+  "pobVersion": "0.22.0-818cc5ef4",
+  "files": "Data/Bases/*.lua"
+ },
+ "rule": "base-names.json에서 한국어 이름 하나에 영어가 여럿인 베이스의 영어 후보마다: 요구 레벨·힘·민첩·지능, 무기 물리 피해(최소·최대), 방어도·회피·에너지 보호막·룬 수호(기본값)",
+ "missing": [],
+ "hints": {
+  "Ashbark Talisman": {
+   "level": 72,
+   "str": 94,
+   "dex": 0,
+   "int": 67,
+   "physical": [
+    50,
+    105
+   ]
+  },
+  "Barricade Tower Shield": {
+   "level": 16,
+   "str": 25,
+   "dex": 0,
+   "int": 0,
+   "armour": 62
+  },
+  "Bulwark Tower Shield": {
+   "level": 54,
+   "str": 77,
+   "dex": 0,
+   "int": 0,
+   "armour": 171
+  },
+  "Cinderbark Talisman": {
+   "level": 10,
+   "str": 15,
+   "dex": 0,
+   "int": 11,
+   "physical": [
+    12,
+    25
+   ]
+  },
+  "Runeforged Barricade Tower Shield": {
+   "level": 16,
+   "str": 25,
+   "dex": 0,
+   "int": 0,
+   "armour": 62,
+   "ward": 22
+  },
+  "Runeforged Bulwark Tower Shield": {
+   "level": 54,
+   "str": 77,
+   "dex": 0,
+   "int": 0,
+   "armour": 144,
+   "ward": 53
+  },
+  "Runeforged Spiked Bracers": {
+   "level": 59,
+   "str": 0,
+   "dex": 73,
+   "int": 0,
+   "evasion": 113,
+   "ward": 45
+  },
+  "Runeforged Spined Bracers": {
+   "level": 33,
+   "str": 0,
+   "dex": 42,
+   "int": 0,
+   "evasion": 79,
+   "ward": 22
+  },
+  "Spiked Bracers": {
+   "level": 59,
+   "str": 0,
+   "dex": 73,
+   "int": 0,
+   "evasion": 135
+  },
+  "Spined Bracers": {
+   "level": 33,
+   "str": 0,
+   "dex": 42,
+   "int": 0,
+   "evasion": 79
+  },
+  "Taut Crossbow": {
+   "level": 45,
+   "str": 45,
+   "dex": 45,
+   "int": 0,
+   "physical": [
+    20,
+    79
+   ]
+  },
+  "Tense Crossbow": {
+   "level": 0,
+   "str": 8,
+   "dex": 8,
+   "int": 0,
+   "physical": [
+    8,
+    15
+   ]
+  },
+  "Vagabond Armour": {
+   "level": 16,
+   "str": 17,
+   "dex": 17,
+   "int": 0,
+   "armour": 83,
+   "evasion": 71
+  },
+  "Wanderer Armour": {
+   "level": 51,
+   "str": 45,
+   "dex": 45,
+   "int": 0,
+   "armour": 218,
+   "evasion": 197
+  }
+ }
+}

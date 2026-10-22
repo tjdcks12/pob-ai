@@ -1,0 +1,13 @@
+{
+  "note": "Modifier lines the PoB engine read from each sample (poe2way-overlay src/dev/pob.fixture.json compare.*.item.mods.total).",
+  "totals": {
+    "GLOVES": 8,
+    "MAGES_BLOOD": 7,
+    "RING_RES": 4,
+    "GREATCLUB": 3,
+    "BONE_WAND": 2,
+    "CANNOT_USE_GAUNTLETS": 1,
+    "LIFE_FLASK": 1,
+    "MINION_HELMET": 2
+  }
+}

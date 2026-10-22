@@ -1,0 +1,109 @@
+// Panel strings in the ten supported languages. Game terms come from PoB itself.
+export const LOCALES = {
+  en: 'English', ko: '한국어', ja: '日本語', 'zh-Hant': '繁體中文', ru: 'Русский',
+  de: 'Deutsch', fr: 'Français', es: 'Español', 'pt-BR': 'Português (Brasil)', th: 'ไทย',
+};
+
+const STRINGS = {
+  en: {
+    connected: 'PoB connected', disconnected: 'PoB not open', openPob: 'Open PoB', newChat: 'New chat', history: 'History',
+    placeholder: 'Ask about your build…', send: 'Send', stop: 'Stop', thinking: 'Working…', noAgent: 'No AI agent found. Install Claude Code or Codex and sign in.',
+    level: 'Level', mainSkill: 'Main skill', dps: 'DPS', life: 'Life', es: 'Energy Shield', ehp: 'Effective HP', noBuild: 'No build loaded',
+    steps: 'steps', theme: 'Theme', language: 'Language', agent: 'Agent', emptyTitle: 'What should we do with your build?',
+    s1: 'Set up PoB to measure my damage properly', s2: 'Which passive gives me the most damage?', s3: 'Where do I change the enemy settings?', s4: 'Import this build code',
+    deleteChat: 'Delete', copied: 'Copied', error: 'Something went wrong',
+  },
+  ko: {
+    connected: 'PoB 연결됨', disconnected: 'PoB 꺼짐', openPob: 'PoB 열기', newChat: '새 대화', history: '대화 기록',
+    placeholder: '빌드에 대해 물어보세요…', send: '보내기', stop: '중지', thinking: '작업 중…', noAgent: 'AI 에이전트를 찾지 못했습니다. Claude Code나 Codex를 설치하고 로그인하세요.',
+    level: '레벨', mainSkill: '주력 스킬', dps: 'DPS', life: '생명력', es: '에너지 보호막', ehp: '유효 생명력', noBuild: '열린 빌드가 없습니다',
+    steps: '단계', theme: '테마', language: '언어', agent: '에이전트', emptyTitle: '빌드에서 무엇을 해 볼까요?',
+    s1: '내 캐릭터 기준으로 피해를 제대로 측정하도록 PoB를 세팅해 줘', s2: '어떤 패시브가 피해를 가장 많이 올려 줘?', s3: '적 설정은 어디서 바꿔?', s4: '이 빌드 코드 가져와 줘',
+    deleteChat: '삭제', copied: '복사됨', error: '문제가 발생했습니다',
+  },
+  ja: {
+    connected: 'PoB 接続中', disconnected: 'PoB 未起動', openPob: 'PoB を開く', newChat: '新しいチャット', history: '履歴',
+    placeholder: 'ビルドについて質問…', send: '送信', stop: '停止', thinking: '作業中…', noAgent: 'AI エージェントが見つかりません。Claude Code か Codex をインストールしてサインインしてください。',
+    level: 'レベル', mainSkill: 'メインスキル', dps: 'DPS', life: 'ライフ', es: 'エナジーシールド', ehp: '有効ライフ', noBuild: 'ビルドが開かれていません',
+    steps: 'ステップ', theme: 'テーマ', language: '言語', agent: 'エージェント', emptyTitle: 'ビルドで何をしますか？',
+    s1: '自分のキャラ基準でダメージを正しく測れるよう PoB を設定して', s2: '一番ダメージが伸びるパッシブは？', s3: '敵の設定はどこで変える？', s4: 'このビルドコードを読み込んで',
+    deleteChat: '削除', copied: 'コピーしました', error: 'エラーが発生しました',
+  },
+  'zh-Hant': {
+    connected: 'PoB 已連線', disconnected: 'PoB 未開啟', openPob: '開啟 PoB', newChat: '新對話', history: '紀錄',
+    placeholder: '詢問你的流派…', send: '傳送', stop: '停止', thinking: '處理中…', noAgent: '找不到 AI 代理。請安裝並登入 Claude Code 或 Codex。',
+    level: '等級', mainSkill: '主要技能', dps: 'DPS', life: '生命', es: '能量護盾', ehp: '有效生命', noBuild: '尚未開啟流派',
+    steps: '步驟', theme: '主題', language: '語言', agent: '代理', emptyTitle: '要對流派做什麼？',
+    s1: '依我的角色設定 PoB，正確計算傷害', s2: '哪個天賦最能提升傷害？', s3: '敵人設定在哪裡修改？', s4: '匯入這個流派代碼',
+    deleteChat: '刪除', copied: '已複製', error: '發生錯誤',
+  },
+  ru: {
+    connected: 'PoB подключён', disconnected: 'PoB не запущен', openPob: 'Открыть PoB', newChat: 'Новый чат', history: 'История',
+    placeholder: 'Спросите о билде…', send: 'Отправить', stop: 'Стоп', thinking: 'Работаю…', noAgent: 'ИИ-агент не найден. Установите Claude Code или Codex и войдите.',
+    level: 'Уровень', mainSkill: 'Основное умение', dps: 'DPS', life: 'Здоровье', es: 'Энерг. щит', ehp: 'Эфф. здоровье', noBuild: 'Билд не открыт',
+    steps: 'шагов', theme: 'Тема', language: 'Язык', agent: 'Агент', emptyTitle: 'Что сделать с билдом?',
+    s1: 'Настрой PoB, чтобы правильно считать урон моего персонажа', s2: 'Какое пассивное умение даст больше урона?', s3: 'Где изменить настройки врага?', s4: 'Импортируй этот код билда',
+    deleteChat: 'Удалить', copied: 'Скопировано', error: 'Произошла ошибка',
+  },
+  de: {
+    connected: 'PoB verbunden', disconnected: 'PoB nicht geöffnet', openPob: 'PoB öffnen', newChat: 'Neuer Chat', history: 'Verlauf',
+    placeholder: 'Frag etwas zu deinem Build…', send: 'Senden', stop: 'Stopp', thinking: 'Arbeite…', noAgent: 'Kein KI-Agent gefunden. Installiere Claude Code oder Codex und melde dich an.',
+    level: 'Stufe', mainSkill: 'Hauptfertigkeit', dps: 'DPS', life: 'Leben', es: 'Energieschild', ehp: 'Effektives Leben', noBuild: 'Kein Build geöffnet',
+    steps: 'Schritte', theme: 'Design', language: 'Sprache', agent: 'Agent', emptyTitle: 'Was machen wir mit deinem Build?',
+    s1: 'Richte PoB so ein, dass mein Schaden korrekt berechnet wird', s2: 'Welche Passive bringt am meisten Schaden?', s3: 'Wo ändere ich die Gegner-Einstellungen?', s4: 'Importiere diesen Build-Code',
+    deleteChat: 'Löschen', copied: 'Kopiert', error: 'Etwas ist schiefgelaufen',
+  },
+  fr: {
+    connected: 'PoB connecté', disconnected: 'PoB fermé', openPob: 'Ouvrir PoB', newChat: 'Nouvelle discussion', history: 'Historique',
+    placeholder: 'Posez une question sur votre build…', send: 'Envoyer', stop: 'Arrêter', thinking: 'En cours…', noAgent: 'Aucun agent IA trouvé. Installez Claude Code ou Codex et connectez-vous.',
+    level: 'Niveau', mainSkill: 'Compétence principale', dps: 'DPS', life: 'Vie', es: 'Bouclier d\'énergie', ehp: 'Vie effective', noBuild: 'Aucun build ouvert',
+    steps: 'étapes', theme: 'Thème', language: 'Langue', agent: 'Agent', emptyTitle: 'Que faisons-nous avec votre build ?',
+    s1: 'Configure PoB pour mesurer correctement mes dégâts', s2: 'Quel passif augmente le plus mes dégâts ?', s3: 'Où changer les réglages de l\'ennemi ?', s4: 'Importe ce code de build',
+    deleteChat: 'Supprimer', copied: 'Copié', error: 'Une erreur est survenue',
+  },
+  es: {
+    connected: 'PoB conectado', disconnected: 'PoB cerrado', openPob: 'Abrir PoB', newChat: 'Nuevo chat', history: 'Historial',
+    placeholder: 'Pregunta sobre tu build…', send: 'Enviar', stop: 'Detener', thinking: 'Trabajando…', noAgent: 'No se encontró un agente de IA. Instala Claude Code o Codex e inicia sesión.',
+    level: 'Nivel', mainSkill: 'Habilidad principal', dps: 'DPS', life: 'Vida', es: 'Escudo de energía', ehp: 'Vida efectiva', noBuild: 'No hay build abierta',
+    steps: 'pasos', theme: 'Tema', language: 'Idioma', agent: 'Agente', emptyTitle: '¿Qué hacemos con tu build?',
+    s1: 'Configura PoB para medir bien el daño de mi personaje', s2: '¿Qué pasiva me da más daño?', s3: '¿Dónde cambio la configuración del enemigo?', s4: 'Importa este código de build',
+    deleteChat: 'Eliminar', copied: 'Copiado', error: 'Algo salió mal',
+  },
+  'pt-BR': {
+    connected: 'PoB conectado', disconnected: 'PoB fechado', openPob: 'Abrir PoB', newChat: 'Nova conversa', history: 'Histórico',
+    placeholder: 'Pergunte sobre sua build…', send: 'Enviar', stop: 'Parar', thinking: 'Trabalhando…', noAgent: 'Nenhum agente de IA encontrado. Instale o Claude Code ou o Codex e faça login.',
+    level: 'Nível', mainSkill: 'Habilidade principal', dps: 'DPS', life: 'Vida', es: 'Escudo de energia', ehp: 'Vida efetiva', noBuild: 'Nenhuma build aberta',
+    steps: 'passos', theme: 'Tema', language: 'Idioma', agent: 'Agente', emptyTitle: 'O que vamos fazer com sua build?',
+    s1: 'Configure o PoB para medir o dano do meu personagem corretamente', s2: 'Qual passiva dá mais dano?', s3: 'Onde mudo as configurações do inimigo?', s4: 'Importe este código de build',
+    deleteChat: 'Excluir', copied: 'Copiado', error: 'Algo deu errado',
+  },
+  th: {
+    connected: 'เชื่อมต่อ PoB แล้ว', disconnected: 'ยังไม่ได้เปิด PoB', openPob: 'เปิด PoB', newChat: 'แชทใหม่', history: 'ประวัติ',
+    placeholder: 'ถามเกี่ยวกับบิลด์ของคุณ…', send: 'ส่ง', stop: 'หยุด', thinking: 'กำลังทำงาน…', noAgent: 'ไม่พบเอเจนต์ AI ติดตั้งและลงชื่อเข้าใช้ Claude Code หรือ Codex',
+    level: 'เลเวล', mainSkill: 'สกิลหลัก', dps: 'DPS', life: 'ไลฟ์', es: 'เอนเนอร์จีชิลด์', ehp: 'ไลฟ์ที่มีผล', noBuild: 'ยังไม่ได้เปิดบิลด์',
+    steps: 'ขั้นตอน', theme: 'ธีม', language: 'ภาษา', agent: 'เอเจนต์', emptyTitle: 'จะทำอะไรกับบิลด์ดี?',
+    s1: 'ตั้งค่า PoB ให้คำนวณดาเมจของตัวละครฉันได้ถูกต้อง', s2: 'พาสซีฟไหนเพิ่มดาเมจมากที่สุด?', s3: 'เปลี่ยนการตั้งค่าศัตรูได้ที่ไหน?', s4: 'นำเข้าโค้ดบิลด์นี้',
+    deleteChat: 'ลบ', copied: 'คัดลอกแล้ว', error: 'เกิดข้อผิดพลาด',
+  },
+};
+
+export function detectLocale() {
+  const saved = (() => { try { return localStorage.getItem('pobai.locale'); } catch { return null; } })();
+  if (saved && STRINGS[saved]) return saved;
+  for (const lang of navigator.languages ?? [navigator.language]) {
+    if (/^zh-(TW|HK|Hant)/i.test(lang)) return 'zh-Hant';
+    if (/^pt/i.test(lang)) return 'pt-BR';
+    const base = lang.split('-')[0];
+    if (STRINGS[base]) return base;
+  }
+  return 'en';
+}
+
+let current = detectLocale();
+export const locale = () => current;
+export function setLocale(next) {
+  current = STRINGS[next] ? next : 'en';
+  try { localStorage.setItem('pobai.locale', current); } catch { /* private window */ }
+  document.documentElement.lang = current;
+}
+export const t = key => STRINGS[current]?.[key] ?? STRINGS.en[key] ?? key;

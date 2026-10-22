@@ -1,0 +1,9 @@
+[
+  ["최대 퀄리티 +#%", "+#% to Maximum Quality"],
+  ["발견하는 아이템 희귀도 #% 증가", "#% increased Rarity of Items found"],
+  ["생명력 최대치 +#", "+# to maximum Life"],
+  ["화염 피해 #% 증가", "#% increased Fire Damage"],
+  ["소환수의 치명타 피해 보너스 #% 증가", "Minions have #% increased Critical Damage Bonus"],
+  ["소환수의 치명타 명중 확률 #% 증가", "Minions have #% increased Critical Hit Chance"],
+  ["소환수의 공격 및 시전 속도 #% 증가", "Minions have #% increased Attack and Cast Speed"]
+]

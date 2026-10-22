@@ -1,0 +1,687 @@
+{
+ "note": "convert.test.ts·미리보기 저장본: 2026-10-14 카카오·글로벌 거래소 /api/trade2/data/stats·/data/items에서 견본 변환에 쓰인 항목·겹치는 스탯 시험 항목·고유와 젬 이름 몇 개만 뽑음. 견본(samples.ts)은 이 자료로도 전체 저장본과 똑같이 바뀐다(convert.test.ts가 확인)",
+ "statsKo": {
+  "result": [
+   {
+    "id": "explicit",
+    "label": "비고정",
+    "entries": [
+     {
+      "id": "explicit.stat_1050105434",
+      "text": "마나 최대치 #",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_3299347043",
+      "text": "생명력 최대치 #",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_4220027924",
+      "text": "냉기 저항 #%",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1671376347",
+      "text": "번개 저항 #%",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_3372524247",
+      "text": "화염 저항 #%",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_3261801346",
+      "text": "민첩 #",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_4080418644",
+      "text": "힘 #",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_915769802",
+      "text": "기절 한계치 #",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2901986750",
+      "text": "모든 원소 저항 #%",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1509134228",
+      "text": "물리 피해 #% 증가",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2250533757",
+      "text": "이동 속도 #% 증가",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_4067062424",
+      "text": "공격 시 냉기 피해 #~# 추가",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_124859000",
+      "text": "회피 #% 증가(특정)",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1062208444",
+      "text": "방어도 #% 증가(특정)",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_210067635",
+      "text": "공격 속도 #% 증가(특정)",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2557965901",
+      "text": "물리 공격 피해의 #%를 생명력으로 흡수",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_707457662",
+      "text": "물리 공격 피해의 #%를 마나로 흡수",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_55876295",
+      "text": "물리 공격 피해의 #%를 생명력으로 흡수",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_669069897",
+      "text": "물리 공격 피해의 #%를 마나로 흡수",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2174054121",
+      "text": "명중 시 #%의 확률로 출혈 유발",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_173226756",
+      "text": "회복 속도 #% 증가",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1519615863",
+      "text": "명중 시 #%의 확률로 출혈 유발",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2039822488",
+      "text": "최대 퀄리티 #%",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_275498888",
+      "text": "최대 퀄리티 #%",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_3874491706",
+      "text": "플레이어가 보유한 중복된 마법사의 유산 하나당 모든 마법사의 유산 효과 #% 증가",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_264262054|8",
+      "text": "수은의 유산",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_264262054|5",
+      "text": "금의 유산",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_264262054|3",
+      "text": "비스무트의 유산",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1633735772",
+      "text": "생명력 최대치 #% 감폭",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_264262054|1",
+      "text": "자수정의 유산",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2954116742|7449",
+      "text": "할당 파편",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2954116742|55060",
+      "text": "할당 파편",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1416292992",
+      "text": "호신부 슬롯 #개 보유",
+      "type": "explicit"
+     }
+    ]
+   },
+   {
+    "id": "implicit",
+    "label": "고정",
+    "entries": [
+     {
+      "id": "implicit.stat_3917489142",
+      "text": "발견하는 아이템 희귀도 #% 증가",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_1416292992",
+      "text": "호신부 슬롯 #개 보유",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_3372524247",
+      "text": "화염 저항 #%",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_4080418644",
+      "text": "힘 #",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_3032590688",
+      "text": "공격 시 물리 피해 #~# 추가",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_462041840",
+      "text": "플라스크 회복량의 #%를 즉시 회복",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_2250533757",
+      "text": "이동 속도 #% 증가",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_1434716233",
+      "text": "함성이 공격 1회 추가로 강화",
+      "type": "implicit"
+     }
+    ]
+   },
+   {
+    "id": "enchant",
+    "label": "인챈트",
+    "entries": [
+     {
+      "id": "enchant.stat_707457662",
+      "text": "물리 공격 피해의 #%를 마나로 흡수",
+      "type": "enchant"
+     },
+     {
+      "id": "enchant.stat_2557965901",
+      "text": "물리 공격 피해의 #%를 생명력으로 흡수",
+      "type": "enchant"
+     },
+     {
+      "id": "enchant.stat_1519615863",
+      "text": "명중 시 #%의 확률로 출혈 유발",
+      "type": "enchant"
+     },
+     {
+      "id": "enchant.stat_2954116742|55060",
+      "text": "할당 파편",
+      "type": "enchant"
+     },
+     {
+      "id": "enchant.stat_2954116742|7449",
+      "text": "할당 파편",
+      "type": "enchant"
+     }
+    ]
+   },
+   {
+    "id": "rune",
+    "label": "증강물",
+    "entries": [
+     {
+      "id": "rune.stat_1933674044",
+      "text": "아이템의 증강물 홈을 모두 파괴하여 주얼 슬롯 1개 생성",
+      "type": "augment"
+     }
+    ]
+   },
+   {
+    "id": "desecrated",
+    "label": "훼손된",
+    "entries": [
+     {
+      "id": "desecrated.stat_124859000",
+      "text": "회피 #% 증가(특정)",
+      "type": "desecrated"
+     }
+    ]
+   },
+   {
+    "id": "skill",
+    "label": "스킬",
+    "entries": [
+     {
+      "id": "skill.bone_blast",
+      "text": "스킬 부여: #레벨 뼈 폭발",
+      "type": "skill"
+     }
+    ]
+   }
+  ]
+ },
+ "statsEn": {
+  "result": [
+   {
+    "id": "explicit",
+    "label": "Explicit",
+    "entries": [
+     {
+      "id": "explicit.stat_1050105434",
+      "text": "# to maximum Mana",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_3299347043",
+      "text": "# to maximum Life",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_4220027924",
+      "text": "#% to Cold Resistance",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1671376347",
+      "text": "#% to Lightning Resistance",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_3372524247",
+      "text": "#% to Fire Resistance",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_3261801346",
+      "text": "# to Dexterity",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_4080418644",
+      "text": "# to Strength",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_915769802",
+      "text": "# to Stun Threshold",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2901986750",
+      "text": "#% to all Elemental Resistances",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1509134228",
+      "text": "#% increased Physical Damage",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2250533757",
+      "text": "#% increased Movement Speed",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_4067062424",
+      "text": "Adds # to # Cold damage to Attacks",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_124859000",
+      "text": "#% increased Evasion Rating (Local)",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1062208444",
+      "text": "#% increased Armour (Local)",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_210067635",
+      "text": "#% increased Attack Speed (Local)",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2557965901",
+      "text": "Leech #% of Physical Attack Damage as Life",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_707457662",
+      "text": "Leech #% of Physical Attack Damage as Mana",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_55876295",
+      "text": "Leeches #% of Physical Damage as Life",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_669069897",
+      "text": "Leeches #% of Physical Damage as Mana",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2174054121",
+      "text": "#% chance to inflict Bleeding on Hit",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_173226756",
+      "text": "#% increased Recovery rate",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1519615863",
+      "text": "#% chance to cause Bleeding on Hit",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2039822488",
+      "text": "#% to Maximum Quality",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_275498888",
+      "text": "Maximum Quality is #%",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_3874491706",
+      "text": "All Mage's Legacies have #% increased effect per duplicate Mage's Legacy you have",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_264262054|8",
+      "text": "Legacy of Quicksilver",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_264262054|5",
+      "text": "Legacy of Gold",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_264262054|3",
+      "text": "Legacy of Bismuth",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1633735772",
+      "text": "#% less maximum Life",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_264262054|1",
+      "text": "Legacy of Amethyst",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2954116742|7449",
+      "text": "Allocates Splinters",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_2954116742|55060",
+      "text": "Allocates Shrapnel",
+      "type": "explicit"
+     },
+     {
+      "id": "explicit.stat_1416292992",
+      "text": "Has # Charm Slot",
+      "type": "explicit"
+     }
+    ]
+   },
+   {
+    "id": "implicit",
+    "label": "Implicit",
+    "entries": [
+     {
+      "id": "implicit.stat_3917489142",
+      "text": "#% increased Rarity of Items found",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_1416292992",
+      "text": "Has # Charm Slot",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_3372524247",
+      "text": "#% to Fire Resistance",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_4080418644",
+      "text": "# to Strength",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_3032590688",
+      "text": "Adds # to # Physical Damage to Attacks",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_462041840",
+      "text": "#% of Flask Recovery applied Instantly",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_2250533757",
+      "text": "#% increased Movement Speed",
+      "type": "implicit"
+     },
+     {
+      "id": "implicit.stat_1434716233",
+      "text": "Warcries Empower an additional Attack",
+      "type": "implicit"
+     }
+    ]
+   },
+   {
+    "id": "enchant",
+    "label": "Enchant",
+    "entries": [
+     {
+      "id": "enchant.stat_707457662",
+      "text": "Leech #% of Physical Attack Damage as Mana",
+      "type": "enchant"
+     },
+     {
+      "id": "enchant.stat_2557965901",
+      "text": "Leech #% of Physical Attack Damage as Life",
+      "type": "enchant"
+     },
+     {
+      "id": "enchant.stat_1519615863",
+      "text": "#% chance to cause Bleeding on Hit",
+      "type": "enchant"
+     },
+     {
+      "id": "enchant.stat_2954116742|55060",
+      "text": "Allocates Shrapnel",
+      "type": "enchant"
+     },
+     {
+      "id": "enchant.stat_2954116742|7449",
+      "text": "Allocates Splinters",
+      "type": "enchant"
+     }
+    ]
+   },
+   {
+    "id": "rune",
+    "label": "Augment",
+    "entries": [
+     {
+      "id": "rune.stat_1933674044",
+      "text": "Destroys all Augment Sockets on the item to create a Jewel Socket",
+      "type": "augment"
+     }
+    ]
+   },
+   {
+    "id": "desecrated",
+    "label": "Desecrated",
+    "entries": [
+     {
+      "id": "desecrated.stat_124859000",
+      "text": "#% increased Evasion Rating (Local)",
+      "type": "desecrated"
+     }
+    ]
+   },
+   {
+    "id": "skill",
+    "label": "Skill",
+    "entries": [
+     {
+      "id": "skill.bone_blast",
+      "text": "Grants Skill: Level # Bone Blast",
+      "type": "skill"
+     }
+    ]
+   }
+  ]
+ },
+ "itemsKo": {
+  "result": [
+   {
+    "id": "accessory",
+    "label": "장신구",
+    "entries": [
+     {
+      "type": "황금 반지",
+      "text": "앤드바리우스 황금 반지",
+      "name": "앤드바리우스",
+      "flags": {
+       "unique": true
+      }
+     },
+     {
+      "type": "별의 목걸이",
+      "text": "별의 보석 별의 목걸이",
+      "name": "별의 보석",
+      "flags": {
+       "unique": true
+      }
+     },
+     {
+      "type": "태양의 목걸이",
+      "text": "아지스의 등불 태양의 목걸이",
+      "name": "아지스의 등불",
+      "flags": {
+       "unique": true
+      }
+     },
+     {
+      "type": "특수 허리띠",
+      "text": "마법사의 피 특수 허리띠",
+      "name": "마법사의 피",
+      "flags": {
+       "unique": true
+      }
+     }
+    ]
+   },
+   {
+    "id": "gem",
+    "label": "젬",
+    "entries": [
+     {
+      "type": "화염구"
+     },
+     {
+      "type": "뼈 박살"
+     },
+     {
+      "type": "좀비 소환"
+     }
+    ]
+   }
+  ]
+ },
+ "itemsEn": {
+  "result": [
+   {
+    "id": "accessory",
+    "label": "Accessories",
+    "entries": [
+     {
+      "type": "Gold Ring",
+      "text": "Andvarius Gold Ring",
+      "name": "Andvarius",
+      "flags": {
+       "unique": true
+      }
+     },
+     {
+      "type": "Stellar Amulet",
+      "text": "Astramentis Stellar Amulet",
+      "name": "Astramentis",
+      "flags": {
+       "unique": true
+      }
+     },
+     {
+      "type": "Solar Amulet",
+      "text": "Beacon of Azis Solar Amulet",
+      "name": "Beacon of Azis",
+      "flags": {
+       "unique": true
+      }
+     },
+     {
+      "type": "Utility Belt",
+      "text": "Mageblood Utility Belt",
+      "name": "Mageblood",
+      "flags": {
+       "unique": true
+      }
+     }
+    ]
+   },
+   {
+    "id": "gem",
+    "label": "Gems",
+    "entries": [
+     {
+      "type": "Fireball"
+     },
+     {
+      "type": "Boneshatter"
+     },
+     {
+      "type": "Raise Zombie"
+     }
+    ]
+   }
+  ]
+ }
+}
