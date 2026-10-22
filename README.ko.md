@@ -198,6 +198,7 @@ PoB 실행 파일은 첫 번째 인자로 진입 스크립트를 받습니다. P
 npm test                          # 단위 테스트와 내 PoB를 쓰는 엔진 테스트(못 찾으면 POB_PATH 지정)
 node scripts/package.mjs          # dist/pob-ai-<버전>-win-x64.zip, dist/latest.json
 node scripts/gen-commands.mjs     # docs/COMMANDS.md 다시 만들기
+node scripts/sync-game-data.mjs <poe2way-overlay> <poe2way>   # 게임 패치 뒤 게임 문구 갱신
 ```
 
 `v<버전>` 태그를 올리면 릴리스를 만들어 게시합니다(`.github/workflows/release.yml`). 매일 최신 PoB

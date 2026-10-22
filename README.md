@@ -203,6 +203,7 @@ live with the first GitHub release).
 npm test                          # unit tests, plus engine tests against your PoB (set POB_PATH if it is not found)
 node scripts/package.mjs          # dist/pob-ai-<version>-win-x64.zip and dist/latest.json
 node scripts/gen-commands.mjs     # regenerate docs/COMMANDS.md
+node scripts/sync-game-data.mjs <poe2way-overlay> <poe2way>   # refresh game text after a game patch
 ```
 
 Pushing a `v<version>` tag builds and publishes a release (`.github/workflows/release.yml`). A daily
