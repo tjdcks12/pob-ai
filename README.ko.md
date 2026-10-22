@@ -34,7 +34,7 @@ Path of Building은 PoE2 빌드를 가장 정확하게 계산하는 도구이지
 - **한 번만 받으면 됩니다.** 이미 설치한 PoB에 PoB 파일을 하나도 바꾸지 않고 붙습니다. PoB는 평소처럼
   스스로 업데이트하고 PoB AI는 그대로 따라갑니다. PoB AI 자체 업데이트도 클릭 한 번이면 됩니다.
 - **편집기 전체를 명령으로.** 빌드와 폴더, 로드아웃, 캐릭터 가져오기, 패시브 트리, 스킬·젬, 아이템
-  (제작, 기름 부여, 룬, 타락), 거래소 검색, 설정, 계산, 파티, 메모, PoB 옵션까지 140개 명령으로 다룹니다.
+  (제작, 기름 부여, 룬, 타락), 거래소 검색, 설정, 계산, 파티, 메모, PoB 옵션까지 142개 명령으로 다룹니다.
 - **위치를 직접 보여 줍니다.** "적 종류는 어디서 바꿔?"라고 물으면 에이전트가 PoB를 설정 탭으로
   바꾸고 해당 항목을 강조합니다. 패시브 노드, 아이템 슬롯, 젬 그룹, 스탯도 같은 방식입니다.
 - **실제 계산값만.** 가정 계산, 패시브 노드 효율 순위, 빌드 비교 모두 PoB 자체 계산기를 씁니다.
@@ -70,7 +70,7 @@ pob setup --install-pob                      # PoB GitHub 릴리스에서 최신
 <summary>소스에서 실행하기</summary>
 
 ```bash
-git clone https://github.com/<you>/pob-ai.git
+git clone https://github.com/tjdcks12/pob-ai.git
 cd pob-ai
 npm install          # Node.js 22 이상
 npm start            # 서비스, PoB 창, 패널
@@ -170,7 +170,8 @@ PoB 실행 파일은 첫 번째 인자로 진입 스크립트를 받습니다. P
 백그라운드 작업을 처리합니다.
 자세한 내용: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/POB_INTERNALS.md](docs/POB_INTERNALS.md).
 
-**MCP**도 지원합니다. MCP 클라이언트는 서비스의 `/mcp` 주소에서 같은 명령을 도구로 쓸 수 있습니다.
+**MCP**도 지원합니다. MCP 클라이언트는 서비스의 `/mcp` 주소에서 같은 명령을 도구(`pob_<그룹>_<동작>`)로 쓸 수
+있습니다. 주소와 토큰은 `%LOCALAPPDATA%\pob-ai\service.json`에 있고, `Authorization: Bearer <토큰>`으로 보냅니다.
 
 ## 개인정보
 
@@ -185,8 +186,9 @@ PoB 실행 파일은 첫 번째 인자로 진입 스크립트를 받습니다. P
 
 ## 현재 상태
 
-초기 미리보기입니다. Windows 11, PoB PoE2 0.22.0과 0.23.1에서 다음을 확인했습니다: 백그라운드
-엔진의 모든 명령(`npm test`), PoB 창 브리지, 강조, 테마, 창 번역, PoB 제자리 재시작(PoB의 일반 업데이트
+초기 미리보기입니다. Windows 11, PoB PoE2 0.22.0과 0.23.1에서 다음을 확인했습니다: 모든 명령에 어댑터
+동작이 있는지, 그리고 빌드·트리·스킬·아이템·설정·계산·세트·파티·옵션 동작을 백그라운드 엔진에서 실행하는 테스트(`npm test`),
+PoB 창 브리지, 강조, 테마, 창 번역, PoB 제자리 재시작(PoB의 일반 업데이트
 경로)과 PoB 업데이터의 재실행(모의 시험), 로컬 릴리스 서버를 이용한 PoB AI 자체 업데이트와 PoB 설치.
 
 아직 확인하지 못한 것: 로그인된 Claude Code나 Codex와의 실제 대화(대역 에이전트로만 시험),
@@ -198,8 +200,10 @@ PoB 실행 파일은 첫 번째 인자로 진입 스크립트를 받습니다. P
 npm test                          # 단위 테스트와 내 PoB를 쓰는 엔진 테스트(못 찾으면 POB_PATH 지정)
 node scripts/package.mjs          # dist/pob-ai-<버전>-win-x64.zip, dist/latest.json
 node scripts/gen-commands.mjs     # docs/COMMANDS.md 다시 만들기
-node scripts/sync-game-data.mjs <poe2way-overlay> <poe2way>   # 게임 패치 뒤 게임 문구 갱신
 ```
+
+게임 패치 뒤 함께 담긴 게임 문구는 관리자가 `node scripts/sync-game-data.mjs <poe2way-overlay> <poe2way>`로
+갱신합니다. 문구를 뽑아 두는 비공개 데이터 저장소를 읽기 때문에, 다른 기여자는 `data/`를 그대로 쓰면 됩니다.
 
 `v<버전>` 태그를 올리면 릴리스를 만들어 게시합니다(`.github/workflows/release.yml`). 매일 최신 PoB
 릴리스로 테스트하는 워크플로도 있습니다.

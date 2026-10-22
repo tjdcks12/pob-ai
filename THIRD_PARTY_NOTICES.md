@@ -1,6 +1,7 @@
 # Third-party notices
 
-PoB AI does not include Path of Building or any game data. It runs the copy of
+PoB AI does not include Path of Building: it runs the copy of Path of Building (PoE2) you install
+yourself, unmodified. It does bundle game text (see Game content below). It runs the copy of
 Path of Building (PoE2) that you install yourself, unmodified.
 
 ## Path of Building Community (PoE2)
@@ -53,6 +54,10 @@ Path of Exile and Path of Exile 2 are trademarks of Grinding Gear Games.
 client languages, extracted from the game client to convert copied item text for PoB and to show
 official names. That text is © Grinding Gear Games and is not covered by this project's license.
 Game text shown at run time otherwise comes from your PoB installation and the official trade data.
+
+Screenshots in `docs/images/` show Path of Building (MIT, Path of Building Community) with Path of
+Exile 2 art, and `test/fixtures/` contain game item and stat text; that game content is
+© Grinding Gear Games and is not covered by this project's license either.
 
 `data/ui/<language>.json` are PoB AI's translations of Path of Building's interface text (MIT,
 like the rest of this project); `data/ui/source.json` lists the English originals from PoB.

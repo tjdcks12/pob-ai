@@ -21,11 +21,12 @@ const zipFolder = (folder, name, zip) => execFileSync(tar, ['-a', '-c', '-f', zi
 const sha = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 let server;
 let base;
+let stage;
 const next = VERSION.replace(/\d+$/, n => String(Number(n) + 1));
 
 before(async () => {
   // A newer "release": just the files the updater checks.
-  const stage = fs.mkdtempSync(path.join(os.tmpdir(), 'pobai-stage-'));
+  stage = fs.mkdtempSync(path.join(os.tmpdir(), 'pobai-stage-'));
   fs.mkdirSync(path.join(stage, 'PoB AI', 'src', 'cli'), { recursive: true });
   fs.writeFileSync(path.join(stage, 'PoB AI', 'package.json'), JSON.stringify({ name: 'pob-ai', version: next }));
   fs.writeFileSync(path.join(stage, 'PoB AI', 'src', 'cli', 'main.mjs'), 'export const main = async () => 0;\n');
@@ -53,7 +54,10 @@ before(async () => {
     { name: 'PoB-Portable.zip', size: fs.statSync(pobZip).size, browser_download_url: `${base}/PoB-Portable.zip` },
   ] }));
 });
-after(() => server?.close());
+after(() => {
+  server?.close();
+  for (const dir of [home, serveDir, stage]) if (dir) fs.rmSync(dir, { recursive: true, force: true });
+});
 
 test('versions compare numerically', () => {
   assert.ok(compareVersions('0.10.0', '0.9.9') > 0);

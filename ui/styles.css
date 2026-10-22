@@ -31,7 +31,11 @@ button { cursor: pointer; }
 .drawer[hidden] { display: none; }
 .drawer { padding: 12px; border-bottom: 1px solid var(--border); background: var(--surface); display: grid; gap: 10px; }
 .drawer label { display: grid; grid-template-columns: 130px 1fr; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-.drawer select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); }
+.drawer select, .drawer input { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); min-width: 0; }
+.drawer .field-row { display: flex; gap: 6px; } .drawer .field-row input { flex: 1; }
+.drawer-actions { display: flex; justify-content: flex-end; }
+.secondary { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); white-space: nowrap; }
+.secondary:hover { border-color: var(--accent); } .secondary:disabled, .pill:disabled { opacity: .6; cursor: progress; }
 #history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 40vh; overflow: auto; }
 #history-list li { display: flex; gap: 6px; align-items: center; }
 #history-list button.open { flex: 1; text-align: left; padding: 6px 8px; border-radius: 8px; border: 1px solid transparent; background: transparent; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

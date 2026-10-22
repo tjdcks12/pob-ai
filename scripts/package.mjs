@@ -33,7 +33,7 @@ const copy = (from, to = from, filter = () => true) => {
 for (const file of ['PoB AI.cmd', 'launcher.mjs', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'README.ko.md']) copy(file);
 for (const dir of ['bin', 'src', 'adapter', 'ui']) copy(dir);
 copy('data', 'data', rel => !rel.startsWith('data/ui/glossary') && !/\.part\d*\.json$/.test(rel));
-copy('docs', 'docs', rel => !rel.startsWith('docs/images'));
+copy('docs', 'docs');
 
 // koffi: only the Windows x64 binary of its prebuilt set.
 const koffi = 'node_modules/koffi';

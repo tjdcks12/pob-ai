@@ -2,13 +2,14 @@
 // The same commands are available as `pob ...` on the command line.
 import { COMMANDS, findCommand } from '../commands/registry.mjs';
 import { jsonSchema } from '../commands/schema.mjs';
+import { VERSION } from '../update/updater.mjs';
 
 const PROTOCOL = '2025-06-18';
 export const toolName = name => `pob_${name.replace(/\./g, '_')}`;
-const byTool = () => new Map(COMMANDS.filter(c => !c.local).map(c => [toolName(c.name), c]));
+const byTool = () => new Map(COMMANDS.map(c => [toolName(c.name), c]));
 
 export function mcpTools() {
-  return COMMANDS.filter(c => !c.local).map(c => ({
+  return COMMANDS.map(c => ({
     name: toolName(c.name),
     description: `${c.summary}${c.details ? `\n${c.details}` : ''}${c.live ? '\nNeeds the PoB window.' : ''}\nCLI: pob ${c.name.replace(/\./g, ' ').replace(/_/g, '-')}`,
     inputSchema: jsonSchema(c),
@@ -25,7 +26,7 @@ export async function handleMcp(req, res, service, message) {
   switch (message.method) {
     case 'initialize':
       return ok({ protocolVersion: message.params?.protocolVersion ?? PROTOCOL, capabilities: { tools: {} },
-        serverInfo: { name: 'pob-ai', version: '0.1.0' },
+        serverInfo: { name: 'pob-ai', version: VERSION },
         instructions: 'Path of Building (PoE2) tools. Read with pob_build_summary / query tools, change with mutating tools, then verify with pob_calc_stats. Use pob_ui_* tools to show the user where something is.' });
     case 'ping': return ok({});
     case 'tools/list': return ok({ tools: mcpTools() });

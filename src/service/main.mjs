@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { listPobProcesses } from '../pob/processes.mjs';
 import { statePath } from '../state.mjs';
+import { callService, serviceInfo } from './client.mjs';
 import { createService } from './server.mjs';
 
 const argv = new Set(process.argv.slice(2));
@@ -15,18 +16,33 @@ const log = line => {
   if (!argv.has('--quiet')) process.stderr.write(`${stamped}\n`);
 };
 
-const service = await createService({ log });
-log(`PoB AI service on ${service.url.replace(/token=.*/, 'token=…')}`);
-
-if (argv.has('--open')) {
-  try {
-    // After a restart (an update) the PoB window that is still open reconnects within seconds.
-    const attached = (await listPobProcesses(service.runtime.install()).catch(() => [])).some(p => p.shim);
-    if (attached) await service.waitForPob(8000).catch(() => {});
-    service.openPob();
-  } catch (error) { log(`Could not open PoB: ${error.message}`); }
+// Started again while PoB AI already runs (e.g. "PoB AI.cmd" clicked twice): use that one
+// and let this process end by itself.
+const running = await serviceInfo();
+if (running) {
+  if (argv.has('--open')) await callService(running, 'open', {}).catch(error => log(`Could not open PoB: ${error.message}`));
+  if (!argv.has('--no-browser')) openPanel(`http://127.0.0.1:${running.port}/?token=${running.token}`);
+  logFile.end();
+} else {
+  await start();
 }
-if (!argv.has('--no-browser')) openPanel(service.url);
+
+async function start() {
+  const service = await createService({ log });
+  log(`PoB AI service on ${service.url.replace(/token=.*/, 'token=…')}`);
+
+  if (argv.has('--open')) {
+    try {
+      // After a restart (an update) the PoB window that is still open reconnects within seconds.
+      const attached = (await listPobProcesses(service.runtime.install()).catch(() => [])).some(p => p.shim);
+      if (attached) await service.waitForPob(8000).catch(() => {});
+      service.openPob();
+    } catch (error) { log(`Could not open PoB: ${error.message}`); }
+  }
+  if (!argv.has('--no-browser')) openPanel(service.url);
+
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { service.close(); process.exit(0); });
+}
 
 function openPanel(url) {
   // An app-mode window looks like a desktop panel; fall back to the default browser.
@@ -36,5 +52,3 @@ function openPanel(url) {
     : spawn('rundll32.exe', ['url.dll,FileProtocolHandler', url], { detached: true, stdio: 'ignore' });
   child.unref();
 }
-
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { service.close(); process.exit(0); });

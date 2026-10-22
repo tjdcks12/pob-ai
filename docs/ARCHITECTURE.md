@@ -92,8 +92,9 @@ converted are reported back instead of being silently dropped.
 
 `src/agent/hub.mjs` runs the agent CLI the user is already signed in to, in non-interactive mode,
 once per chat turn, and resumes the same conversation on the next turn. The agent works in a
-folder whose `CLAUDE.md` / `AGENTS.md` explain the `pob` command line. Claude Code may only run
-`pob …` commands; file editing tools are disabled.
+folder whose `CLAUDE.md` / `AGENTS.md` explain the `pob` command line. PoB AI pre-approves only
+`pob …` commands for Claude Code and disables its file editing tools; the user's own Claude Code
+permission settings still apply.
 
 ## Distribution and updates
 
@@ -114,7 +115,7 @@ the portable PoB from its GitHub releases into the data folder.
 `%LOCALAPPDATA%\pob-ai` (override with `POB_AI_HOME`): settings, the service and bridge
 addresses, the headless session build, agent chats, window language dictionaries and images,
 caches, installed updates, an optional PoB install and logs. Nothing is written to the PoB folder except
-builds the user asks to save.
+what the user asks for: saved, moved or deleted builds and PoB options (Settings.xml).
 
 ## Version support
 

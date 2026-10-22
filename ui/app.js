@@ -45,7 +45,25 @@ function renderStatus() {
   pill.className = `pill ${state.live ? 'on' : 'off'}`;
   pill.querySelector('.label').textContent = state.live ? t('connected') : `${t('disconnected')} · ${t('openPob')}`;
 }
-$('pob-status').addEventListener('click', async () => { if (!state.live) await run('open'); });
+// Opening PoB can fail (PoB not found, not started); say why instead of doing nothing.
+async function openPob() {
+  const pill = $('pob-status');
+  pill.disabled = true;
+  pill.querySelector('.label').textContent = t('opening');
+  const reply = await run('open').catch(error => ({ ok: false, error: { message: error.message } }));
+  pill.disabled = false;
+  renderStatus();
+  if (!reply.ok) showPobProblem(reply.error);
+}
+function showPobProblem(error) {
+  if (error?.code === 'POB_NOT_FOUND') {
+    showNotice(t('pobNotFound'));
+    $('settings').hidden = false;
+    $('history').hidden = true;
+    $('pob-path').focus();
+  } else showNotice(`${t('error')}: ${error?.message ?? ''}`);
+}
+$('pob-status').addEventListener('click', () => { if (!state.live) openPob(); });
 
 const fmt = value => typeof value === 'number' ? value.toLocaleString(locale(), { maximumFractionDigits: value < 100 ? 1 : 0 }) : (value ?? '–');
 async function refreshBuild() {
@@ -88,9 +106,23 @@ $('update-now').addEventListener('click', async () => {
   const reply = await run('update.apply', { restart: true });
   if (!reply.ok) { $('update-now').disabled = false; showUpdate(state.update); showNotice(`${t('error')}: ${reply.error?.message ?? ''}`); }
 });
+async function usePob(args, busyLabel) {
+  for (const id of ['pob-path-apply', 'pob-install']) $(id).disabled = true;
+  if (busyLabel) $('pob-status').querySelector('.label').textContent = busyLabel;
+  const reply = await run('setup', args).catch(error => ({ ok: false, error: { message: error.message } }));
+  for (const id of ['pob-path-apply', 'pob-install']) $(id).disabled = false;
+  renderStatus();
+  if (!reply.ok) return showNotice(reply.error?.code === 'POB_NOT_FOUND' && args.pobPath ? t('pobFolderInvalid') : `${t('error')}: ${reply.error?.message ?? ''}`);
+  $('pob-path').value = reply.result?.dir ?? '';
+  $('chat').querySelectorAll('.notice').forEach(el => el.remove());
+  openPob();
+}
+$('pob-path-apply').addEventListener('click', () => { const dir = $('pob-path').value.trim(); if (dir) usePob({ pobPath: dir }); });
+$('pob-install').addEventListener('click', () => usePob({ installPob: true }, t('installingPob')));
 async function loadStatus() {
   const reply = await api('/api/status').catch(() => null);
   if (!reply?.ok) return;
+  $('pob-path').value = reply.pob?.dir ?? '';
   $('window-language').value = reply.settings?.pobLanguage ?? 'en';
   $('window-theme').value = reply.settings?.pobTheme || 'default';
   showUpdate(reply.update);

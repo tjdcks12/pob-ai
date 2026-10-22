@@ -33,7 +33,7 @@ command line, so every step is real PoB work you can see, undo and save.
 
 - **Download once.** PoB AI attaches to the Path of Building you already have, without changing a
   single PoB file. PoB keeps updating itself and PoB AI follows; PoB AI updates itself with one click.
-- **The whole editor from the command line.** 140 commands cover builds and folders, loadouts,
+- **The whole editor from the command line.** 142 commands cover builds and folders, loadouts,
   character import, passive tree, skills and gems, items (crafting, anoints, runes, corruption),
   trade searches, configuration, calculations, party, notes and PoB's own options.
 - **It shows you where.** Ask "where do I set the enemy type?" and the agent switches PoB to the
@@ -73,7 +73,7 @@ pob setup --install-pob                      # download the latest portable PoB 
 <summary>Run from source</summary>
 
 ```bash
-git clone https://github.com/<you>/pob-ai.git
+git clone https://github.com/tjdcks12/pob-ai.git
 cd pob-ai
 npm install          # Node.js 22+
 npm start            # service, PoB window and panel
@@ -173,7 +173,9 @@ frames and draws the highlights, the themes and the translated text. The same Lu
 run without a window, inside PoB's own LuaJIT, for background work.
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/POB_INTERNALS.md](docs/POB_INTERNALS.md).
 
-It also speaks **MCP**: any MCP client can use the same commands as tools at the service's `/mcp` endpoint.
+It also speaks **MCP**: any MCP client can use the same commands as tools (`pob_<group>_<action>`) at the
+service's `/mcp` endpoint. The address and token are in `%LOCALAPPDATA%\pob-ai\service.json`; send
+`Authorization: Bearer <token>`.
 
 ## Privacy
 
@@ -188,8 +190,9 @@ Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-Early preview, verified on Windows 11 with PoB PoE2 0.22.0 and 0.23.1: every command against the
-background engine (`npm test`), the PoB window bridge, highlights, themes and window translation,
+Early preview, verified on Windows 11 with PoB PoE2 0.22.0 and 0.23.1: every command has an adapter
+operation, and the engine suite runs build, tree, skill, item, config, calc, set, party and option
+operations against the background engine (`npm test`); the PoB window bridge, highlights, themes and window translation,
 PoB's in-place restart (the path of PoB's usual updates) and a simulated relaunch by PoB's updater,
 PoB AI self-update and PoB installation against a local release server.
 
@@ -203,8 +206,11 @@ live with the first GitHub release).
 npm test                          # unit tests, plus engine tests against your PoB (set POB_PATH if it is not found)
 node scripts/package.mjs          # dist/pob-ai-<version>-win-x64.zip and dist/latest.json
 node scripts/gen-commands.mjs     # regenerate docs/COMMANDS.md
-node scripts/sync-game-data.mjs <poe2way-overlay> <poe2way>   # refresh game text after a game patch
 ```
+
+Maintainers refresh the bundled game text after a game patch with
+`node scripts/sync-game-data.mjs <poe2way-overlay> <poe2way>`; it reads the private data repositories
+the text is extracted into. Contributors use `data/` as it is.
 
 Pushing a `v<version>` tag builds and publishes a release (`.github/workflows/release.yml`). A daily
 workflow runs the tests against the latest PoB release.

@@ -395,7 +395,7 @@ Add a skill group from gem names *(changes the build)*
 | `--quality` | integer | Quality for all gems |
 
 ```bash
-pob skills add "Spark" "Lightning Infusion" --level 20
+pob skills add "Spark" "Controlled Destruction" --level 20
 ```
 
 ### `pob skills remove <group>`
@@ -696,7 +696,7 @@ Set a configuration option *(changes the build)*
 
 ```bash
 pob config set enemyIsBoss Pinnacle
-pob config set conditionShockedEffect 30
+pob config set conditionShockEffect 30
 ```
 
 ### `pob config reset <key>`
@@ -754,7 +754,7 @@ Stat changes from a hypothetical change, without keeping it
 | `--keys` | string[] | Stat keys to report |
 
 ```bash
-pob calc whatif --node "Heart of the Warrior"
+pob calc whatif --node "Clean Shot"
 pob calc whatif --config "{\"enemyIsBoss\":\"Pinnacle\"}"
 ```
 
