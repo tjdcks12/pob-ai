@@ -1,10 +1,10 @@
 // Entry point: `node src/service/main.mjs [--open] [--no-browser]`
 // Starts the local service, optionally opens the PoB window and the agent panel.
-import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { listPobProcesses } from '../pob/processes.mjs';
 import { statePath } from '../state.mjs';
 import { callService, serviceInfo } from './client.mjs';
+import { openPanel } from './panel.mjs';
 import { createService } from './server.mjs';
 
 const argv = new Set(process.argv.slice(2));
@@ -44,11 +44,3 @@ async function start() {
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { service.close(); process.exit(0); });
 }
 
-function openPanel(url) {
-  // An app-mode window looks like a desktop panel; fall back to the default browser.
-  const edge = ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'].find(p => fs.existsSync(p));
-  const child = edge
-    ? spawn(edge, [`--app=${url}`, '--window-size=460,900', `--user-data-dir=${statePath('panel-profile')}`], { detached: true, stdio: 'ignore' })
-    : spawn('rundll32.exe', ['url.dll,FileProtocolHandler', url], { detached: true, stdio: 'ignore' });
-  child.unref();
-}

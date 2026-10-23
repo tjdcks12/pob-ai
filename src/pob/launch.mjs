@@ -13,11 +13,16 @@ import { EXE_NAME } from './locate.mjs';
 export function launchPob(install, bridge, { buildFile } = {}) {
   const args = [path.join(ADAPTER_DIR, 'shim.lua')];
   if (buildFile) args.push(buildFile);
+  const config = readConfig();
   const child = spawn(path.join(install.dir, EXE_NAME), args, {
     cwd: install.dir,
     detached: true,
     stdio: 'ignore',
-    env: { ...process.env, POBAI_BRIDGE_PORT: String(bridge.port), POBAI_BRIDGE_TOKEN: bridge.token, POBAI_THEME: readConfig().pobTheme ?? '', POBAI_LOG: statePath('logs', 'pob-window.log') },
+    env: {
+      ...process.env, POBAI_BRIDGE_PORT: String(bridge.port), POBAI_BRIDGE_TOKEN: bridge.token, POBAI_THEME: config.pobTheme ?? 'dark',
+      // 'custom' draws the PoB AI title bar on the PoB window (adapter/live/window.lua); 'windows' keeps the Windows caption.
+      POBAI_TITLEBAR: config.pobTitleBar ?? 'custom', POBAI_LOG: statePath('logs', 'pob-window.log'),
+    },
   });
   child.unref();
   return child;

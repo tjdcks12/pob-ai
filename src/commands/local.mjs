@@ -263,6 +263,11 @@ export const LOCAL = {
     return { target: runtime.liveConnected ? 'live' : 'app', result: { theme: args.theme, applied: runtime.liveConnected, remembered: true } };
   },
 
+  async titleBar(args) {
+    updateConfig({ pobTitleBar: args.style });
+    return { target: 'app', result: { style: args.style, appliesNextTime: true } };
+  },
+
   async addItem(args, runtime) {
     const { text, conversion } = await prepareItemText(args.text, { log: runtime.log });
     const outcome = await runtime.run('items.add_english', { text, equip: args.equip });

@@ -59,6 +59,15 @@ launch.OnInit = function(self, ...)
 	POBAI_MAIN = self.main
 	local ok, err = pcall(dofile, adapter .. '/live/bridge.lua')
 	pobai_log(ok and 'bridge loaded' or ('bridge failed to load: ' .. tostring(err)))
+	-- PoB AI title bar in place of the Windows caption. Runs again after PoB's Restart(), which
+	-- re-runs this script; on any failure the window keeps its Windows caption.
+	if os.getenv('POBAI_TITLEBAR') ~= 'windows' then
+		ok, err = pcall(function()
+			dofile(adapter .. '/live/window.lua')
+			POBAI_WINDOW.install()
+		end)
+		if not ok then pobai_log('title bar not installed: ' .. tostring(err)) end
+	end
 end
 
 -- PoB's Restart() (dev F5, "normal" self-update) reloads the entry script from the script
@@ -66,6 +75,8 @@ end
 -- adapter once PoB has shut down so the restart runs this shim again.
 local launchExit = launch.OnExit
 launch.OnExit = function(self, ...)
+	-- The title bar's window callback must be gone before this Lua state closes.
+	if POBAI_WINDOW then pcall(POBAI_WINDOW.uninstall) end
 	launchExit(self, ...)
 	SetWorkDir(adapter)
 end

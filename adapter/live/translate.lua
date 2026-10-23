@@ -1,44 +1,16 @@
--- Shows PoB's own screens in another language. PoB's bitmap fonts only contain ASCII glyphs
--- (SimpleGraphic keeps 128 glyphs per font size), so translated text is rendered by the PoB AI
--- service as small PNG images and drawn with DrawImage where PoB would have drawn the English
--- text. Untranslated text, and text whose image is not ready yet, is drawn as before.
+-- Shows PoB's own screens in another language. Each string PoB draws is looked up in a phrase
+-- dictionary and the translation is drawn instead, through the same glyph atlas as the window
+-- font (adapter/live/atlas.lua): PoB's bitmap fonts only contain ASCII glyphs, so the service
+-- renders the other glyphs. Until a translation's glyphs are ready the English text is drawn.
 local json = require('dkjson')
 local translate = { locale = nil, dict = nil }
 
-local RAW = POBAI_RAW
-local images = {}      -- key -> { handle, w, h } once rendered
-local requested = {}   -- key -> true while the service renders it
-local requestsThisFrame, frameMark = 0, 0
-local MAX_REQUESTS_PER_FRAME = 40
+POBAI_FONT = POBAI_FONT or dofile(POBAI_ADAPTER .. '/live/atlas.lua')
+local font = POBAI_FONT
+font.install()
 
-local function keyFor(text, height, bold)
-	return translate.locale .. '|' .. height .. '|' .. (bold and 'b' or 'r') .. '|' .. text
-end
-
-local function imageFor(text, height, font)
-	local bold = font == 'VAR BOLD'
-	local key = keyFor(text, height, bold)
-	local image = images[key]
-	if image then return image end
-	if not requested[key] then
-		local now = GetTime()
-		if now ~= frameMark then frameMark, requestsThisFrame = now, 0 end
-		if requestsThisFrame < MAX_REQUESTS_PER_FRAME and pobai_emit then
-			requestsThisFrame = requestsThisFrame + 1
-			requested[key] = true
-			pobai_emit({ kind = 'render', key = key, text = text, height = height, bold = bold })
-		end
-	end
-	return nil
-end
-
-function translate.onRendered(message)
-	requested[message.key] = nil
-	if message.error or not message.path then return end
-	local handle = NewImageHandle()
-	handle:Load(message.path)
-	images[message.key] = { handle = handle, w = message.w, h = message.h }
-end
+local cache, cached = {}, 0
+local MAX_CACHE = 50000
 
 --- Looks a phrase up, also without a trailing colon or surrounding spaces.
 local function lookup(text)
@@ -75,61 +47,38 @@ local function segments(text)
 	return out
 end
 
---- Plans how a string is drawn: per segment either a ready image or the original text.
-local function plan(height, font, text)
-	if type(text) ~= 'string' or not text:find('%a') then return nil end
+--- The translated string for `text` (colour codes kept), or nil.
+local function translated(text)
+	if not text:find('%a') then return nil end
 	local plain = text:gsub('%^x%x%x%x%x%x%x', ''):gsub('%^%d', '')
-	local parts
 	local whole = lookup(plain)
 	if whole then
 		local first = text:match('^%^x%x%x%x%x%x%x') or text:match('^%^%d')
-		parts = { { color = first, text = plain, translated = whole } }
-	else
-		parts = segments(text)
-		local any = false
-		for _, part in ipairs(parts) do
-			part.translated = lookup(part.text)
-			if part.translated then any = true end
-		end
-		if not any then return nil end
+		return (first or '') .. whole
 	end
-	local total = 0
-	for _, part in ipairs(parts) do
-		part.image = part.translated and imageFor(part.translated, height, font)
-		if part.image then
-			part.w = part.image.w
-		else
-			part.w = RAW.DrawStringWidth(height, font, (part.color or '') .. part.text)
-		end
-		total = total + part.w
+	local parts, any = segments(text), false
+	for i, part in ipairs(parts) do
+		local hit = lookup(part.text)
+		if hit then any = true end
+		parts[i] = (part.color or '') .. (hit or part.text)
 	end
-	return parts, total
+	return any and table.concat(parts) or nil
 end
 
-local function drawString(left, top, align, height, font, text)
-	if align == 'CENTER' then return RAW.DrawString(left, top, align, height, font, text) end
-	local parts, total = plan(height, font, text)
-	if not parts then return RAW.DrawString(left, top, align, height, font, text) end
-	local x = left
-	if align == 'CENTER_X' then x = left - total / 2 elseif align == 'RIGHT_X' or align == 'RIGHT' then x = left - total end
-	local r, g, b, a
-	if GetDrawColor then r, g, b, a = GetDrawColor() end
-	for _, part in ipairs(parts) do
-		if part.image then
-			if part.color then RAW.SetDrawColor(part.color) end
-			DrawImage(part.image.handle, math.floor(x + 0.5), top, part.image.w, height)
-		else
-			RAW.DrawString(x, top, 'LEFT', height, font, (part.color or '') .. part.text)
-		end
-		x = x + part.w
+function translate.localize(text)
+	local hit = cache[text]
+	if hit == nil then
+		hit = translated(text) or false
+		if cached >= MAX_CACHE then cache, cached = {}, 0 end
+		cache[text] = hit
+		cached = cached + 1
 	end
-	if r then RAW.SetDrawColor(r, g, b, a) end
+	return hit or nil
 end
 
-local function drawStringWidth(height, font, text)
-	local parts, total = plan(height, font, text)
-	if not parts then return RAW.DrawStringWidth(height, font, text) end
-	return total
+--- Answers from the service arrive here (bridge.lua routes every {"type":"rendered"} line).
+function translate.onRendered(message)
+	if message.atlas then font.onAtlas(message) end
 end
 
 function translate.enable(locale, dictPath)
@@ -138,10 +87,9 @@ function translate.enable(locale, dictPath)
 	file:close()
 	translate.locale = locale
 	translate.dict = doc.entries
-	images, requested = {}, {}
-	POBAI_TEXT_DRAW = drawString
-	DrawStringWidth = drawStringWidth
-	if POBAI_THEME then POBAI_THEME.reapply() else DrawString = drawString end
+	cache, cached = {}, 0
+	font.setLocale(locale)
+	font.localize = translate.localize
 	local count = 0
 	for _ in pairs(doc.entries) do count = count + 1 end
 	return count
@@ -149,10 +97,9 @@ end
 
 function translate.disable()
 	translate.locale, translate.dict = nil, nil
-	images, requested = {}, {}
-	POBAI_TEXT_DRAW = RAW.DrawString
-	DrawStringWidth = RAW.DrawStringWidth
-	if POBAI_THEME then POBAI_THEME.reapply() else DrawString = RAW.DrawString end
+	cache, cached = {}, 0
+	font.localize = nil
+	font.setLocale(nil)
 end
 
 return translate

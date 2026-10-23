@@ -1,0 +1,75 @@
+/* PoB AI design tokens, shared by the agent panel (CSS) and the PoB window (adapter/live/tokens.lua
+   reads this file). Values follow poe2way desktop's design system: flat panels told apart by
+   background steps, one blue accent, 4px corners, no shadows or gradients.
+   Themes: "dark" (default) and "light". The third theme, "pob", keeps Path of Building's own look
+   and needs no tokens.
+   Format rules (the Lua reader depends on them, test/tokens.test.mjs checks them):
+   one declaration per line as `--name: value;`, colours as #rrggbb, sizes in px. */
+
+:root, [data-theme="dark"] {
+  --font: "Pretendard Variable", "Segoe UI", "Malgun Gothic", "Yu Gothic UI", "Microsoft JhengHei UI", "Leelawadee UI", sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+  --radius: 4px;
+  --radius-small: 3px;
+  --titlebar-h: 36px;
+  --titlebar-btn-w: 44px;
+  --bg: #1c1c1f;
+  --surface: #31313c;
+  --surface-inner: #282830;
+  --surface-hover: #424254;
+  --divider: #1c1c1f;
+  --line: #424254;
+  --fg: #ffffff;
+  --fg-2: #b4b4c5;
+  --fg-3: #9999ad;
+  --fg-4: #515163;
+  --primary: #5383e8;
+  --primary-strong: #4171d6;
+  --primary-soft: #28344e;
+  --primary-line: #2f436e;
+  --primary-text: #b3cdff;
+  --on-primary: #ffffff;
+  --red: #e84057;
+  --red-soft: #59343b;
+  --red-line: #703c47;
+  --ok: #00bba3;
+  --warn: #ff8200;
+}
+
+[data-theme="light"] {
+  --font: "Pretendard Variable", "Segoe UI", "Malgun Gothic", "Yu Gothic UI", "Microsoft JhengHei UI", "Leelawadee UI", sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+  --radius: 4px;
+  --radius-small: 3px;
+  --titlebar-h: 36px;
+  --titlebar-btn-w: 44px;
+  --bg: #edeef1;
+  --surface: #ffffff;
+  --surface-inner: #f7f7f9;
+  --surface-hover: #e4e6ef;
+  --divider: #edeef1;
+  --line: #dbe0e4;
+  --fg: #202d37;
+  --fg-2: #4b5763;
+  --fg-3: #5e6a76;
+  --fg-4: #a3adb6;
+  --primary: #5383e8;
+  --primary-strong: #4171d6;
+  --primary-soft: #ecf2ff;
+  --primary-line: #d5e3ff;
+  --primary-text: #315cb8;
+  --on-primary: #ffffff;
+  --red: #d31a45;
+  --red-soft: #fff1f3;
+  --red-line: #ffd8d9;
+  --ok: #006b5c;
+  --warn: #985000;
+}
+
+/* Pretendard has no Han characters; keep Japanese and Chinese glyphs from their own system fonts. */
+:lang(ja) {
+  --font: "Pretendard Variable", "Yu Gothic UI", "Segoe UI", sans-serif;
+}
+:lang(zh-Hant) {
+  --font: "Pretendard Variable", "Microsoft JhengHei UI", "Segoe UI", sans-serif;
+}

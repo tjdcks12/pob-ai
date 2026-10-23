@@ -1,6 +1,7 @@
 -- Highlights the agent points at: a pulsing outline around a rectangle or control, with an
 -- optional caption. Drawn after PoB's own frame so it stays on top.
 local overlay = { items = {} }
+local rawSetDrawColor = POBAI_RAW.SetDrawColor
 
 local function rectOf(target)
 	if target.rect then return unpack(target.rect) end
@@ -17,6 +18,19 @@ function overlay.show(target, caption, seconds)
 end
 
 function overlay.clear() overlay.items = {} end
+
+-- Colours follow poe2way's focus ring (features/agent/focus.css): a 2 px accent outline with a
+-- faint accent fill, and the caption as a chip in the inner surface colour with an accent border.
+-- Set with the raw SetDrawColor so the window theme does not remap the token greys.
+local FALLBACK = { primary = { 0.33, 0.51, 0.91 }, ['surface-inner'] = { 0.16, 0.16, 0.19 }, fg = { 1, 1, 1 } }
+local function colours()
+	local t = POBAI_THEME and POBAI_THEME.tokens and POBAI_THEME.tokens()
+	return t or FALLBACK
+end
+
+local function rgbCode(c)
+	return ('^x%02X%02X%02X'):format(math.floor(c[1] * 255 + 0.5), math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
+end
 
 local function outline(x, y, w, h, t)
 	DrawImage(nil, x - t, y - t, w + t * 2, t)
@@ -40,18 +54,21 @@ function overlay.draw()
 			else
 				local x, y, w, h = rectOf(item.target)
 				if x then
-					SetDrawColor(1, 0.78, 0.2, pulse)
-					outline(x, y, w, h, 3)
-					SetDrawColor(1, 0.78, 0.2, 0.12 * pulse)
+					local c = colours()
+					local primary, chip = c.primary, c['surface-inner']
+					rawSetDrawColor(primary[1], primary[2], primary[3], pulse)
+					outline(x, y, w, h, 2)
+					rawSetDrawColor(primary[1], primary[2], primary[3], 0.12 * pulse)
 					DrawImage(nil, x, y, w, h)
 					if item.caption then
 						local text = tostring(item.caption)
 						local tw = DrawStringWidth(16, 'VAR', text) + 16
 						local ty = y - 28 >= 0 and y - 28 or y + h + 6
-						SetDrawColor(0.08, 0.08, 0.1, 0.92)
+						rawSetDrawColor(primary[1], primary[2], primary[3], 1)
 						DrawImage(nil, x, ty, tw, 22)
-						SetDrawColor(1, 0.85, 0.35, 1)
-						DrawString(x + 8, ty + 3, 'LEFT', 16, 'VAR', text)
+						rawSetDrawColor(chip[1], chip[2], chip[3], 1)
+						DrawImage(nil, x + 1, ty + 1, tw - 2, 20)
+						DrawString(x + 8, ty + 3, 'LEFT', 16, 'VAR', rgbCode(c.fg) .. text)
 					end
 				end
 			end

@@ -70,13 +70,17 @@ Node first (`local` in the registry): downloads, build files, item text conversi
 ## The PoB window in other languages and colours
 
 PoB draws all text with `DrawString` and bitmap fonts that only hold ASCII glyphs (SimpleGraphic
-keeps 128 glyphs per font size). `adapter/live/translate.lua` wraps `DrawString` and
-`DrawStringWidth`: a phrase found in the language's dictionary is drawn as an image instead.
-The service builds the dictionary (`src/live/window-language.mjs`) from official names in the
-game client data (`data/terms`, `data/items`) and PoB's interface text translated in
-`data/ui/<language>.json` (extracted with `scripts/extract-ui-strings.mjs`), and renders each
-phrase to a PNG with a Windows font for the script (`src/live/text-renderer.ps1`, GDI+). Images
-are cached on disk; text with no translation is drawn by PoB as before.
+keeps 128 glyphs per font size). `adapter/live/atlas.lua` replaces `DrawString`,
+`DrawStringWidth` and `DrawStringCursorIndex` together with a glyph atlas: characters PoB's fonts
+lack, or every character under the Pretendard window font, are drawn from PNG pages the service
+renders at the physical pixel height (`src/live/glyph-atlas.mjs`, `src/live/text-renderer.ps1`,
+GDI+, with Thai and CJK fallback fonts). A Lua copy of SimpleGraphic's text layout keeps PoB's
+widths and caret positions; `ui.font_check` compares it with PoB's own. Pages are cached on disk.
+`adapter/live/translate.lua` draws a phrase found in the language's dictionary through the same
+atlas. The service builds the dictionary (`src/live/window-language.mjs`) from official names in
+the game client data (`data/terms`, `data/items`) and PoB's interface text translated in
+`data/ui/<language>.json` (extracted with `scripts/extract-ui-strings.mjs`); text with no
+translation is drawn as before.
 
 `adapter/live/theme.lua` recolours the window by mapping the colours passed to `SetDrawColor`,
 the colour codes inside text and the clear colour.

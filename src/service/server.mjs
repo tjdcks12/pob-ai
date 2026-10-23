@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { AgentHub } from '../agent/hub.mjs';
 import { COMMANDS, findCommand } from '../commands/registry.mjs';
 import { BridgeServer } from '../live/bridge-server.mjs';
-import { TextRenderer, writeDictionary } from '../live/window-language.mjs';
+import { GlyphAtlas } from '../live/glyph-atlas.mjs';
+import { writeDictionary } from '../live/window-language.mjs';
 import { launchPob } from '../pob/launch.mjs';
 import { closePob, listPobProcesses } from '../pob/processes.mjs';
 import { Runtime } from '../runtime.mjs';
@@ -16,10 +17,11 @@ import { readConfig, readJson, statePath, writeJson } from '../state.mjs';
 import { SERVICE_FILE } from './client.mjs';
 import { checkForUpdate, updateCheckDue } from '../update/updater.mjs';
 import { handleMcp } from './mcp.mjs';
+import { openPanel } from './panel.mjs';
 
 const UI_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../ui');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
+  '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png', '.ico': 'image/x-icon' };
 
 export async function createService({ port, log = line => process.stderr.write(`${line}\n`) } = {}) {
   // The address of the previous run is reused when free, so an open agent panel reconnects
@@ -74,8 +76,9 @@ export async function createService({ port, log = line => process.stderr.write(`
     const timer = setTimeout(() => reject(Object.assign(new Error('The PoB window did not connect in time.'), { code: 'LIVE_TIMEOUT' })), timeoutMs);
     bridge.once('connected', info => { clearTimeout(timer); resolve(info); });
   });
-  // PoB window translation: the window asks for phrase images; the language is remembered.
-  const renderer = new TextRenderer({ log });
+  // PoB window font and translation: the window asks for the glyphs it is missing; the
+  // language is remembered.
+  const atlas = new GlyphAtlas({ log });
   service.windowLanguage = async locale => {
     if (!locale || locale === 'en') return bridge.call('ui.language_apply', { locale: 'en' });
     const { file } = writeDictionary(locale);
@@ -96,15 +99,20 @@ export async function createService({ port, log = line => process.stderr.write(`
     if (updating?.mode === 'basic') reopenAfterUpdate();
   });
   bridge.on('event', event => {
+    // The AI button in the PoB title bar: bring an open panel forward, or open one.
+    if (event?.kind === 'open-panel') {
+      if (events.size) broadcast('focus-panel', {}); else openPanel(service.url);
+      return;
+    }
     if (event?.kind === 'pob-updating') {
       updating = { mode: event.mode };
       log(`PoB is applying an update (${event.mode}).`);
     }
-    if (event?.kind === 'render') {
-      const locale = String(event.key).split('|')[0];
-      renderer.render(event, locale)
-        .then(image => bridge.send({ type: 'rendered', ...image }))
-        .catch(error => bridge.send({ type: 'rendered', key: event.key, error: error.message }));
+    if (event?.kind === 'glyphs') {
+      // The window routes every {"type":"rendered"} line to its atlas, so `type` stays first.
+      atlas.render(event)
+        .then(page => bridge.send({ type: 'rendered', atlas: event.key, id: event.id, ...page }))
+        .catch(error => bridge.send({ type: 'rendered', atlas: event.key, id: event.id, error: error.message }));
       return;
     }
     broadcast('pob-event', event);
@@ -151,8 +159,8 @@ export async function createService({ port, log = line => process.stderr.write(`
     if (route === 'GET /api/status') {
       let install = null;
       try { install = runtime.install(); } catch (error) { install = { error: error.message }; }
-      const { pobLanguage = 'en', pobTheme = 'default' } = readConfig();
-      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers(), settings: { pobLanguage, pobTheme }, update: service.update ?? null });
+      const { pobLanguage = 'en', pobTheme = 'dark', pobTitleBar = 'custom' } = readConfig();
+      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers(), settings: { pobLanguage, pobTheme, pobTitleBar }, update: service.update ?? null });
     }
     if (route === 'GET /api/commands') {
       return send(res, 200, { ok: true, commands: COMMANDS.map(({ local, ...c }) => c) });
@@ -210,7 +218,7 @@ export async function createService({ port, log = line => process.stderr.write(`
   }
   service.close = () => {
     service.closed = true;
-    renderer.close();
+    atlas.close();
     agents.close();
     runtime.close();
     bridge.close();

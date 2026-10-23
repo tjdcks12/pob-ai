@@ -987,7 +987,7 @@ Open PoB's Buy Similar window for an item *(needs the PoB window)*
 
 ### `pob ui theme <theme>`
 
-Recolor the PoB window (remembered for next time)
+PoB window theme: pob (the look of PoB itself), dark or light (remembered for next time)
 
 ### `pob ui language <language>`
 
@@ -1003,6 +1003,10 @@ Apply a window language dictionary now (advanced) *(needs the PoB window)*
 | --- | --- | --- |
 | `--locale` (required) | string | Language |
 | `--dict` | string | Dictionary file |
+
+### `pob ui title-bar <style>`
+
+Use the PoB AI title bar on the PoB window, or the Windows one (applies the next time PoB opens)
 
 ### `pob ui theme-apply <theme>`
 

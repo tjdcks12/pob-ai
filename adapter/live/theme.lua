@@ -2,19 +2,33 @@
 -- functions (SetDrawColor and colour codes inside DrawString text) and never keeps local copies
 -- of them, so wrapping the globals reaches every control. Neutral greys are remapped onto the
 -- theme; rarity, damage-type and other saturated colours keep their hue.
-local theme = { current = 'default' }
+-- Themes: "pob" is Path of Building's own look (nothing wrapped), "dark" and "light" are the
+-- poe2way looks: colours from ui/tokens.css, and PoB's controls redrawn by skin.lua.
+local theme = { current = 'pob' }
 
--- Each theme maps grey lightness 0..1 onto a ramp from its background to its text colour.
-local PALETTES = {
-	ember = { dark = { 0.07, 0.055, 0.045 }, mid = { 0.36, 0.30, 0.24 }, light = { 0.95, 0.90, 0.82 } },
-	vaal = { dark = { 0.075, 0.035, 0.04 }, mid = { 0.40, 0.20, 0.22 }, light = { 0.96, 0.88, 0.88 } },
-	midnight = { dark = { 0.045, 0.06, 0.085 }, mid = { 0.24, 0.31, 0.42 }, light = { 0.88, 0.92, 0.97 } },
-	-- Light theme: the "dark" end is the paper and the "light" end is the ink.
-	parchment = { dark = { 0.93, 0.89, 0.81 }, mid = { 0.62, 0.55, 0.46 }, light = { 0.16, 0.12, 0.08 }, isLight = true },
-}
+-- Saved ids from earlier versions, which had other palettes.
+local ALIASES = { default = 'pob', ember = 'dark', vaal = 'dark', midnight = 'dark', parchment = 'light' }
 
 local CODE_GREYS = { ['0'] = 0, ['7'] = 0.8, ['8'] = 0.5, ['9'] = 0.25 }
-local DEFAULT_CLEAR = { 0.082, 0.11, 0.153 }
+-- SimpleGraphic's own clear colour (PoB never sets one); measured black in PoB 0.22 and 0.23.
+local DEFAULT_CLEAR = { 0, 0, 0 }
+
+local okTokens, TOKENS = pcall(function() return dofile(POBAI_ADAPTER .. '/live/tokens.lua').load() end)
+if not okTokens then pobai_log('theme: ' .. tostring(TOKENS)) TOKENS = nil end
+
+--- Grey lightness 0..1 maps onto a ramp from the background to the text colour; text uses its
+--- own ramp so dim PoB text stays readable. A few exact greys are PoB's window furniture and get
+--- their own token: 0.85 the 4 px separators, 0.1 the side bar and bottom bar, 0.2 the top build
+--- bar, 0.05 the bars under the tree and in the compare tab.
+local function palette(t, isLight)
+	return {
+		dark = t.bg, mid = t.line, light = t.fg,
+		text = { dark = t['fg-4'], mid = t['fg-3'], light = t.fg },
+		exact = { [0.05] = t['surface-inner'], [0.1] = t.surface, [0.2] = t['surface-inner'], [0.85] = t.divider },
+		isLight = isLight, tokens = t,
+	}
+end
+local PALETTES = TOKENS and { dark = palette(TOKENS.dark, false), light = palette(TOKENS.light, true) } or {}
 
 -- Raw drawing functions captured before any wrapping; text goes through POBAI_TEXT_DRAW so the
 -- window translation (translate.lua) and the theme compose.
@@ -23,29 +37,31 @@ local function innerDrawString(...) return POBAI_TEXT_DRAW(...) end
 
 local function lerp(a, b, t) return a + (b - a) * t end
 
-local function ramp(palette, l)
+local function ramp(p, l)
 	if l <= 0.5 then
 		local t = l / 0.5
-		return lerp(palette.dark[1], palette.mid[1], t), lerp(palette.dark[2], palette.mid[2], t), lerp(palette.dark[3], palette.mid[3], t)
+		return lerp(p.dark[1], p.mid[1], t), lerp(p.dark[2], p.mid[2], t), lerp(p.dark[3], p.mid[3], t)
 	end
 	local t = (l - 0.5) / 0.5
-	return lerp(palette.mid[1], palette.light[1], t), lerp(palette.mid[2], palette.light[2], t), lerp(palette.mid[3], palette.light[3], t)
+	return lerp(p.mid[1], p.light[1], t), lerp(p.mid[2], p.light[2], t), lerp(p.mid[3], p.light[3], t)
 end
 
 local function isGrey(r, g, b) return math.max(r, g, b) - math.min(r, g, b) < 0.06 end
 local function isWhite(r, g, b) return r > 0.97 and g > 0.97 and b > 0.97 end
 
 --- Colours used for shapes and image tints. Pure white is the tint for icons and art; keep it.
-local function mapRGB(palette, r, g, b)
+local function mapRGB(p, r, g, b)
 	if not isGrey(r, g, b) or isWhite(r, g, b) then return r, g, b end
-	return ramp(palette, (r + g + b) / 3)
+	local exact = r == g and g == b and p.exact[r]
+	if exact then return exact[1], exact[2], exact[3] end
+	return ramp(p, (r + g + b) / 3)
 end
 
 --- Colours used for text. On a light theme white text becomes ink and bright colours are
 --- darkened so they stay readable on paper.
-local function mapTextRGB(palette, r, g, b)
-	if isGrey(r, g, b) then return ramp(palette, isWhite(r, g, b) and 1 or (r + g + b) / 3) end
-	if palette.isLight then
+local function mapTextRGB(p, r, g, b)
+	if isGrey(r, g, b) then return ramp(p.text, isWhite(r, g, b) and 1 or (r + g + b) / 3) end
+	if p.isLight then
 		local lum = 0.3 * r + 0.59 * g + 0.11 * b
 		if lum > 0.45 then
 			local k = 0.45 / lum * 0.85
@@ -59,36 +75,79 @@ local function hex(r, g, b)
 	return ('^x%02X%02X%02X'):format(math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
 end
 
-local function mapText(palette, text)
-	if type(text) ~= 'string' then return text end
+local function mapCodes(p, text)
 	text = text:gsub('%^x(%x%x)(%x%x)(%x%x)', function(rh, gh, bh)
-		return hex(mapTextRGB(palette, tonumber(rh, 16) / 255, tonumber(gh, 16) / 255, tonumber(bh, 16) / 255))
+		return hex(mapTextRGB(p, tonumber(rh, 16) / 255, tonumber(gh, 16) / 255, tonumber(bh, 16) / 255))
 	end)
-	return (text:gsub('%^([0789])', function(code) return hex(ramp(palette, CODE_GREYS[code])) end))
+	return (text:gsub('%^([0789])', function(code) return hex(ramp(p.text, CODE_GREYS[code])) end))
 end
 
-local last = { 1, 1, 1, 1 }
+-- PoB draws mostly the same strings every frame; remember their recoloured form.
+local cache, cacheSize = {}, 0
+local function mapText(p, text)
+	if type(text) ~= 'string' or not text:find('^', 1, true) then return text end
+	local hit = cache[text]
+	if hit then return hit end
+	hit = mapCodes(p, text)
+	if cacheSize > 4000 then cache, cacheSize = {}, 0 end
+	cache[text], cacheSize = hit, cacheSize + 1
+	return hit
+end
+
+--- A colour given as a single colour code ("^xRRGGBB" or a grey "^0"/"^7"/"^8"/"^9") as numbers.
+--- PoB passes such codes to SetDrawColor for shapes too (Calcs cells), so they are mapped like
+--- numbers: as shapes, and as text when a string is drawn in them.
+local codeCache = {}
+local function codeRGB(code)
+	local c = codeCache[code]
+	if c == nil then
+		local rh, gh, bh = code:match('^%^x(%x%x)(%x%x)(%x%x)$')
+		local l = CODE_GREYS[code:match('^%^(%d)$') or '']
+		if rh then c = { tonumber(rh, 16) / 255, tonumber(gh, 16) / 255, tonumber(bh, 16) / 255 }
+		elseif l then c = { l, l, l }
+		else c = false end
+		codeCache[code] = c
+	end
+	if c then return c[1], c[2], c[3] end
+end
+
+-- Colour of the last SetDrawColor call: numbers, or nil after another colour string.
+local lastR, lastG, lastB, lastA = 1, 1, 1, 1
 local rawDrawBackground
 
+--- Normalises a theme id, including ids saved by earlier versions; unknown ids are "pob".
+function theme.resolve(name)
+	name = ALIASES[name] or name
+	return PALETTES[name] and name or 'pob'
+end
+
 function theme.apply(name)
-	local palette = PALETTES[name]
-	theme.current = palette and name or 'default'
+	theme.current = theme.resolve(name)
+	if POBAI_WINDOW and POBAI_WINDOW.setTheme then pcall(POBAI_WINDOW.setTheme, theme.current) end
+	-- pob keeps PoB's bitmap fonts; the poe2way themes draw all text in Pretendard.
+	if POBAI_FONT then pcall(POBAI_FONT.apply, theme.current == 'pob' and 'pob' or 'pretendard') end
+	local p = PALETTES[theme.current]
+	cache, cacheSize = {}, 0
 	local main = POBAI_MAIN
 	rawDrawBackground = rawDrawBackground or (main and main.DrawBackground)
+	if POBAI_SKIN then
+		local ok, err = pcall(POBAI_SKIN.set, p and p.tokens)
+		if not ok then pobai_log('skin: ' .. tostring(err)) POBAI_SKIN.set(nil) end
+	end
 	-- The window background is the renderer's clear colour, not a Lua draw call.
-	if not palette then
+	if not p then
 		SetDrawColor = rawSetDrawColor
 		DrawString = innerDrawString
 		if main and rawDrawBackground then main.DrawBackground = rawDrawBackground end
 		if SetClearColor then SetClearColor(DEFAULT_CLEAR[1], DEFAULT_CLEAR[2], DEFAULT_CLEAR[3]) end
 		return
 	end
-	if SetClearColor then SetClearColor(palette.dark[1], palette.dark[2], palette.dark[3]) end
+	if SetClearColor then SetClearColor(p.dark[1], p.dark[2], p.dark[3]) end
 	-- Tab backgrounds are a dark texture in some PoB versions; paint them in the theme colour.
 	if main and rawDrawBackground then
 		main.DrawBackground = function(_, viewPort)
 			SetDrawLayer(nil, -100)
-			rawSetDrawColor(palette.dark[1], palette.dark[2], palette.dark[3])
+			rawSetDrawColor(p.dark[1], p.dark[2], p.dark[3])
 			DrawImage(nil, viewPort.x, viewPort.y, viewPort.width, viewPort.height)
 			rawSetDrawColor(1, 1, 1, 1)
 			SetDrawLayer(nil, 0)
@@ -96,31 +155,74 @@ function theme.apply(name)
 	end
 	SetDrawColor = function(r, g, b, a)
 		if type(r) == 'string' then
-			last = { r }
-			return rawSetDrawColor(mapText(palette, r), g)
+			local cr, cg, cb = codeRGB(r)
+			if not cr then
+				lastR = nil
+				return rawSetDrawColor(mapText(p, r), g)
+			end
+			r, g, b, a = cr, cg, cb, g
 		end
 		if type(r) == 'number' and g and b then
-			last = { r, g, b, a }
-			local nr, ng, nb = mapRGB(palette, r, g, b)
+			lastR, lastG, lastB, lastA = r, g, b, a
+			-- Translucent black is a scrim (behind popups); it stays black on both themes.
+			if a and a < 1 and r == 0 and g == 0 and b == 0 then return rawSetDrawColor(0, 0, 0, a) end
+			local nr, ng, nb = mapRGB(p, r, g, b)
 			return rawSetDrawColor(nr, ng, nb, a)
 		end
 		return rawSetDrawColor(r, g, b, a)
 	end
 	DrawString = function(left, top, align, height, font, text)
-		-- Text drawn in the current colour (no leading code) uses the text mapping, so white
-		-- labels become ink on a light theme while white image tints stay untouched.
-		if palette.isLight and type(last[1]) == 'number' and type(text) == 'string' and not text:match('^%^') then
-			local r, g, b = mapTextRGB(palette, last[1], last[2], last[3])
-			rawSetDrawColor(r, g, b, last[4])
-			innerDrawString(left, top, align, height, font, mapText(palette, text))
-			local nr, ng, nb = mapRGB(palette, last[1], last[2], last[3])
-			return rawSetDrawColor(nr, ng, nb, last[4])
+		-- Text drawn in the current colour (no leading code) uses the text mapping, so grey and
+		-- white labels land on the text ramp while image tints keep the shape mapping.
+		if lastR and type(text) == 'string' and not text:find('^%^[%dx]') then
+			local r, g, b = mapTextRGB(p, lastR, lastG, lastB)
+			rawSetDrawColor(r, g, b, lastA)
+			innerDrawString(left, top, align, height, font, mapText(p, text))
+			local nr, ng, nb = mapRGB(p, lastR, lastG, lastB)
+			return rawSetDrawColor(nr, ng, nb, lastA)
 		end
-		return innerDrawString(left, top, align, height, font, mapText(palette, text))
+		return innerDrawString(left, top, align, height, font, mapText(p, text))
 	end
 end
 
 function theme.reapply() theme.apply(theme.current) end
 
-theme.names = { 'default', 'ember', 'vaal', 'midnight', 'parchment' }
+--- The passive tree is game art made for a dark backdrop, so on the light theme it is drawn
+--- in PoB's own colours (skin.lua calls this around the tree view's Draw). Returns true when
+--- it switched the theme off; theme.resume() switches it back.
+theme.suspended = false
+local saved = {}
+function theme.suspend()
+	local p = PALETTES[theme.current]
+	if not (p and p.isLight) or theme.suspended then return false end
+	local main = POBAI_MAIN
+	saved[1], saved[2], saved[3] = SetDrawColor, DrawString, main.DrawBackground
+	SetDrawColor, DrawString, main.DrawBackground = rawSetDrawColor, innerDrawString, rawDrawBackground
+	theme.suspended = true
+	return true
+end
+function theme.resume()
+	SetDrawColor, DrawString, POBAI_MAIN.DrawBackground = saved[1], saved[2], saved[3]
+	theme.suspended = false
+end
+
+--- The numbers PoB passed to its last SetDrawColor call (nil after a colour-code string); the
+--- skin reads a control's state from them.
+function theme.lastColour() return lastR, lastG, lastB end
+
+--- A colour PoB asked for, as the current theme draws text in it.
+function theme.textColour(r, g, b)
+	local p = PALETTES[theme.current]
+	if not p then return r, g, b end
+	return mapTextRGB(p, r, g, b)
+end
+
+--- Token set of the current theme, or the dark one under PoB's own look or while the theme is
+--- suspended (nil without tokens).
+function theme.tokens()
+	local p = (not theme.suspended and PALETTES[theme.current]) or PALETTES.dark
+	return p and p.tokens
+end
+
+theme.names = { 'pob', 'dark', 'light' }
 return theme

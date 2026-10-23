@@ -1,48 +1,39 @@
 <!doctype html>
-<html lang="en" data-theme="ember">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#282830">
   <title>PoB AI</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <header class="topbar">
-    <div class="brand"><img src="icon.svg" alt="" width="22" height="22"><span>PoB AI</span></div>
-    <button id="pob-status" class="pill" type="button"><span class="dot"></span><span class="label"></span></button>
-    <div class="spacer"></div>
-    <button id="new-chat" class="icon-btn" type="button" data-title="newChat">＋</button>
-    <button id="toggle-history" class="icon-btn" type="button" data-title="history">☰</button>
-    <button id="toggle-settings" class="icon-btn" type="button" aria-label="Settings">⚙</button>
+<body class="agent-dock">
+  <header class="agent-header">
+    <img src="icon.svg" alt="" width="18" height="18">
+    <h1>PoB AI</h1>
+    <button id="pob-status" class="status-pill" type="button"><span class="dot"></span><span class="label"></span></button>
+    <div class="agent-header-actions">
+      <button id="new-chat" class="agent-icon" type="button" data-title="newChat" aria-haspopup="dialog" aria-expanded="false"><svg class="p-icon"><use href="icons.svg#i-plus"/></svg></button>
+      <button id="open-history" class="agent-icon" type="button" data-title="history"><svg class="p-icon"><use href="icons.svg#i-history"/></svg></button>
+      <button id="open-settings" class="agent-icon" type="button" data-title="settings"><svg class="p-icon"><use href="icons.svg#i-settings"/></svg></button>
+    </div>
   </header>
 
-  <section id="settings" class="drawer" hidden>
-    <label><span data-i18n="agent"></span><select id="provider"></select></label>
-    <label><span data-i18n="language"></span><select id="locale"></select></label>
-    <label><span data-i18n="theme"></span><select id="theme">
-      <option value="ember">Ember</option><option value="vaal">Vaal</option><option value="midnight">Midnight</option><option value="parchment">Parchment</option>
-    </select></label>
-    <label><span data-i18n="pobFolder"></span><span class="field-row"><input id="pob-path" type="text" spellcheck="false" autocomplete="off"><button id="pob-path-apply" type="button" class="secondary" data-i18n="apply"></button></span></label>
-    <div class="drawer-actions"><button id="pob-install" type="button" class="secondary" data-i18n="installPob"></button></div>
-    <label><span data-i18n="windowLanguage"></span><select id="window-language"></select></label>
-    <label><span data-i18n="windowTheme"></span><select id="window-theme">
-      <option value="default" data-i18n="pobDefault"></option><option value="ember">Ember</option><option value="vaal">Vaal</option><option value="midnight">Midnight</option><option value="parchment">Parchment</option>
-    </select></label>
-  </section>
-
-  <div id="update-banner" class="update-banner" hidden><span id="update-text"></span><button id="update-now" type="button" class="primary" data-i18n="updateNow"></button></div>
-
-  <section id="history" class="drawer" hidden><ul id="history-list"></ul></section>
+  <div id="update-banner" class="banner" hidden><span id="update-text"></span><button id="update-now" type="button" class="agent-primary" data-i18n="updateNow"></button></div>
 
   <section id="build-card" class="build-card">
     <div class="build-head"><strong id="build-name"></strong><span id="build-sub"></span></div>
     <dl id="build-stats" class="stats"></dl>
   </section>
 
-  <main id="chat" class="chat" aria-live="polite">
+  <nav id="sessions" class="agent-sessions" role="tablist" hidden></nav>
+
+  <main id="chat" class="agent-chat-messages" aria-live="polite">
     <div id="empty" class="empty">
-      <h1 data-i18n="emptyTitle"></h1>
+      <div id="picker-inline"></div>
+      <h2 data-i18n="emptyTitle"></h2>
       <div class="suggestions">
         <button type="button" data-suggest="s1"></button>
         <button type="button" data-suggest="s2"></button>
@@ -52,10 +43,59 @@
     </div>
   </main>
 
-  <form id="composer" class="composer">
-    <textarea id="input" rows="1" data-placeholder="placeholder"></textarea>
-    <button id="send" type="submit" class="primary" data-i18n="send"></button>
+  <div id="picker-popover" class="agent-picker-popover" role="dialog" hidden></div>
+  <div id="model-popover" class="model-popover" role="dialog" hidden></div>
+
+  <form id="composer" class="agent-compose">
+    <div id="attachments" class="attachments" hidden></div>
+    <textarea id="input" rows="2" data-placeholder="placeholder" data-title="sendHint"></textarea>
+    <div class="agent-compose-actions">
+      <button id="attach" class="agent-icon" type="button" data-title="attachImage"><svg class="p-icon"><use href="icons.svg#i-paperclip"/></svg></button>
+      <button id="model-button" class="model-button" type="button" aria-haspopup="dialog" aria-expanded="false"><svg class="p-icon"><use href="icons.svg#i-sliders-horizontal"/></svg><span id="model-label"></span></button>
+      <span class="spacer"></span>
+      <button id="send" class="agent-send agent-primary" type="submit" data-title="send"><svg class="p-icon"><use href="icons.svg#i-arrow-up"/></svg></button>
+    </div>
+    <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
   </form>
+
+  <dialog id="settings-dialog" class="p-dialog">
+    <div class="p-dialog-head">
+      <span class="p-dialog-icon"><svg class="p-icon"><use href="icons.svg#i-settings"/></svg></span>
+      <h2 data-i18n="settings"></h2>
+      <button class="agent-icon" type="button" data-close data-title="close"><svg class="p-icon"><use href="icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="p-dialog-body">
+      <section class="set-section">
+        <h3 class="set-head" data-i18n="sectionPanel"></h3>
+        <div class="set-row"><div class="set-title" data-i18n="language"></div><div class="set-control"><select id="locale"></select></div></div>
+        <div class="set-row theme-row"><div class="set-title" data-i18n="theme"></div><div id="theme-cards" class="theme-grid" role="radiogroup"></div></div>
+      </section>
+      <section class="set-section">
+        <h3 class="set-head" data-i18n="sectionPobWindow"></h3>
+        <div class="set-row"><div class="set-title" data-i18n="windowLanguage"></div><div class="set-control"><select id="window-language"></select></div></div>
+        <div class="set-row"><div class="set-title" data-i18n="windowTheme"></div><div class="set-control"><select id="window-theme"></select></div></div>
+        <div class="set-row"><div><div class="set-title" data-i18n="titleBar"></div><p class="set-desc" data-i18n="titleBarDesc"></p></div><div class="set-control"><input id="title-bar" class="switch" type="checkbox"></div></div>
+        <div class="set-row stacked">
+          <div class="set-title" data-i18n="pobFolder"></div>
+          <div class="field-row"><input id="pob-path" type="text" spellcheck="false" autocomplete="off"><button id="pob-path-apply" type="button" data-i18n="apply"></button></div>
+          <div class="set-actions"><button id="pob-install" type="button" class="agent-quiet"><svg class="p-icon"><use href="icons.svg#i-folder-open"/></svg><span data-i18n="installPob"></span></button></div>
+        </div>
+      </section>
+      <section class="set-section">
+        <h3 class="set-head" data-i18n="sectionAgents"></h3>
+        <div id="agent-rows"></div>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="history-dialog" class="p-dialog">
+    <div class="p-dialog-head">
+      <span class="p-dialog-icon"><svg class="p-icon"><use href="icons.svg#i-history"/></svg></span>
+      <h2 data-i18n="history"></h2>
+      <button class="agent-icon" type="button" data-close data-title="close"><svg class="p-icon"><use href="icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="p-dialog-body"><ul id="history-list" class="history-list"></ul></div>
+  </dialog>
 
   <script type="module" src="app.js"></script>
 </body>

@@ -8,11 +8,12 @@ return function(ops, util)
 		return util.build()
 	end
 
-	-- The overlay draws with PoB's bitmap fonts, which have ASCII glyphs only.
+	-- Captions can be in any language: characters PoB's bitmap fonts lack come from the window's
+	-- glyph atlas (live/atlas.lua).
 	local function caption(text)
 		if not text or text == '' then return nil end
-		local ascii = tostring(text):gsub('[\128-\255]+', ''):gsub('%s+', ' ')
-		return ascii:match('%S') and ascii or nil
+		local line = tostring(text):gsub('%s+', ' ')
+		return line:match('%S') and line or nil
 	end
 
 	local function openTab(build, tab)
@@ -284,6 +285,47 @@ return function(ops, util)
 		end
 		local entries = POBAI_TRANSLATE.enable(args.locale, args.dict)
 		return { language = args.locale, entries = entries }
+	end
+
+	-- Development aid (not a CLI command): checks the window font's copy of SimpleGraphic's text
+	-- layout (live/atlas.lua) against PoB's own DrawStringWidth and DrawStringCursorIndex at the
+	-- current UI scale. Run it after a PoB update; any mismatch moves text and carets.
+	ops['ui.font_check'] = function()
+		util.check(POBAI_MODE == 'live', 'LIVE_REQUIRED', 'This needs the PoB window. Open it with `pob open`.')
+		local F = POBAI_FONT
+		local s = GetScreenScale and GetScreenScale() or 1
+		local corpus = { 'a', 'Life: 1234 Mana: 567', 'The quick brown fox jumps over the lazy dog', '^7Total ^x33FF77DPS^7: 12,345.6',
+			'a\tb\tc', '\t\tx', '+25% increased Attack Speed', 'WWWWWiiiii', '[]{}()<>|/~`!@#$%^&*-_=+', 'abc^def', '^xZZ0000q', '  spaced  out  ' }
+		local bad, checked = {}, 0
+		for _, name in ipairs({ 'VAR', 'VAR BOLD', 'FIXED', 'FONTIN SC', 'FONTIN' }) do
+			for h = 8, 34 do
+				local ph = F.physicalHeight(h, s)
+				local cells, set = F.cellsFor(name, ph), F.setFor(name, ph)
+				for _, text in ipairs(corpus) do
+					checked = checked + 1
+					local raw = POBAI_RAW.DrawStringWidth(h, name, text)
+					local mine = F.lineWidth(cells, set, text, 1, #text) / s
+					if math.abs(raw - mine) > 0.001 and #bad < 20 then bad[#bad + 1] = ('width %s %d %q: PoB %s, font %s'):format(name, h, text, raw, mine) end
+					for x = 0, math.ceil(raw) + 2, 0.5 do
+						local rawIndex = F.rawCursor(h, name, text, x, 0)
+						local index = F.lineCursor(cells, set, text, 1, #text, math.floor(x * s + 0.5))
+						if rawIndex ~= index then
+							if #bad < 20 then bad[#bad + 1] = ('caret %s %d %q x=%s: PoB %d, font %d'):format(name, h, text, x, rawIndex, index) end
+							break
+						end
+					end
+				end
+			end
+		end
+		return { scale = s, checked = checked, mismatches = bad }
+	end
+
+	-- PoB window font: 'pretendard' draws every glyph from the atlas, 'pob' keeps PoB's own bitmap
+	-- fonts. The window theme switches it too (POBAI_FONT.apply); needs no open build.
+	ops['ui.font_apply'] = function(args)
+		util.check(POBAI_MODE == 'live', 'LIVE_REQUIRED', 'This needs the PoB window. Open it with `pob open`.')
+		util.check(args.font == 'pretendard' or args.font == 'pob', 'BAD_ARGS', "font must be 'pretendard' or 'pob'")
+		return { font = POBAI_FONT.apply(args.font) }
 	end
 
 	ops['ui.theme'] = function(args)

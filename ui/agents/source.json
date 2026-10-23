@@ -1,0 +1,20 @@
+{
+  "source": "npm @lobehub/icons-static-svg@1.95.1 (MIT), via cdn.jsdelivr.net",
+  "license": "MIT for the icon package; the marks are trademarks of their owners and identify the supported CLIs",
+  "icons": [
+    {
+      "provider": "codex",
+      "upstream": "icons/codex-color.svg",
+      "upstreamSha256": "4a2f43ce46b5b6e3722c95088f88d26ef91e6a8c2e598e70642a1c54367386e4",
+      "file": "codex.svg",
+      "sha256": "4a2f43ce46b5b6e3722c95088f88d26ef91e6a8c2e598e70642a1c54367386e4"
+    },
+    {
+      "provider": "claude",
+      "upstream": "icons/claudecode-color.svg",
+      "upstreamSha256": "670b3d8d749d0815ad8f7e62a59d51cb5e2053cb19403f3541a8aed7036a877f",
+      "file": "claude.svg",
+      "sha256": "670b3d8d749d0815ad8f7e62a59d51cb5e2053cb19403f3541a8aed7036a877f"
+    }
+  ]
+}

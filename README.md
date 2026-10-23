@@ -43,8 +43,12 @@ command line, so every step is real PoB work you can see, undo and save.
 - **Your language, everywhere.** The PoB window, the panel and the agent's answers in ten languages,
   with the official in-game names. Items copied from the game in any client language are converted
   to the English text PoB reads.
-- **Uses the agent you already have.** Claude Code (or Codex) runs with your existing sign-in.
-  No API keys.
+- **A cleaner PoB.** Two modern themes (Default and Light) redraw PoB's buttons, fields and panels,
+  draw all text in Pretendard and replace the Windows title bar with one that has an AI button.
+  The PoB theme keeps Path of Building exactly as it is.
+- **Uses the agent you already have.** Claude Code or Codex runs with your existing sign-in: pick it
+  from the cards, chat in several tabs at once, choose the model and reasoning effort, attach
+  screenshots. No API keys.
 
 <p align="center">
   <img src="docs/images/window-ko.jpg" width="96%" alt="The PoB Calcs tab shown in Korean by PoB AI">
@@ -140,10 +144,11 @@ PoB's *Find Timeless Jewel* search is switched off in PoB PoE2 itself, so it has
 | **PoB window** | `pob ui language ko` (or the panel's settings): English, 한국어, 日本語, 繁體中文, Русский, Deutsch, Français, Español, Português (Brasil), ไทย. Official names from the game client; about 2,000 PoB interface phrases translated by PoB AI. |
 | **Agent and commands** | Answers in your language; game names are accepted and returned in it (`--lang`). |
 | **Items** | Text copied from the game client in any of the ten languages is converted for PoB. Lines that cannot be converted are reported, never dropped silently. |
-| **Themes** | Four panel themes; the PoB window gets the same ones: `pob ui theme ember\|vaal\|midnight\|parchment`. |
+| **Themes** | PoB, Default and Light for the panel and the PoB window (`pob ui theme pob\|dark\|light`). Default and Light restyle PoB's controls and draw its text in Pretendard; PoB keeps PoB's own look. |
 
-PoB's bitmap fonts only contain ASCII, so translated text is drawn as small images with a Windows
-font for the language. Text without a translation stays in English.
+PoB's bitmap fonts only contain ASCII, so PoB AI draws text from a glyph atlas made with Pretendard
+(and Windows fonts for Thai, Japanese and Chinese) at the exact positions PoB would use. A
+translation wider than the English is squeezed into its space. Text without a translation stays in English.
 
 ## Updates
 

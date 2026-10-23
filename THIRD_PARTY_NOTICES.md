@@ -46,6 +46,32 @@ The Windows release bundles the Node.js runtime in `runtime/node/` so nothing ha
 Node.js is MIT licensed and includes third-party components under their own licenses; the full
 text ships next to it as `runtime/node/LICENSE`. https://nodejs.org
 
+## Pretendard
+
+`data/fonts/Pretendard-Regular.ttf` and `data/fonts/Pretendard-Bold.ttf` (Pretendard 1.3.9) draw
+the text of the PoB window, and `ui/fonts/PretendardVariable.woff2` the agent panel. They are distributed unmodified under the SIL Open Font License 1.1,
+whose full text ships next to them as `data/fonts/Pretendard-LICENSE.txt` and `ui/fonts/Pretendard-LICENSE.txt`:
+Copyright (c) 2021, Kil Hyung-jin, with Reserved Font Name Pretendard.
+https://github.com/orioncactus/pretendard
+
+## JetBrains Mono
+
+`ui/fonts/jetbrains-mono-latin-400-normal.woff2` and `-600-normal.woff2` (via Fontsource 5.3.0) show
+numbers in the agent panel. SIL Open Font License 1.1, Copyright 2020 The JetBrains Mono Project
+Authors; the full text ships as `ui/fonts/JetBrainsMono-LICENSE.txt`. https://github.com/JetBrains/JetBrainsMono
+
+## Lucide icons
+
+`ui/icons.svg` and the title bar icons in `adapter/live/assets/` (minus, square, copy, x, sparkles,
+drawn as PNG) come from Lucide 0.486.0. ISC License, Copyright (c) Lucide Contributors 2022; portions
+Copyright (c) Cole Bemis 2013-2022 as part of Feather (MIT). https://lucide.dev
+
+## Agent provider marks
+
+`ui/agents/claude.svg` and `ui/agents/codex.svg` come from @lobehub/icons-static-svg 1.95.1 (MIT),
+unmodified (`ui/agents/source.json`). The marks are trademarks of their owners and only identify the
+supported command line agents.
+
 ## Game content
 
 Path of Exile and Path of Exile 2 are trademarks of Grinding Gear Games.

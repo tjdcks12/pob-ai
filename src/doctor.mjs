@@ -68,8 +68,10 @@ export async function runDoctor({ runtime } = {}) {
 
   const agents = detectProviders({ refresh: true });
   const found = agents.filter(a => a.available);
-  add('agents', found.length > 0, found.length ? found.map(a => `${a.label}: ${a.command}`).join('; ') : 'No Claude Code or Codex found',
-    'Install Claude Code or Codex and sign in, or set POB_AI_CLAUDE / POB_AI_CODEX to the executable.');
+  const missing = agents.filter(a => a.source === 'custom' && !a.available);
+  add('agents', found.length > 0 && !missing.length,
+    [...found.map(a => `${a.label}: ${a.command} [${a.source}]`), ...missing.map(a => `${a.label}: chosen file is gone: ${a.command}`)].join('; ') || 'No Claude Code or Codex found',
+    'Install Claude Code or Codex and sign in, or choose the executable in the agent panel (or set POB_AI_CLAUDE / POB_AI_CODEX).');
 
   return { ok: checks.every(c => c.ok), version: VERSION, checks };
 }

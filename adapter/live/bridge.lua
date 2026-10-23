@@ -3,9 +3,15 @@
 local socket = require('socket')
 local json = require('dkjson')
 dofile(POBAI_ADAPTER .. '/core/dispatch.lua')
-POBAI_RAW = { SetDrawColor = SetDrawColor, DrawString = DrawString, DrawStringWidth = DrawStringWidth }
+POBAI_RAW = {
+	SetDrawColor = SetDrawColor, DrawString = DrawString, DrawStringWidth = DrawStringWidth,
+	DrawImage = DrawImage, DrawImageQuad = DrawImageQuad,
+}
 POBAI_TEXT_DRAW = POBAI_RAW.DrawString
 POBAI_OVERLAY = dofile(POBAI_ADAPTER .. '/live/overlay.lua')
+-- The skin is optional: without it the dark and light themes only recolour.
+local skinOk, skin = pcall(dofile, POBAI_ADAPTER .. '/live/skin.lua')
+if skinOk then POBAI_SKIN = skin else pobai_log('skin failed to load: ' .. tostring(skin)) end
 POBAI_THEME = dofile(POBAI_ADAPTER .. '/live/theme.lua')
 POBAI_TRANSLATE = dofile(POBAI_ADAPTER .. '/live/translate.lua')
 local savedTheme = os.getenv('POBAI_THEME')
@@ -79,6 +85,7 @@ local frame = main.OnFrame
 POBAI_FRAMES = 0
 main.OnFrame = function(self, ...)
 	POBAI_FRAMES = POBAI_FRAMES + 1
+	if POBAI_SKIN then POBAI_SKIN.reset() end
 	local ok, err = pcall(poll)
 	if not ok then pobai_log('bridge: ' .. tostring(err)) end
 	frame(self, ...)
