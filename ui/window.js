@@ -20,6 +20,7 @@ if (host) {
   for (const action of ['minimize', 'maximize', 'close'])
     document.getElementById('window-' + action).addEventListener('click', () => host.postMessage('window:' + action));
   host.addEventListener('message', event => {
+    if (event.data?.kind === 'window-activated') { window.dispatchEvent(new Event('pobai:activated')); return; }
     if (event.data?.kind !== 'window-state' || typeof event.data.maximized !== 'boolean') return;
     maximized = event.data.maximized;
     refreshWindowChrome();

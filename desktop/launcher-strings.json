@@ -1,0 +1,12 @@
+{
+  "en": ["PoB AI could not start. Extract the complete ZIP into a new folder, then try again.", "Download PoB AI", "Close"],
+  "ko": ["PoB AI를 시작하지 못했습니다. ZIP 파일을 새 폴더에 모두 풀고 다시 실행해 주세요.", "PoB AI 다운로드", "닫기"],
+  "ja": ["PoB AIを起動できませんでした。ZIPを新しいフォルダーにすべて展開して再実行してください。", "PoB AIをダウンロード", "閉じる"],
+  "zh-Hant": ["無法啟動 PoB AI。請將完整 ZIP 解壓縮至新資料夾後重試。", "下載 PoB AI", "關閉"],
+  "ru": ["Не удалось запустить PoB AI. Полностью распакуйте ZIP в новую папку и повторите попытку.", "Скачать PoB AI", "Закрыть"],
+  "de": ["PoB AI konnte nicht starten. Entpacke die vollständige ZIP-Datei in einen neuen Ordner und versuche es erneut.", "PoB AI herunterladen", "Schließen"],
+  "fr": ["PoB AI n’a pas pu démarrer. Extrayez tout le ZIP dans un nouveau dossier, puis réessayez.", "Télécharger PoB AI", "Fermer"],
+  "es": ["No se pudo iniciar PoB AI. Extrae el ZIP completo en una carpeta nueva e inténtalo de nuevo.", "Descargar PoB AI", "Cerrar"],
+  "pt-BR": ["Não foi possível iniciar o PoB AI. Extraia todo o ZIP em uma nova pasta e tente novamente.", "Baixar PoB AI", "Fechar"],
+  "th": ["เริ่ม PoB AI ไม่ได้ โปรดแตกไฟล์ ZIP ทั้งหมดลงในโฟลเดอร์ใหม่แล้วลองอีกครั้ง", "ดาวน์โหลด PoB AI", "ปิด"]
+}

@@ -1,5 +1,5 @@
 // Builds the Windows release:
-//   dist/pob-ai-<version>-win-x64.zip  unzip anywhere and run "PoB AI.cmd" (Node.js included)
+//   dist/pob-ai-<version>-win-x64.zip  unzip anywhere and run "PoB AI.exe" (Node.js included)
 //   dist/latest.json                   the manifest `pob update` reads
 //
 //   node scripts/package.mjs [--update-url <url of latest.json>] [--notes "…"] [--node-dir <folder>]
@@ -31,7 +31,7 @@ fs.mkdirSync(top, { recursive: true });
 const copy = (from, to = from, filter = () => true) => {
   fs.cpSync(path.join(root, from), path.join(top, to), { recursive: true, filter: src => filter(path.relative(root, src).split(path.sep).join('/')) });
 };
-for (const file of ['PoB AI.cmd', 'launcher.mjs', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'README.ko.md']) copy(file);
+for (const file of ['PoB AI.exe', 'PoB AI.cmd', 'launcher.mjs', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'README.ko.md']) copy(file);
 for (const dir of ['bin', 'src', 'adapter', 'ui']) copy(dir);
 copy('desktop/bin', 'desktop/bin');
 copy('data', 'data', rel => !rel.startsWith('data/ui/glossary') && !/\.part\d*\.json$/.test(rel));

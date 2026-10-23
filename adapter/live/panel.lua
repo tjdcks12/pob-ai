@@ -8,10 +8,13 @@ int IsIconic(void*);
 int IsWindowVisible(void*);
 int ShowWindowAsync(void*, int);
 int SetForegroundWindow(void*);
+int AllowSetForegroundWindow(uint32_t);
 void* OpenProcess(uint32_t, int, uint32_t);
 int QueryFullProcessImageNameW(void*, uint32_t, uint16_t*, uint32_t*);
 int CloseHandle(void*);
 int WideCharToMultiByte(uint32_t, uint32_t, const uint16_t*, int, char*, int, const char*, int*);
+int MultiByteToWideChar(uint32_t, uint32_t, const char*, int, uint16_t*, int);
+void* ShellExecuteW(void*, const uint16_t*, const uint16_t*, const uint16_t*, const uint16_t*, int);
 ]]
 local user32, kernel32 = ffi.load('user32'), ffi.load('kernel32')
 local panel = {}
@@ -41,6 +44,7 @@ end
 jit.off(isPanel)
 
 function panel.focus()
+  user32.AllowSetForegroundWindow(0xffffffff)
   local previous
   while true do
     local hwnd = user32.FindWindowExW(nil, previous, nil, TITLE)
@@ -54,5 +58,18 @@ function panel.focus()
   end
 end
 jit.off(panel.focus)
+
+local nextOpen = 0
+function panel.open(view)
+  if GetTime() < nextOpen then return false end
+  nextOpen = GetTime() + 2000
+  local text = POBAI_ROOT .. '/PoB AI.exe'
+  local count = kernel32.MultiByteToWideChar(65001, 0, text, #text, nil, 0)
+  local file = ffi.new('uint16_t[?]', count + 1)
+  kernel32.MultiByteToWideChar(65001, 0, text, #text, file, count)
+  local result = ffi.load('shell32').ShellExecuteW(nil, wide('open'), file, wide(view == 'settings' and '--settings' or '--panel-only'), nil, 1)
+  return tonumber(ffi.cast('intptr_t', result)) > 32
+end
+jit.off(panel.open)
 
 return panel

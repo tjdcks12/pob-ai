@@ -13,6 +13,7 @@ return function(adapter)
     buffer[#text] = 0
   end
   local user = {
+    AllowSetForegroundWindow = function() return 1 end,
     FindWindowExW = function(_, after, class, title)
       for i = (after or 0) + 1, #windows do
         local w = windows[i]

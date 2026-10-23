@@ -67,7 +67,7 @@ import { agentWorkspace } from './instructions.mjs';
 import { agentDiagnostic, classifyFailure, redactDiagnosticText } from './diagnostics.mjs';
 export { classifyFailure } from './diagnostics.mjs';
 import {
-  DEFAULT_EFFORT, PROVIDERS, clearPath, codexModels, detectProviders, killTree, listModels, openLogin,
+  DEFAULT_EFFORT, PROVIDERS, clearPath, codexModels, detectProviders, killTree, listModels, openLogin, providerStatus, cancelLogin,
   pickPath, resolveProvider, setPath, spawnCli, validEffort, validModel, probeVersion, codexVersionSupported, MIN_CODEX_VERSION,
 } from './providers.mjs';
 
@@ -447,7 +447,8 @@ export class AgentHub {
   async handle(req, res, url, { send, readBody }) {
     const route = `${req.method} ${url.pathname}`;
     const failed = (error, status = 200) => send(res, error.status ?? status, { ok: false, error: { code: error.code ?? 'ERROR', ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}) } });
-    if (route === 'GET /api/agent/providers') return send(res, 200, { ok: true, providers: detectProviders({ refresh: true }) });
+    if (route === 'GET /api/agent/providers') return send(res, 200, { ok: true,
+      providers: await Promise.all(detectProviders({ refresh: true }).map(providerStatus)) });
 
     const provider = url.pathname.match(/^\/api\/agent\/providers\/([a-z]+)\/(models|path|pick|login)$/);
     if (provider) {
@@ -465,6 +466,7 @@ export class AgentHub {
           return send(res, 200, file ? { ok: true, provider: await setPath(id, file) } : { ok: true, cancelled: true });
         }
         if (action === 'login' && req.method === 'POST') { await openLogin(id); return send(res, 200, { ok: true }); }
+        if (action === 'login' && req.method === 'DELETE') { cancelLogin(id); return send(res, 200, { ok: true }); }
       } catch (error) {
         if (!error.code) this.log(`agent ${id} ${action}: ${error.stack ?? error}`);
         return failed(error);
@@ -510,5 +512,8 @@ export class AgentHub {
     return send(res, 404, { ok: false, error: { code: 'NOT_FOUND', message: route } });
   }
 
-  close() { for (const turn of this.running.values()) killTree(turn.child, { sync: true }); }
+  close() {
+    for (const turn of this.running.values()) killTree(turn.child, { sync: true });
+    for (const id of Object.keys(PROVIDERS)) cancelLogin(id);
+  }
 }

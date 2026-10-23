@@ -63,7 +63,7 @@ command line, so every step is real PoB work you can see, undo and save.
 or Codex (0.50.0 or newer), signed in.
 
 1. Download `pob-ai-<version>-win-x64.zip` from **[Releases](https://github.com/tjdcks12/pob-ai/releases)** and unzip it anywhere. Node.js is included.
-2. Double-click **`PoB AI.cmd`**. It opens your PoB and the agent panel.
+2. Double-click **`PoB AI.exe`**. It opens PoB and the agent panel without a console window. `PoB AI.cmd` remains a compatibility shortcut.
 
 If PoB is not installed, the agent panel still opens and shows **Install PoB** and **Connect existing PoB**.
 Installation downloads the official portable PoB release and opens it automatically. Connecting an existing
@@ -106,7 +106,7 @@ keeps its own draft and attachments. Choose the model and reasoning effort besid
 or open **History** to resume a previous conversation.
 
 The agent picker provides **Sign in with Claude** or **Sign in with ChatGPT** using the installed
-CLI's authentication flow. **Create account** opens the provider's official website, and a setup-guide
+CLI's browser authentication flow, only when the CLI reports that it is signed out. Signed-in agents show no login or account prompt. Sign-in progress and cancellation stay in the panel; no terminal is opened. **Create account** opens the provider's official website, and a setup-guide
 button is shown when the CLI is missing. After installation, return to the panel to detect it again.
 
 Choose **Allow full access** when starting a new conversation to let that chat change files and
@@ -225,9 +225,9 @@ Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-This README describes v0.2.2. Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
+This README describes v0.2.3. Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
 Compatibility has been checked on Windows 11 with PoB PoE2 0.22.0 and 0.23.1. The current suite
-has **151 passing tests**, covering editor operations, agent sessions, login, permissions and failure diagnostics, language selection, shared
+has **157 passing tests**, covering editor operations, agent sessions, login, permissions and failure diagnostics, language selection, shared
 theme persistence, popup rendering and updates.
 
 Local PoB and WebView2 checks cover all six themes, unchanged calculation results across theme

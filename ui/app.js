@@ -17,6 +17,7 @@ const settingsView = params.get('view') === 'settings';
 document.documentElement.dataset.view = settingsView ? 'settings' : 'agent';
 if (settingsView) {
   document.body.append($('settings-template').content.cloneNode(true));
+  $('settings-dialog').querySelector('.p-dialog-body').prepend($('connection-banner'));
   document.querySelector('.agent-brand h1').setAttribute('data-i18n', 'settings');
 }
 if (params.get('token')) {
@@ -28,8 +29,13 @@ const token = sessionStorage.getItem('pobai.token') ?? '';
 const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
 
 const request = async (method, path, body) => {
-  const response = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  return response.json().catch(() => ({ ok: false, error: { code: 'ERROR' } }));
+  try {
+    const response = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    return await response.json();
+  } catch {
+    setConnectionLost(true);
+    return { ok: false, error: { code: 'SERVICE_DISCONNECTED' } };
+  }
 };
 const api = (path, body) => request(body === undefined ? 'GET' : 'POST', path, body);
 const run = (command, args = {}) => api('/api/run', { command, args, lang: locale() });
@@ -55,7 +61,7 @@ function renderThemeCards() {
   $('theme-cards').querySelectorAll('input').forEach(input => input.addEventListener('change', async () => {
     const reply = await run('ui.theme', { theme: input.value }).catch(error => ({ ok: false, error }));
     if (reply.ok) setTheme(reply.result.theme);
-    else showNotice(`${t('error')}: ${reply.error?.message ?? ''}`);
+    else showNotice(t('settingFailed'), { container: $('theme-cards').parentElement });
     renderThemeCards();
   }));
 }
@@ -73,6 +79,7 @@ function applyI18n() {
   renderLocaleOptions();
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-title]').forEach(el => { el.title = t(el.dataset.title); el.setAttribute('aria-label', t(el.dataset.title)); });
+  document.querySelectorAll('[data-label]').forEach(el => el.setAttribute('aria-label', t(el.dataset.label)));
   document.querySelectorAll('[data-placeholder]').forEach(el => { el.placeholder = t(el.dataset.placeholder); });
   document.querySelectorAll('[data-suggest]').forEach(el => { el.textContent = t(el.dataset.suggest); });
   document.querySelectorAll('[data-poe2way]').forEach(el => { el.href = `https://www.poe2way.com/${locale()}`; });
@@ -95,7 +102,7 @@ if (settingsView) {
       const reply = await run('ui.language', { language: select.value });
       if (!reply.ok) throw new Error(reply.error?.message ?? '');
       setLocale(reply.result.preference); applyI18n();
-    } catch (error) { renderLocaleOptions(); showNotice(`${t('error')}: ${error.message}`); }
+    } catch { renderLocaleOptions(); showNotice(t('settingFailed'), { container: select.closest('.set-section') }); }
     finally { select.disabled = false; }
   });
 }
@@ -120,17 +127,19 @@ function openModal(dialog, focus) {
 }
 async function openSettings(focus) {
   const reply = await api('/api/settings/open', { focus });
-  if (!reply.ok) showNotice(`${t('error')}: ${reply.error?.message ?? ''}`);
+  if (!reply.ok) showNotice(t('settingsOpenFailed'), { retry: () => openSettings(focus) });
 }
 $('open-history').addEventListener('click', () => { loadHistory(); openModal($('history-dialog')); });
 
 // ---------- PoB connection ----------
 function renderPobSetup() {
   const showSetup = !settingsView && !state.live && state.pobMissing;
+  const provider = state.providers.find(p => p.id === state.provider);
+  const needsAgent = !settingsView && !activeTab() && (!provider?.available || provider.signingIn || !['signed_in', 'unknown'].includes(provider.auth));
   $('pob-setup').hidden = !showSetup;
-  $('composer').hidden = showSetup;
-  $('empty').querySelector('h2').hidden = showSetup;
-  $('empty').querySelector('.suggestions').hidden = showSetup;
+  $('composer').hidden = showSetup || needsAgent;
+  $('empty').querySelector('h2').hidden = showSetup || needsAgent;
+  $('empty').querySelector('.suggestions').hidden = showSetup || needsAgent;
   $('setup-install-pob').disabled = state.installingPob;
   $('setup-existing-pob').disabled = state.installingPob;
   $('setup-install-pob').textContent = t(state.installingPob ? 'installingPob' : 'installPob');
@@ -147,7 +156,7 @@ $('setup-install-pob').addEventListener('click', async () => {
     await loadStatus();
     await openPob();
   } catch (error) {
-    $('pob-setup-status').textContent = `${t('error')}: ${error.message}`;
+    $('pob-setup-status').textContent = t('pobInstallFailed');
     $('pob-setup-status').hidden = false;
   } finally {
     state.installingPob = false;
@@ -156,36 +165,61 @@ $('setup-install-pob').addEventListener('click', async () => {
 });
 function renderStatus() {
   const pill = $('pob-status');
-  pill.setAttribute('aria-label', state.live ? t('connected') : t('openPob'));
+  pill.setAttribute('aria-label', state.live ? t('connected') : state.pobMissing ? t('connectPob') : t('openPob'));
+  pill.disabled = Boolean(state.openingPob);
   pill.className = `status-pill ${state.live ? 'on' : 'off'}`;
-  pill.querySelector('.label').textContent = state.live ? t('connected') : `${t('disconnected')} · ${t('openPob')}`;
+  pill.querySelector('.label').textContent = state.live ? t('connected') : state.openingPob ? t('opening') : state.pobMissing ? t('connectPob') : `${t('disconnected')} · ${t('openPob')}`;
 }
 // Opening PoB can fail (PoB not found, not started); say why instead of doing nothing.
 async function openPob() {
+  if (state.openingPob) return;
+  state.openingPob = true;
   const pill = $('pob-status');
   pill.disabled = true;
   pill.querySelector('.label').textContent = t('opening');
   const reply = await run('open').catch(error => ({ ok: false, error: { message: error.message } }));
-  pill.disabled = false;
+  if (!reply.ok) state.openingPob = false;
+  else {
+    clearTimeout(state.openingTimer);
+    state.openingTimer = setTimeout(() => {
+      state.openingPob = false; renderStatus();
+      if (!state.live) showPobProblem({});
+    }, 45000);
+  }
   renderStatus();
   if (!reply.ok) showPobProblem(reply.error);
 }
 function showPobProblem(error) {
   if (error?.code === 'POB_NOT_FOUND') {
-    showNotice(t('pobNotFound'));
-    openSettings('pob-path');
-  } else showNotice(`${t('error')}: ${error?.message ?? ''}`);
+    state.pobMissing = true;
+    renderPobSetup();
+    if (settingsView) $('pob-path-status').textContent = t('pobFolderInvalid');
+  } else if (settingsView) $('pob-path-status').textContent = t('pobOpenFailed');
+  else showNotice(t('pobOpenFailed'), { retry: openPob, settings: true });
 }
-$('pob-status').addEventListener('click', () => { if (!state.live) openPob(); });
+$('pob-status').addEventListener('click', () => {
+  if (state.pobMissing) { $('pob-setup').scrollIntoView({ block: 'nearest' }); $('setup-install-pob').focus(); }
+  else if (!state.live) openPob();
+});
 
 function listenEvents() {
   const source = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
+  source.onopen = () => {
+    clearTimeout(state.connectionTimer);
+    const reconnecting = state.connectionLost;
+    setConnectionLost(false);
+    if (reconnecting) { loadStatus(); loadProviders(); }
+  };
+  source.onerror = () => {
+    clearTimeout(state.connectionTimer);
+    state.connectionTimer = setTimeout(() => setConnectionLost(true), 1500);
+  };
   source.addEventListener('theme', e => { setTheme(JSON.parse(e.data).theme); renderThemeCards(); });
   source.addEventListener('language', e => { setLocale(JSON.parse(e.data).preference); applyI18n(); });
   source.addEventListener('pob-install', () => loadStatus());
   source.addEventListener('pob', e => {
     state.live = JSON.parse(e.data).connected;
-    if (state.live) state.pobMissing = false;
+    if (state.live) { state.pobMissing = false; state.openingPob = false; clearTimeout(state.openingTimer); }
     renderStatus(); renderPobSetup();
   });
   if (settingsView) return;
@@ -195,11 +229,39 @@ function listenEvents() {
   });
 }
 
-function showNotice(text) {
+function setConnectionLost(lost) {
+  state.connectionLost = lost;
+  $('connection-banner').hidden = !lost;
+  $('reconnect').disabled = false;
+}
+$('reconnect').addEventListener('click', async () => {
+  $('reconnect').disabled = true;
+  if (window.chrome?.webview) window.chrome.webview.postMessage('service:reconnect');
+  const reply = await api('/api/health');
+  if (reply.ok) { setConnectionLost(false); loadStatus(); loadProviders(); }
+  else $('reconnect').disabled = false;
+});
+function showNotice(text, { container, retry, settings } = {}) {
+  if (state.connectionLost) return;
+  const parent = container ?? (settingsView ? $('settings-dialog').querySelector('.p-dialog-body') : $('chat'));
+  parent.querySelector(':scope > .notice')?.remove();
   const note = document.createElement('div');
   note.className = 'notice';
+  note.setAttribute('role', 'status');
   note.textContent = text;
-  (settingsView ? $('settings-dialog').querySelector('.p-dialog-body') : $('chat')).prepend(note);
+  if (retry) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = t('retry');
+    button.onclick = () => { note.remove(); retry(); };
+    note.append(button);
+  }
+  if (settings) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = t('connectExistingPob');
+    button.onclick = () => openSettings('pob-path');
+    note.append(button);
+  }
+  parent.append(note);
 }
 
 // ---------- PoB window settings & PoB AI updates ----------
@@ -212,7 +274,7 @@ $('update-now').addEventListener('click', async () => {
   $('update-now').disabled = true;
   $('update-text').textContent = t('updating');
   const reply = await run('update.apply', { restart: true });
-  if (!reply.ok) { $('update-now').disabled = false; showUpdate(state.update); showNotice(`${t('error')}: ${reply.error?.message ?? ''}`); }
+  if (!reply.ok) { $('update-now').disabled = false; $('update-text').textContent = t('updateFailed'); $('update-now').textContent = t('retry'); }
 });
 async function usePob(args, busyLabel) {
   for (const id of ['pob-path-apply', 'pob-install']) $(id).disabled = true;
@@ -221,16 +283,21 @@ async function usePob(args, busyLabel) {
   for (const id of ['pob-path-apply', 'pob-install']) $(id).disabled = false;
   renderStatus();
   if (!reply.ok) {
-    $('pob-path-status').textContent = t('pobFolderDesc');
-    return showNotice(reply.error?.code === 'POB_NOT_FOUND' && args.pobPath ? t('pobFolderInvalid') : `${t('error')}: ${reply.error?.message ?? ''}`);
+    $('pob-path-status').textContent = t(args.pobPath ? 'pobFolderInvalid' : 'pobInstallFailed');
+    $('pob-path').setAttribute('aria-invalid', String(Boolean(args.pobPath)));
+    if (args.pobPath) $('pob-path').focus();
+    return;
   }
   $('pob-path').value = reply.result?.dir ?? '';
+  state.pobPathDirty = false;
+  $('pob-path').removeAttribute('aria-invalid');
   document.querySelectorAll('.notice').forEach(el => el.remove());
   $('pob-path-status').dataset.i18n = state.live ? 'pobFolderSaved' : 'pobFolderDesc';
   $('pob-path-status').textContent = t($('pob-path-status').dataset.i18n);
   if (!state.live) openPob();
 }
 if (settingsView) {
+  $('pob-path').addEventListener('input', () => { state.pobPathDirty = true; $('pob-path').removeAttribute('aria-invalid'); });
   $('pob-path-apply').addEventListener('click', () => { const dir = $('pob-path').value.trim(); if (dir) usePob({ pobPath: dir }); });
   $('pob-install').addEventListener('click', () => usePob({ installPob: true }, t('installingPob')));
 }
@@ -238,6 +305,7 @@ async function loadStatus() {
   const reply = await api('/api/status').catch(() => null);
   if (!reply?.ok) return;
   state.live = Boolean(reply.live?.connected);
+  if (state.live) { state.openingPob = false; clearTimeout(state.openingTimer); }
   state.pobMissing = !state.live && !reply.pob?.dir;
   renderStatus();
   renderPobSetup();
@@ -246,7 +314,7 @@ async function loadStatus() {
   const language = normalizeLocalePreference(reply.settings?.pobLanguage);
   if (localePreference() !== language) { setLocale(language); applyI18n(); }
   if (!settingsView) { showUpdate(reply.update); return; }
-  $('pob-path').value = reply.pob?.dir ?? '';
+  if (!state.pobPathDirty) $('pob-path').value = reply.pob?.dir ?? '';
   renderLocaleOptions();
   showUpdate(reply.update);
 }
@@ -263,23 +331,51 @@ const PROVIDER_SETUP = {
 function providerAccountHtml(provider) {
   const info = PROVIDER_SETUP[provider.id];
   if (!info) return '';
-  return `<div class="agent-account-actions">${provider.available
+  if (provider.signingIn) return `<p class="agent-auth-progress" role="status">${escapeHtml(t('agentLoginWaiting'))}</p><div class="agent-account-actions"><button type="button" data-login-cancel="${provider.id}">${escapeHtml(t('cancel'))}</button></div>`;
+  if (provider.available && provider.auth !== 'signed_out') {
+    return provider.auth === 'unknown' ? `<div class="agent-account-actions"><button type="button" data-auth-refresh>${escapeHtml(t('retry'))}</button><a class="agent-link-button" href="${info.guide}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('agentInstallGuide', { agent: provider.label }))}${icon('external-link')}</a></div>` : '';
+  }
+  return `${provider.loginFailed ? `<p role="status">${escapeHtml(t('agentLoginFailed'))}</p>` : ''}<div class="agent-account-actions">${provider.available
     ? `<button type="button" class="agent-primary" data-login="${provider.id}">${icon('log-in')}${escapeHtml(t(info.login))}</button>`
     : `<a class="agent-link-button agent-primary" href="${info.guide}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('agentInstallGuide', { agent: provider.label }))}${icon('external-link')}</a>`}
     <a class="agent-link-button" href="${info.account}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('createAccount'))}${icon('external-link')}</a></div>`;
 }
 async function signInProvider(id) {
+  const provider = providerById(id);
+  if (!provider || provider.signingIn) return;
+  provider.signingIn = true;
+  provider.loginFailed = false;
+  for (const tab of state.tabs) if (tab.provider === id) for (const view of tab.views) {
+    if (view.error === 'AGENT_SIGNED_OUT') { view.signInAttempted = true; renderAssistant(view); }
+  }
+  renderAgents();
   try {
     const reply = await api(`/api/agent/providers/${id}/login`, {});
-    if (!reply.ok) showNotice(t(reply.error?.code === 'AGENT_MISSING' ? 'errMissing' : 'errNotRunnable', { agent: providerName(id) }));
-  } catch { showNotice(t('errServiceDisconnected')); }
+    if (!reply.ok) { provider.signingIn = false; provider.loginFailed = true; }
+    else return loadProviders({ checking: false });
+  } catch { provider.signingIn = false; provider.loginFailed = true; }
+  renderAgents();
 }
 function wireAccountButtons(root) {
   root.querySelectorAll('[data-login]').forEach(button => button.addEventListener('click', () => signInProvider(button.dataset.login)));
+  root.querySelectorAll('[data-auth-refresh]').forEach(button => button.addEventListener('click', () => loadProviders()));
+  root.querySelectorAll('[data-login-cancel]').forEach(button => button.addEventListener('click', async () => {
+    await request('DELETE', `/api/agent/providers/${button.dataset.loginCancel}/login`).catch(() => {});
+    loadProviders();
+  }));
 }
 
-async function loadProviders() {
+async function loadProviders({ checking = true } = {}) {
+  const generation = state.providerRequest = (state.providerRequest ?? 0) + 1;
+  clearTimeout(state.loginPoll);
+  if (checking) {
+    for (const provider of state.providers) if (provider.available) provider.auth = 'checking';
+    if (state.loadedProviders) renderAgents();
+  }
   const reply = await api('/api/agent/providers').catch(() => ({ providers: [] }));
+  if (generation !== state.providerRequest) return;
+  if (!reply.ok) return;
+  const changed = checking || !state.loadedProviders || JSON.stringify(state.providers) !== JSON.stringify(reply.providers);
   for (const provider of reply.providers ?? []) {
     if (providerById(provider.id)?.command !== provider.command) delete state.models[provider.id];
   }
@@ -289,8 +385,12 @@ async function loadProviders() {
     state.provider = available[0]?.id ?? state.providers[0]?.id ?? '';
   }
   state.loadedProviders = true;
-  renderAgents();
-  if (!settingsView) renderModelLabel();
+  if (changed) {
+    renderAgents();
+    for (const tab of state.tabs) for (const view of tab.views) if (view.error === 'AGENT_SIGNED_OUT') renderAssistant(view);
+    if (!settingsView) renderModelLabel();
+  }
+  if (state.providers.some(p => p.signingIn)) state.loginPoll = setTimeout(() => loadProviders({ checking: false }), 1500);
 }
 function chooseProvider(id) {
   state.provider = id;
@@ -322,15 +422,16 @@ function pickerHtml(popover) {
   if (!state.loadedProviders) return `<p class="agent-chat-progress"><span class="spinner"></span>${escapeHtml(t('checkingAgents'))}</p>`;
   if (!state.providers.length) return `<p class="agent-picker-note"><span>${escapeHtml(t('noAgent'))}</span></p>`;
   const chosen = providerById(state.provider);
-  const cards = state.providers.map(p => `<button type="button" role="radio" aria-checked="${p.id === state.provider}" data-provider="${p.id}">
+  const cards = state.providers.map(p => `<button type="button" role="radio" aria-checked="${p.id === state.provider}" tabindex="${p.id === state.provider ? 0 : -1}" data-provider="${p.id}">
       ${mark(p.id)}<span class="agent-provider-label"><strong>${escapeHtml(p.label)}</strong>
-      <small class="${p.available ? 'ok' : ''}">${escapeHtml(t(p.available ? 'agentAvailable' : 'agentNeedsPath'))}</small></span>
+      <small class="${p.auth === 'signed_in' && !p.signingIn ? 'ok' : ''}">${escapeHtml(t(!p.available ? 'agentNeedsPath' : p.signingIn ? 'agentCheckingAuth' : ({ signed_in: 'agentSignedIn', signed_out: 'agentSignedOut', unknown: 'agentAuthUnknown' }[p.auth] ?? 'agentCheckingAuth')))}</small></span>
       ${p.id === state.provider ? `<span class="agent-provider-check">${icon('check')}</span>` : ''}</button>`).join('');
   const note = chosen && !chosen.available
     ? `<button type="button" class="agent-quiet agent-path-shortcut" data-settings>${icon('folder-open')}${escapeHtml(t('choosePath'))}</button>` : '';
-  const account = chosen ? `<div class="agent-account"><p>${escapeHtml(t(PROVIDER_SETUP[chosen.id].note))}</p>${providerAccountHtml(chosen)}${note}</div>` : '';
+  const account = chosen && (!chosen.available || chosen.signingIn || ['signed_out', 'unknown'].includes(chosen.auth))
+    ? `<div class="agent-account">${!chosen.signingIn && chosen.auth !== 'unknown' ? `<p>${escapeHtml(t(PROVIDER_SETUP[chosen.id].note))}</p>` : ''}${providerAccountHtml(chosen)}${note}</div>` : '';
   const actions = popover
-    ? `<button type="button" class="agent-primary agent-start" data-start ${chosen?.available ? '' : 'disabled'}>${escapeHtml(t('startWith', { agent: chosen?.label ?? '' }))}</button>
+    ? `<button type="button" class="agent-primary agent-start" data-start ${chosen?.available && !chosen.signingIn && ['signed_in', 'unknown'].includes(chosen.auth) ? '' : 'disabled'}>${escapeHtml(t('startWith', { agent: chosen?.label ?? '' }))}</button>
        <button type="button" class="agent-quiet" data-resume>${icon('history')}${escapeHtml(t('resumePrevious'))}</button>` : '';
   return `<div class="agent-picker"><h3>${escapeHtml(t(popover ? 'newChat' : 'chooseAgent'))}</h3>
     <div class="agent-provider-grid" role="radiogroup" aria-label="${escapeHtml(t('chooseAgent'))}">${cards}</div>${account}
@@ -360,9 +461,20 @@ function wirePicker(root, popover = false) {
 }
 function renderAgents() {
   if (!settingsView) {
-    $('picker-inline').innerHTML = pickerHtml(false);
-    wirePicker($('picker-inline'));
-    if (!$('picker-popover').hidden) { $('picker-popover').innerHTML = pickerHtml(true); wirePicker($('picker-popover'), true); }
+    for (const [id, popover] of [['picker-inline', false], ['picker-popover', true]]) {
+      const root = $(id);
+      if (popover && root.hidden) continue;
+      const focused = root.contains(document.activeElement) ? document.activeElement : null;
+      const key = focused && ['provider', 'full-access', 'start', 'resume', 'login', 'login-cancel', 'auth-refresh', 'settings'].find(name => focused.hasAttribute('data-' + name));
+      const selector = key ? `[data-${key}${key === 'provider' ? `="${focused.dataset.provider}"` : ''}]` : null;
+      root.innerHTML = pickerHtml(popover);
+      wirePicker(root, popover);
+      if (focused) {
+        const replacement = selector && root.querySelector(selector);
+        (replacement && !replacement.disabled ? replacement : root.querySelector('[aria-checked=true]'))?.focus({ preventScroll: true });
+      }
+    }
+    renderPobSetup();
     return;
   }
   $('agent-rows').innerHTML = state.providers.map(p => {
@@ -384,12 +496,26 @@ function renderAgents() {
 
 // ---------- popovers ----------
 function closePopovers() {
+  state.popoverRequest = (state.popoverRequest ?? 0) + 1;
   $('picker-popover').hidden = true;
   $('model-popover').hidden = true;
+  $('popover-backdrop').hidden = true;
   $('new-chat').setAttribute('aria-expanded', 'false');
   $('model-button').setAttribute('aria-expanded', 'false');
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopovers(); });
+$('popover-backdrop').addEventListener('mousedown', event => { event.preventDefault(); event.stopPropagation(); closePopovers(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const button = !$('picker-popover').hidden ? 'new-chat' : !$('model-popover').hidden ? 'model-button' : null;
+    closePopovers(); if (button) $(button).focus();
+  }
+});
+for (const id of ['picker-popover', 'model-popover']) $(id).addEventListener('keydown', event => {
+  if (event.key !== 'Tab') return;
+  const targets = [...$(id).querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled)')].filter(el => el.tabIndex >= 0 && el.getClientRects().length);
+  const target = event.shiftKey ? targets.at(-1) : targets[0];
+  if (document.activeElement === (event.shiftKey ? targets[0] : targets.at(-1))) { event.preventDefault(); target?.focus(); }
+});
 document.addEventListener('mousedown', e => {
   if (!e.target.closest('#picker-popover, #new-chat, #model-popover, #model-button')) closePopovers();
 });
@@ -405,8 +531,10 @@ $('new-chat').addEventListener('click', () => {
   state.picker.fullAccess = false;
   positionPicker();
   $('picker-popover').hidden = false;
+  $('popover-backdrop').hidden = false;
   $('new-chat').setAttribute('aria-expanded', 'true');
   renderAgents();
+  loadProviders();
   $('picker-popover').querySelector('[aria-checked=true]')?.focus();
 });
 
@@ -434,6 +562,8 @@ function setChoice(model, effort) {
 async function renderModelLabel() {
   const { provider, model, effort } = currentChoice();
   const catalog = await models(provider);
+  const current = currentChoice();
+  if (current.provider !== provider || current.model !== model || current.effort !== effort) return;
   const name = catalog.models.find(m => m.id === model)?.name ?? (model || t('modelDefault'));
   $('model-label').textContent = `${name} · ${effortName(effort ?? catalog.defaultEffort ?? 'medium')}`;
   $('model-button').title = `${t('model')} · ${t('effort')}`;
@@ -442,8 +572,10 @@ $('model-button').addEventListener('click', async () => {
   const open = $('model-popover').hidden;
   closePopovers();
   if (!open) return;
+  const request = state.popoverRequest, tabKey = state.active;
   const { provider, model, effort } = currentChoice();
   const catalog = await models(provider);
+  if (request !== state.popoverRequest || tabKey !== state.active || currentChoice().provider !== provider) return;
   const selected = catalog.models.find(m => m.id === model);
   const efforts = selected?.efforts?.length ? selected.efforts : ['low', 'medium', 'high'];
   const popover = $('model-popover');
@@ -453,6 +585,7 @@ $('model-button').addEventListener('click', async () => {
     <p>${escapeHtml(t('modelNote'))}</p>
     ${permissionsHtml('conversation-permissions', activeTab() ?? state.idle, activeTab()?.running)}`;
   popover.hidden = false;
+  $('popover-backdrop').hidden = false;
   $('model-button').setAttribute('aria-expanded', 'true');
   const apply = () => setChoice($('model-select').value || null, $('effort-select').value || null);
   $('model-select').addEventListener('change', () => { apply(); closePopovers(); $('model-button').click(); });
@@ -577,6 +710,7 @@ function updateEmpty() {
   const tab = activeTab();
   $('empty').hidden = Boolean(tab && tab.pane.childElementCount);
   $('picker-inline').hidden = Boolean(tab);
+  renderPobSetup();
 }
 function closeTab(key) {
   const index = state.tabs.findIndex(tab => tab.key === key);
@@ -643,7 +777,7 @@ const PHASES = { inspect: 'phaseInspect', calculate: 'phaseCalculate', lookup: '
   apply: 'phaseApply', show: 'phaseShow', writing: 'phaseWriting', stopping: 'phaseStopping' };
 const ERRORS = {
   AGENT_MISSING: ['errMissing', 'pick'], AGENT_NOT_RUNNABLE: ['errNotRunnable', 'pick'], AGENT_SIGNED_OUT: ['errSignedOut', 'login'],
-  AGENT_OUTDATED: ['errOutdated'],
+  AGENT_OUTDATED: ['errOutdated', 'update'],
   AGENT_RATE_LIMITED: ['errRateLimit'], AGENT_NETWORK: ['errNetwork', 'retry'], AGENT_MODEL_UNAVAILABLE: ['errModelUnavailable', 'model'],
   SERVICE_DISCONNECTED: ['errServiceDisconnected'],
   AGENT_SANDBOX: ['errSandbox'], AGENT_CONFIG: ['errConfig'], AGENT_NO_RESPONSE: ['errNoResponse'], AGENT_PROTOCOL: ['errProtocol'],
@@ -652,20 +786,25 @@ const ERRORS = {
 };
 function renderAssistant(view) {
   const { tab } = view;
-  const agent = `${providerName(tab.provider)}${view.diagnostic?.version ? ' ' + view.diagnostic.version : ''}`;
+  const agent = providerName(tab.provider);
   const text = [...view.texts.values()].join('\n\n');
-  const [errorKey, action] = view.error ? ERRORS[view.error] ?? ['error'] : [];
-  const actionLabel = { pick: 'choosePath', login: 'signIn', retry: 'retry', model: 'model' }[action];
+  let [errorKey, action] = view.error ? ERRORS[view.error] ?? ['error'] : [];
+  const provider = providerById(tab.provider);
+  if (view.error === 'AGENT_SIGNED_OUT' && provider?.signingIn) { errorKey = 'agentLoginWaiting'; action = 'cancelLogin'; }
+  else if (view.error === 'AGENT_SIGNED_OUT' && view.signInAttempted && provider?.auth === 'signed_in' && !provider.loginFailed) { errorKey = 'agentSignedIn'; action = view.retry ? 'retry' : null; }
+  const actionLabel = { pick: 'choosePath', login: 'signIn', retry: 'retry', model: 'model', cancelLogin: 'cancel' }[action];
+  const diagnostics = view.error && !['AGENT_SIGNED_OUT', 'AGENT_MISSING', 'AGENT_RATE_LIMITED', 'AGENT_NETWORK', 'AGENT_MODEL_UNAVAILABLE', 'IMAGE_TOO_MANY', 'IMAGE_TOO_LARGE', 'IMAGE_INVALID', 'BUSY'].includes(view.error);
   keepScroll(() => {
     view.el.innerHTML = `<div class="agent-message-who">${mark(tab.provider)}${escapeHtml(agent)}${view.interrupted ? `<span class="tag">${escapeHtml(t('interrupted'))}</span>` : ''}</div>
       <div class="agent-message-body">${markdown(text)}</div>
       ${view.working ? `<div class="agent-chat-progress"><span class="spinner"></span>${escapeHtml(t(PHASES[view.phase] ?? 'thinking'))}</div>` : ''}
-      ${view.error ? `<div class="agent-error"><span>${escapeHtml(t(errorKey, { agent }))}</span><div class="agent-error-actions">${actionLabel ? `<button type="button" data-action="${action}">${escapeHtml(t(actionLabel))}</button>` : ''}<button type="button" data-diagnostics>${escapeHtml(t('diagnostics'))}</button></div></div>` : ''}`;
+      ${view.error ? `<div class="agent-error" role="status"><span>${escapeHtml(t(errorKey, { agent }))}</span><div class="agent-error-actions">${actionLabel ? `<button type="button" data-action="${action}">${escapeHtml(t(actionLabel))}</button>` : ''}${action === 'update' ? `<a class="agent-link-button" href="${PROVIDER_SETUP[tab.provider].guide}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('agentInstallGuide', { agent: providerName(tab.provider) }))}</a>` : ''}${diagnostics ? `<button type="button" class="agent-quiet" data-diagnostics>${escapeHtml(t('diagnostics'))}</button>` : ''}</div></div>` : ''}`;
     view.el.querySelector('[data-action]')?.addEventListener('click', () => {
       if (action === 'pick') pickPath(tab.provider);
       if (action === 'login') signInProvider(tab.provider);
       if (action === 'retry' && view.retry) send(view.retry.text, view.retry.images, tab);
       if (action === 'model') { activate(tab.key); $('model-button').click(); }
+      if (action === 'cancelLogin') { request('DELETE', `/api/agent/providers/${tab.provider}/login`).then(() => loadProviders()); }
     });
     view.el.querySelector('[data-diagnostics]')?.addEventListener('click', () => {
       $('diagnostics-reason').textContent = t(errorKey, { agent });
@@ -749,6 +888,10 @@ async function send(text, images = state.attachments, target = activeTab()) {
     locale: locale(), images: images.length ? images : undefined };
   if (!tab.sessionId || tab.choiceChanged) { body.model = tab.model; body.effort = tab.effort; tab.choiceChanged = false; }
   if (fromComposer) {
+    $('input').value = '';
+    tab.draft = '';
+    if (!target) state.idle.draft = '';
+    autosize();
     (target ?? state.idle).attachments = [];
     state.attachments = [];
     renderAttachments();
@@ -780,8 +923,6 @@ $('composer').addEventListener('submit', async e => {
     return;
   }
   const text = $('input').value;
-  $('input').value = '';
-  autosize();
   send(text);
 });
 const autosize = () => { const el = $('input'); el.style.height = 'auto'; el.style.height = `${Math.min(el.scrollHeight, 160)}px`; };
@@ -838,6 +979,7 @@ async function follow(tab) {
 async function loadHistory() {
   const reply = await api('/api/agent/sessions').catch(() => ({ sessions: [] }));
   const list = $('history-list');
+  if (!reply.ok) { list.innerHTML = `<li class="history-empty">${escapeHtml(t('connectionLost'))}</li>`; return; }
   const sessions = (reply.sessions ?? []).slice().reverse();
   if (!sessions.length) { list.innerHTML = `<li class="history-empty">${escapeHtml(t('noHistory'))}</li>`; return; }
   list.innerHTML = sessions.map(s => `<li>
@@ -850,10 +992,12 @@ async function loadHistory() {
     if (!b.hasAttribute('data-armed')) {
       b.setAttribute('data-armed', '');
       b.title = t('confirmDelete');
-      setTimeout(() => { b.removeAttribute('data-armed'); b.title = t('deleteChat'); }, 3000);
+      b.setAttribute('aria-label', b.title);
+      setTimeout(() => { b.removeAttribute('data-armed'); b.title = t('deleteChat'); b.setAttribute('aria-label', b.title); }, 3000);
       return;
     }
-    await request('DELETE', `/api/agent/sessions/${b.dataset.delete}`);
+    const deleted = await request('DELETE', `/api/agent/sessions/${b.dataset.delete}`);
+    if (!deleted.ok) return;
     const tab = state.tabs.find(x => x.sessionId === b.dataset.delete);
     if (tab) closeTab(tab.key);
     loadHistory();
@@ -882,3 +1026,4 @@ if (settingsView) {
 loadStatus();
 listenEvents();
 window.addEventListener('focus', () => loadProviders());
+window.addEventListener('pobai:activated', () => loadProviders());

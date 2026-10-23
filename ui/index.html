@@ -24,6 +24,7 @@
   </header>
 
   <div id="update-banner" class="banner" hidden><span id="update-text"></span><button id="update-now" type="button" class="agent-primary" data-i18n="updateNow"></button></div>
+  <div id="connection-banner" class="connection-banner" role="status" hidden><span data-i18n="connectionLost"></span><button id="reconnect" type="button" data-i18n="reconnect"></button></div>
 
   <div class="agent-sessions">
     <nav id="sessions" class="agent-session-list" role="tablist"></nav>
@@ -54,12 +55,13 @@
     </div>
   </main>
 
-  <div id="picker-popover" class="agent-picker-popover" role="dialog" hidden></div>
-  <div id="model-popover" class="model-popover" role="dialog" hidden></div>
+  <div id="popover-backdrop" class="popover-backdrop" aria-hidden="true" hidden></div>
+  <div id="picker-popover" class="agent-picker-popover" role="dialog" aria-modal="true" data-label="newChat" hidden></div>
+  <div id="model-popover" class="model-popover" role="dialog" aria-modal="true" data-label="model" hidden></div>
 
   <form id="composer" class="agent-compose">
     <div id="attachments" class="attachments" hidden></div>
-    <textarea id="input" rows="2" data-placeholder="placeholder" data-title="sendHint"></textarea>
+    <textarea id="input" rows="2" data-placeholder="placeholder" data-title="sendHint" data-label="placeholder"></textarea>
     <div class="agent-compose-actions">
       <button id="attach" class="agent-icon" type="button" data-title="attachImage"><svg class="p-icon"><use href="icons.svg#i-paperclip"/></svg></button>
       <button id="model-button" class="model-button" type="button" aria-haspopup="dialog" aria-expanded="false"><svg class="p-icon"><use href="icons.svg#i-sliders-horizontal"/></svg><span id="model-label"></span></button>
@@ -79,13 +81,13 @@
     <div class="p-dialog-body">
       <section class="set-section">
         <h3 class="set-head" data-i18n="sectionPanel"></h3>
-        <div class="set-row"><div class="set-title" data-i18n="language"></div><div class="set-control"><select id="locale"></select></div></div>
-        <div class="set-row theme-row"><div class="set-title" data-i18n="theme"></div><div id="theme-cards" class="theme-grid" role="radiogroup"></div></div>
+        <div class="set-row"><label class="set-title" for="locale" data-i18n="language"></label><div class="set-control"><select id="locale"></select></div></div>
+        <div class="set-row theme-row"><div id="theme-label" class="set-title" data-i18n="theme"></div><div id="theme-cards" class="theme-grid" role="radiogroup" aria-labelledby="theme-label"></div></div>
       </section>
       <section class="set-section">
         <h3 class="set-head" data-i18n="sectionPobWindow"></h3>
         <div class="set-row stacked">
-          <div class="set-title" data-i18n="pobFolder"></div>
+          <label class="set-title" for="pob-path" data-i18n="pobFolder"></label>
           <div class="field-row"><input id="pob-path" type="text" spellcheck="false" autocomplete="off"><button id="pob-path-apply" type="button" data-i18n="apply"></button></div>
           <p id="pob-path-status" class="set-desc" data-i18n="pobFolderDesc" role="status"></p>
           <div class="set-actions"><button id="pob-install" type="button" class="agent-quiet"><svg class="p-icon"><use href="icons.svg#i-folder-open"/></svg><span data-i18n="installPob"></span></button></div>
@@ -104,10 +106,10 @@
   </dialog>
   </template>
 
-  <dialog id="history-dialog" class="p-dialog">
+  <dialog id="history-dialog" class="p-dialog" aria-labelledby="history-heading">
     <div class="p-dialog-head">
       <span class="p-dialog-icon"><svg class="p-icon"><use href="icons.svg#i-history"/></svg></span>
-      <h2 data-i18n="history"></h2>
+      <h2 id="history-heading" data-i18n="history"></h2>
       <button class="agent-icon" type="button" data-close data-title="close"><svg class="p-icon"><use href="icons.svg#i-x"/></svg></button>
     </div>
     <div class="p-dialog-body"><ul id="history-list" class="history-list"></ul></div>

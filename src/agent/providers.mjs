@@ -109,6 +109,59 @@ export function killTree(child, { sync = false } = {}) {
 
 const fail = code => Object.assign(new Error(code), { code });
 
+const authProbes = new Map();
+const logins = new Map();
+
+/** Ask the CLI, never read or return its credentials. Unknown is not signed out. */
+export function probeAuthentication(provider, { timeoutMs = 6000 } = {}) {
+  if (!provider.available) return Promise.resolve('unavailable');
+  const key = `${provider.id}\0${provider.command}`;
+  if (authProbes.has(key)) return authProbes.get(key);
+  const probe = new Promise(resolve => {
+    let child, output = '', done = false;
+    const finish = state => { if (done) return; done = true; clearTimeout(timer); killTree(child); resolve(state); };
+    const timer = setTimeout(() => finish('unknown'), timeoutMs);
+    try {
+      child = spawnCli(provider.command, provider.id === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'],
+        { windowsHide: true, cwd: os.homedir(), stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch { finish('unknown'); return; }
+    const collect = data => { output += data; if (output.length > 16384) finish('unknown'); };
+    child.stdout.on('data', collect);
+    child.stderr.on('data', collect);
+    child.once('error', () => finish('unknown'));
+    child.once('close', code => {
+      if (provider.id === 'claude') {
+        try {
+          const status = JSON.parse(output);
+          if (status.loggedIn === true && code === 0) return finish('signed_in');
+          if (status.loggedIn === false && code === 1) return finish('signed_out');
+        } catch { /* unsupported CLI or configuration error */ }
+      } else {
+        if (code === 0 && /logged in using/i.test(output)) return finish('signed_in');
+        if (code === 1 && /not logged in/i.test(output)) return finish('signed_out');
+      }
+      finish('unknown');
+    });
+  });
+  authProbes.set(key, probe);
+  probe.finally(() => { if (authProbes.get(key) === probe) authProbes.delete(key); });
+  return probe;
+}
+
+export async function providerStatus(provider) {
+  const auth = await probeAuthentication(provider);
+  const login = logins.get(provider.id);
+  if (auth === 'signed_in' && !login?.child) logins.delete(provider.id);
+  return { ...provider, auth, signingIn: Boolean(login?.child), loginFailed: auth !== 'signed_in' && login?.failed === true };
+}
+
+export function cancelLogin(id) {
+  const login = logins.get(id);
+  logins.delete(id);
+  clearTimeout(login?.timer);
+  if (login?.child) killTree(login.child);
+}
+
 /** Runs `<file> --version` for up to 6 s and resolves to the semver it prints, or null. */
 export function probeVersion(file, timeoutMs = 6000) {
   return new Promise(resolve => {
@@ -182,13 +235,18 @@ export async function openLogin(id) {
   if (!PROVIDERS[id]) throw fail('NOT_FOUND');
   const provider = resolveProvider(id);
   if (!provider.available) throw fail('AGENT_MISSING');
-  const child = spawn('cmd.exe', ['/d', '/s', '/c', loginCommandLine(id, provider.command)], {
-    // detached creates the interactive console; START would auto-wrap .cmd in a broken /K command.
-    detached: true, stdio: 'ignore', windowsHide: false, windowsVerbatimArguments: true,
-  });
+  if (logins.get(id)?.child) return;
+  // Both CLI login commands open the browser themselves. Keep their console hidden.
+  const child = spawnCli(provider.command, PROVIDERS[id].login, { windowsHide: true, cwd: os.homedir(), stdio: 'ignore' });
+  const login = { child };
+  logins.set(id, login);
+  const finish = failed => { clearTimeout(login.timer); if (logins.get(id) === login) logins.set(id, { failed }); };
+  login.timer = setTimeout(() => { killTree(child); finish(true); }, 5 * 60 * 1000);
+  login.timer.unref();
+  child.once('exit', code => finish(code !== 0));
   await new Promise((resolve, reject) => {
     child.once('spawn', resolve);
-    child.once('error', () => reject(fail('AGENT_NOT_RUNNABLE')));
+    child.once('error', () => { finish(true); reject(fail('AGENT_NOT_RUNNABLE')); });
   });
   child.unref();
 }

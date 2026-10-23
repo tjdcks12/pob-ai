@@ -22,9 +22,10 @@ local token = os.getenv('POBAI_BRIDGE_TOKEN') or ''
 local client, buffer, nextAttempt = nil, '', 0
 
 local function send(message)
-	if not client then return end
+	if not client then return false end
 	local _, err = client:send(json.encode(message) .. '\n')
-	if err then client:close() client = nil end
+	if err then client:close() client = nil return false end
+	return true
 end
 
 local function connect()
@@ -100,4 +101,4 @@ main.OnFrame = function(self, ...)
 end
 
 -- Lets operations push events (navigation finished, build changed) to the service.
-function pobai_emit(event) send({ type = 'event', event = event }) end
+function pobai_emit(event) return send({ type = 'event', event = event }) end

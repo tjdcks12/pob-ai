@@ -23,6 +23,7 @@ const bundledNode = path.join(appDir, 'runtime', 'node', 'node.exe');
 const node = fs.existsSync(bundledNode) ? bundledNode : process.execPath;
 const child = spawn(node, [path.join(appDir, 'src', 'service', 'main.mjs'), ...process.argv.slice(2)], {
   stdio: 'inherit',
+  windowsHide: true,
   env: { ...process.env, POB_AI_LAUNCHER: fileURLToPath(import.meta.url) },
 });
 child.on('exit', code => process.exit(code ?? 0));

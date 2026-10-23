@@ -297,9 +297,11 @@ local function act(part)
 		toggleMaximize(S.hwnd)
 	elseif part == 'ai' then
 		local result = panel.focus()
-		if pobai_emit then pobai_emit({ kind = 'open-panel', panelFound = result.found }) end
+		if not pobai_emit or not pobai_emit({ kind = 'open-panel', panelFound = result.found, panelFocused = result.focused }) then
+			if not result.found then panel.open('agent') end
+		end
 	elseif part == 'settings' then
-		if pobai_emit then pobai_emit({ kind = 'open-settings', ownerPid = tonumber(kernel32.GetCurrentProcessId()) }) end
+		if not pobai_emit or not pobai_emit({ kind = 'open-settings', ownerPid = tonumber(kernel32.GetCurrentProcessId()) }) then panel.open('settings') end
 	elseif part == 'website' then
 		OpenURL('https://www.poe2way.com/' .. (POBAI_TRANSLATE and POBAI_TRANSLATE.locale or 'en'))
 	end

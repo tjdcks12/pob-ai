@@ -69,10 +69,9 @@ internal sealed class AgentWindow : Form
         string identity;
         using (var hash = SHA256.Create())
             identity = BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(profile.ToLowerInvariant() + (settings ? "|settings" : "")))).Replace("-", "").Substring(0, 20);
-        bool first;
-        using (var single = new Mutex(true, @"Local\PoBAI.Panel." + identity, out first))
+        using (var single = new PanelInstance(identity))
         {
-            if (!first)
+            if (!single.IsOwner)
             {
                 PostMessage(new IntPtr(0xffff), RegisterWindowMessage("PoBAI.Panel.Activate." + identity), IntPtr.Zero, IntPtr.Zero);
                 return;
@@ -214,6 +213,10 @@ internal sealed class AgentWindow : Form
         }
         switch (message)
         {
+            case "service:reconnect":
+                string launcher = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\PoB AI.exe"));
+                if (File.Exists(launcher)) Process.Start(new ProcessStartInfo(launcher, "--panel-only") { UseShellExecute = false });
+                break;
             case "window:minimize": WindowState = FormWindowState.Minimized; break;
             case "window:maximize":
                 MaximizedBounds = Screen.FromHandle(Handle).WorkingArea;
@@ -241,6 +244,12 @@ internal sealed class AgentWindow : Form
     {
         base.OnResize(e);
         SendState();
+    }
+
+    protected override void OnActivated(EventArgs e)
+    {
+        base.OnActivated(e);
+        if (ready && !IsDisposed) web.CoreWebView2.PostWebMessageAsJson(json.Serialize(new { kind = "window-activated" }));
     }
 
     protected override void WndProc(ref Message m)

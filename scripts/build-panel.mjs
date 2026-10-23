@@ -10,7 +10,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const version = '1.0.4314.35';
 const sha256 = '90778deb1b77e36292828b4b5833c9255c27533f40e0ddd55891ae718944edc4';
 const sdk = path.join(root, '.state', 'webview2-sdk-' + version);
-const bin = path.join(root, 'desktop', 'bin');
+const outputIndex = process.argv.indexOf('--out-dir');
+const output = outputIndex >= 0 ? path.resolve(process.argv[outputIndex + 1]) : root;
+const bin = path.join(output, 'desktop', 'bin');
 if (process.platform !== 'win32') throw new Error('The panel shell is built on Windows.');
 fs.mkdirSync(sdk, { recursive: true });
 fs.mkdirSync(bin, { recursive: true });
@@ -36,5 +38,14 @@ execFileSync(compiler, [
   '/reference:System.dll', '/reference:System.Core.dll', '/reference:System.Drawing.dll',
   '/reference:System.Windows.Forms.dll', '/reference:System.Web.Extensions.dll', '/reference:' + core, '/reference:' + forms,
   path.join(root, 'desktop/Panel.cs'),
+  path.join(root, 'desktop/PanelInstance.cs'),
 ], { windowsHide: true, stdio: 'inherit' });
 console.log('Built desktop/bin/pob-ai-panel.exe');
+execFileSync(compiler, [
+  '/nologo', '/target:winexe', '/platform:x64', '/optimize+', '/out:' + path.join(output, 'PoB AI.exe'),
+  '/win32manifest:' + path.join(root, 'desktop/app.manifest'), '/win32icon:' + path.join(root, 'desktop/icon.ico'),
+  '/reference:System.dll', '/reference:System.Drawing.dll', '/reference:System.Windows.Forms.dll', '/reference:System.Web.Extensions.dll',
+  '/resource:' + path.join(root, 'desktop/launcher-strings.json') + ',PoBAI.LauncherStrings',
+  path.join(root, 'desktop/Launcher.cs'),
+], { windowsHide: true, stdio: 'inherit' });
+console.log('Built PoB AI.exe');

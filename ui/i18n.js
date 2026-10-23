@@ -8,6 +8,9 @@ export const LOCALES = {
 
 export const STRINGS = {
   en: {
+    connectPob: "Connect PoB",
+    connectionLost: "PoB AI is disconnected. Reconnect to continue.", reconnect: "Reconnect", settingFailed: "Could not apply the change. Select it again.", settingsOpenFailed: "Could not open settings. Try again.", pobOpenFailed: "Could not open PoB. Check its folder in settings and try again.", pobInstallFailed: "Could not install PoB. Try again or connect an existing PoB folder.", updateFailed: "Could not complete the update. Try again.",
+    agentSignedIn: "Signed in", agentSignedOut: "Sign-in required", agentCheckingAuth: "Checking sign-in…", agentAuthUnknown: "Check sign-in again", agentLoginWaiting: "Complete sign-in in your browser.", agentLoginFailed: "Sign-in was not completed. Try signing in again.", cancel: "Cancel",
     loginClaude: 'Sign in with Claude', loginChatgpt: 'Sign in with ChatGPT', createAccount: 'Create account',
     agentInstallGuide: '{agent} setup guide', claudeAccountNote: 'Use a Claude account with access to Claude Code.', codexAccountNote: 'Connect Codex with your ChatGPT account.',
     pobSetup: 'Connect Path of Building', connectExistingPob: 'Connect existing PoB',
@@ -71,6 +74,9 @@ export const STRINGS = {
     errPathInvalid: 'Choose the .exe, .cmd or .bat file of {agent}.',
   },
   ko: {
+    connectPob: "PoB 연결",
+    connectionLost: "PoB AI 연결이 끊겼습니다. 다시 연결해 주세요.", reconnect: "다시 연결", settingFailed: "변경을 적용하지 못했습니다. 다시 선택해 주세요.", settingsOpenFailed: "설정창을 열지 못했습니다. 다시 시도해 주세요.", pobOpenFailed: "PoB를 열지 못했습니다. 설정에서 설치 폴더를 확인하고 다시 실행해 주세요.", pobInstallFailed: "PoB를 설치하지 못했습니다. 다시 시도하거나 기존 PoB 폴더를 연결해 주세요.", updateFailed: "업데이트를 완료하지 못했습니다. 다시 시도해 주세요.",
+    agentSignedIn: "로그인됨", agentSignedOut: "로그인 필요", agentCheckingAuth: "로그인 확인 중…", agentAuthUnknown: "로그인 다시 확인", agentLoginWaiting: "브라우저에서 로그인을 완료해 주세요.", agentLoginFailed: "로그인을 완료하지 못했습니다. 다시 로그인해 주세요.", cancel: "취소",
     loginClaude: 'Claude로 로그인', loginChatgpt: 'ChatGPT로 로그인', createAccount: '계정 만들기',
     agentInstallGuide: '{agent} 설치 안내', claudeAccountNote: 'Claude Code 이용 권한이 있는 Claude 계정을 연결합니다.', codexAccountNote: 'ChatGPT 계정으로 Codex를 연결합니다.',
     pobSetup: 'Path of Building 연결하기', connectExistingPob: '기존 PoB 연결',
@@ -134,6 +140,9 @@ export const STRINGS = {
     errPathInvalid: '{agent}의 .exe, .cmd, .bat 파일을 고르세요.',
   },
   ja: {
+    connectPob: "PoBを接続",
+    connectionLost: "PoB AIとの接続が切れました。再接続してください。", reconnect: "再接続", settingFailed: "変更を適用できませんでした。もう一度選択してください。", settingsOpenFailed: "設定を開けませんでした。再試行してください。", pobOpenFailed: "PoBを開けませんでした。設定でインストール先を確認して再実行してください。", pobInstallFailed: "PoBをインストールできませんでした。再試行するか、既存のPoBフォルダーを接続してください。", updateFailed: "更新を完了できませんでした。再試行してください。",
+    agentSignedIn: "ログイン済み", agentSignedOut: "ログインが必要", agentCheckingAuth: "ログイン確認中…", agentAuthUnknown: "ログインを再確認", agentLoginWaiting: "ブラウザーでログインを完了してください。", agentLoginFailed: "ログインが完了しませんでした。もう一度ログインしてください。", cancel: "キャンセル",
     loginClaude: 'Claude でログイン', loginChatgpt: 'ChatGPT でログイン', createAccount: 'アカウント作成',
     agentInstallGuide: '{agent} のインストール案内', claudeAccountNote: 'Claude Code を利用できる Claude アカウントを接続します。', codexAccountNote: 'ChatGPT アカウントで Codex に接続します。',
     pobSetup: 'Path of Building に接続', connectExistingPob: '既存の PoB を接続',
@@ -197,6 +206,9 @@ export const STRINGS = {
     errPathInvalid: '{agent} の .exe・.cmd・.bat ファイルを選んでください。',
   },
   'zh-Hant': {
+    connectPob: "連接 PoB",
+    connectionLost: "PoB AI 已中斷連線，請重新連線。", reconnect: "重新連線", settingFailed: "無法套用變更，請重新選擇。", settingsOpenFailed: "無法開啟設定，請重試。", pobOpenFailed: "無法開啟 PoB。請在設定中確認安裝資料夾後重試。", pobInstallFailed: "無法安裝 PoB。請重試或連接現有的 PoB 資料夾。", updateFailed: "無法完成更新，請重試。",
+    agentSignedIn: "已登入", agentSignedOut: "需要登入", agentCheckingAuth: "正在確認登入…", agentAuthUnknown: "重新確認登入", agentLoginWaiting: "請在瀏覽器中完成登入。", agentLoginFailed: "尚未完成登入，請重新登入。", cancel: "取消",
     loginClaude: '使用 Claude 登入', loginChatgpt: '使用 ChatGPT 登入', createAccount: '建立帳號',
     agentInstallGuide: '{agent} 安裝指南', claudeAccountNote: '連接具有 Claude Code 使用權限的 Claude 帳號。', codexAccountNote: '使用 ChatGPT 帳號連接 Codex。',
     pobSetup: '連接 Path of Building', connectExistingPob: '連接現有 PoB',
@@ -260,6 +272,9 @@ export const STRINGS = {
     errPathInvalid: '請選擇 {agent} 的 .exe、.cmd 或 .bat 檔案。',
   },
   ru: {
+    connectPob: "Подключить PoB",
+    connectionLost: "Связь с PoB AI потеряна. Подключитесь снова.", reconnect: "Подключиться", settingFailed: "Не удалось применить изменение. Выберите ещё раз.", settingsOpenFailed: "Не удалось открыть настройки. Повторите попытку.", pobOpenFailed: "Не удалось открыть PoB. Проверьте папку установки в настройках и попробуйте снова.", pobInstallFailed: "Не удалось установить PoB. Повторите попытку или подключите существующую папку PoB.", updateFailed: "Не удалось завершить обновление. Повторите попытку.",
+    agentSignedIn: "Вход выполнен", agentSignedOut: "Нужен вход", agentCheckingAuth: "Проверка входа…", agentAuthUnknown: "Проверить вход", agentLoginWaiting: "Завершите вход в браузере.", agentLoginFailed: "Вход не завершён. Попробуйте войти ещё раз.", cancel: "Отмена",
     loginClaude: 'Войти через Claude', loginChatgpt: 'Войти через ChatGPT', createAccount: 'Создать аккаунт',
     agentInstallGuide: 'Установка {agent}', claudeAccountNote: 'Подключите аккаунт Claude с доступом к Claude Code.', codexAccountNote: 'Подключите Codex через свой аккаунт ChatGPT.',
     pobSetup: 'Подключить Path of Building', connectExistingPob: 'Подключить установленный PoB',
@@ -323,6 +338,9 @@ export const STRINGS = {
     errPathInvalid: 'Выберите файл .exe, .cmd или .bat для {agent}.',
   },
   de: {
+    connectPob: "PoB verbinden",
+    connectionLost: "Die Verbindung zu PoB AI wurde getrennt. Verbinde dich erneut.", reconnect: "Neu verbinden", settingFailed: "Änderung nicht übernommen. Wähle sie erneut aus.", settingsOpenFailed: "Einstellungen konnten nicht geöffnet werden. Versuche es erneut.", pobOpenFailed: "PoB konnte nicht geöffnet werden. Prüfe den Installationsordner in den Einstellungen.", pobInstallFailed: "PoB konnte nicht installiert werden. Versuche es erneut oder verbinde einen vorhandenen PoB-Ordner.", updateFailed: "Update nicht abgeschlossen. Versuche es erneut.",
+    agentSignedIn: "Angemeldet", agentSignedOut: "Anmeldung nötig", agentCheckingAuth: "Anmeldung wird geprüft…", agentAuthUnknown: "Anmeldung erneut prüfen", agentLoginWaiting: "Schließe die Anmeldung im Browser ab.", agentLoginFailed: "Anmeldung nicht abgeschlossen. Melde dich erneut an.", cancel: "Abbrechen",
     loginClaude: 'Mit Claude anmelden', loginChatgpt: 'Mit ChatGPT anmelden', createAccount: 'Konto erstellen',
     agentInstallGuide: '{agent} einrichten', claudeAccountNote: 'Verbinde ein Claude-Konto mit Zugriff auf Claude Code.', codexAccountNote: 'Verbinde Codex mit deinem ChatGPT-Konto.',
     pobSetup: 'Path of Building verbinden', connectExistingPob: 'Vorhandenes PoB verbinden',
@@ -386,6 +404,9 @@ export const STRINGS = {
     errPathInvalid: 'Wähle die .exe-, .cmd- oder .bat-Datei von {agent}.',
   },
   fr: {
+    connectPob: "Connecter PoB",
+    connectionLost: "PoB AI est déconnecté. Reconnectez-vous pour continuer.", reconnect: "Reconnecter", settingFailed: "La modification n’a pas été appliquée. Sélectionnez-la à nouveau.", settingsOpenFailed: "Impossible d’ouvrir les paramètres. Réessayez.", pobOpenFailed: "Impossible d’ouvrir PoB. Vérifiez son dossier dans les paramètres et réessayez.", pobInstallFailed: "Impossible d’installer PoB. Réessayez ou connectez un dossier PoB existant.", updateFailed: "La mise à jour n’a pas abouti. Réessayez.",
+    agentSignedIn: "Connecté", agentSignedOut: "Connexion requise", agentCheckingAuth: "Vérification de la connexion…", agentAuthUnknown: "Revérifier la connexion", agentLoginWaiting: "Terminez la connexion dans votre navigateur.", agentLoginFailed: "La connexion n’a pas abouti. Réessayez de vous connecter.", cancel: "Annuler",
     loginClaude: 'Connexion avec Claude', loginChatgpt: 'Connexion avec ChatGPT', createAccount: 'Créer un compte',
     agentInstallGuide: 'Installer {agent}', claudeAccountNote: 'Connectez un compte Claude ayant accès à Claude Code.', codexAccountNote: 'Connectez Codex avec votre compte ChatGPT.',
     pobSetup: 'Connecter Path of Building', connectExistingPob: 'Connecter un PoB existant',
@@ -449,6 +470,9 @@ export const STRINGS = {
     errPathInvalid: 'Choisissez le fichier .exe, .cmd ou .bat de {agent}.',
   },
   es: {
+    connectPob: "Conectar PoB",
+    connectionLost: "PoB AI está desconectado. Vuelve a conectar para continuar.", reconnect: "Reconectar", settingFailed: "No se pudo aplicar el cambio. Selecciónalo de nuevo.", settingsOpenFailed: "No se pudo abrir la configuración. Inténtalo de nuevo.", pobOpenFailed: "No se pudo abrir PoB. Revisa su carpeta en la configuración e inténtalo de nuevo.", pobInstallFailed: "No se pudo instalar PoB. Inténtalo de nuevo o conecta una carpeta de PoB existente.", updateFailed: "No se pudo completar la actualización. Inténtalo de nuevo.",
+    agentSignedIn: "Sesión iniciada", agentSignedOut: "Inicia sesión", agentCheckingAuth: "Comprobando sesión…", agentAuthUnknown: "Comprobar sesión de nuevo", agentLoginWaiting: "Completa el inicio de sesión en tu navegador.", agentLoginFailed: "No se completó el inicio de sesión. Inténtalo de nuevo.", cancel: "Cancelar",
     loginClaude: 'Entrar con Claude', loginChatgpt: 'Entrar con ChatGPT', createAccount: 'Crear cuenta',
     agentInstallGuide: 'Instalar {agent}', claudeAccountNote: 'Conecta una cuenta de Claude con acceso a Claude Code.', codexAccountNote: 'Conecta Codex con tu cuenta de ChatGPT.',
     pobSetup: 'Conectar Path of Building', connectExistingPob: 'Conectar un PoB existente',
@@ -512,6 +536,9 @@ export const STRINGS = {
     errPathInvalid: 'Elige el archivo .exe, .cmd o .bat de {agent}.',
   },
   'pt-BR': {
+    connectPob: "Conectar PoB",
+    connectionLost: "PoB AI foi desconectado. Conecte novamente para continuar.", reconnect: "Reconectar", settingFailed: "Não foi possível aplicar a alteração. Selecione-a novamente.", settingsOpenFailed: "Não foi possível abrir as configurações. Tente novamente.", pobOpenFailed: "Não foi possível abrir o PoB. Confira a pasta de instalação nas configurações e tente novamente.", pobInstallFailed: "Não foi possível instalar o PoB. Tente novamente ou conecte uma pasta existente do PoB.", updateFailed: "Não foi possível concluir a atualização. Tente novamente.",
+    agentSignedIn: "Conectado", agentSignedOut: "Entre na conta", agentCheckingAuth: "Verificando login…", agentAuthUnknown: "Verificar login novamente", agentLoginWaiting: "Conclua o login no navegador.", agentLoginFailed: "O login não foi concluído. Tente entrar novamente.", cancel: "Cancelar",
     loginClaude: 'Entrar com Claude', loginChatgpt: 'Entrar com ChatGPT', createAccount: 'Criar conta',
     agentInstallGuide: 'Instalar {agent}', claudeAccountNote: 'Conecte uma conta Claude com acesso ao Claude Code.', codexAccountNote: 'Conecte o Codex com sua conta do ChatGPT.',
     pobSetup: 'Conectar Path of Building', connectExistingPob: 'Conectar um PoB existente',
@@ -575,6 +602,9 @@ export const STRINGS = {
     errPathInvalid: 'Escolha o arquivo .exe, .cmd ou .bat do {agent}.',
   },
   th: {
+    connectPob: "เชื่อมต่อ PoB",
+    connectionLost: "PoB AI ถูกตัดการเชื่อมต่อ โปรดเชื่อมต่ออีกครั้ง", reconnect: "เชื่อมต่ออีกครั้ง", settingFailed: "ใช้การเปลี่ยนแปลงไม่ได้ โปรดเลือกอีกครั้ง", settingsOpenFailed: "เปิดการตั้งค่าไม่ได้ โปรดลองอีกครั้ง", pobOpenFailed: "เปิด PoB ไม่ได้ โปรดตรวจสอบโฟลเดอร์ติดตั้งในการตั้งค่าแล้วลองอีกครั้ง", pobInstallFailed: "ติดตั้ง PoB ไม่ได้ โปรดลองอีกครั้งหรือเชื่อมต่อโฟลเดอร์ PoB ที่มีอยู่", updateFailed: "อัปเดตไม่สำเร็จ โปรดลองอีกครั้ง",
+    agentSignedIn: "เข้าสู่ระบบแล้ว", agentSignedOut: "ต้องเข้าสู่ระบบ", agentCheckingAuth: "กำลังตรวจสอบการเข้าสู่ระบบ…", agentAuthUnknown: "ตรวจสอบการเข้าสู่ระบบอีกครั้ง", agentLoginWaiting: "เข้าสู่ระบบให้เสร็จในเบราว์เซอร์", agentLoginFailed: "เข้าสู่ระบบไม่สำเร็จ โปรดลองเข้าสู่ระบบอีกครั้ง", cancel: "ยกเลิก",
     loginClaude: 'เข้าสู่ระบบด้วย Claude', loginChatgpt: 'เข้าสู่ระบบด้วย ChatGPT', createAccount: 'สร้างบัญชี',
     agentInstallGuide: 'คู่มือติดตั้ง {agent}', claudeAccountNote: 'เชื่อมต่อบัญชี Claude ที่มีสิทธิ์ใช้งาน Claude Code', codexAccountNote: 'เชื่อมต่อ Codex ด้วยบัญชี ChatGPT ของคุณ',
     pobSetup: 'เชื่อมต่อ Path of Building', connectExistingPob: 'เชื่อมต่อ PoB ที่มีอยู่',

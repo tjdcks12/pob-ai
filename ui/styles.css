@@ -40,12 +40,14 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 /* controls (agent.css:21-37) */
 .agent-dock button, .agent-dock select, .agent-dock input:not([type=checkbox]), .agent-dock textarea {
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-inner); color: var(--fg); padding: 6px 10px; min-height: 32px; }
+.agent-header { position: relative; z-index: 8; }
+.popover-backdrop { position: fixed; inset: 0; z-index: 5; background: rgb(0 0 0 / 38%); }
 .agent-dock button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
   transition: background-color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), color var(--dur-1) var(--ease); }
 .agent-dock button:hover:enabled { background: var(--surface); }
 .agent-dock button:disabled { opacity: .45; cursor: default; }
 .agent-dock :is(button, select, input, textarea):focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
-.agent-dock :is(select, input):focus { border-color: var(--primary); outline: none; }
+.agent-dock :is(select, input):focus { border-color: var(--primary); }
 .agent-dock .agent-icon { flex: none; width: 28px; height: 28px; min-height: 28px; padding: 0; border: 0; color: var(--fg-2); background: transparent; }
 .agent-dock .agent-icon:hover:enabled, .agent-dock .agent-icon[aria-expanded=true] { color: var(--fg); background: var(--surface-hover); }
 .agent-dock .agent-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 600; }
@@ -107,6 +109,9 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .pob-setup p { margin: 7px 0 12px; color: var(--fg-2); font-size: 12px; }
 .pob-setup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .pob-setup #pob-setup-status { margin-bottom: 0; color: var(--red); }
+.connection-banner { display: flex; flex: none; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface); color: var(--fg-2); font-size: 12px; }
+.connection-banner span { flex: 1; min-width: 0; }
+.notice { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .empty { display: flex; flex-direction: column; gap: 12px; padding: 14px 0; }
 .empty h2 { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--fg-2); }
 .suggestions { display: grid; gap: 6px; }

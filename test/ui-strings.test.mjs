@@ -19,6 +19,12 @@ test('all ten languages have every string', () => {
   }
 });
 
+test('the console-free launcher provides recovery text in the same ten languages', () => {
+  const strings = JSON.parse(fs.readFileSync(new URL('../desktop/launcher-strings.json', import.meta.url), 'utf8'));
+  assert.deepEqual(Object.keys(strings).sort(), Object.keys(LOCALES).sort());
+  for (const row of Object.values(strings)) assert.ok(row.length === 3 && row.every(text => typeof text === 'string' && text.trim()));
+});
+
 test('the page and the script only use known strings', () => {
   const keys = new Set([...html.matchAll(/data-(?:i18n|title|placeholder|suggest)="([^"]+)"/g)].map(m => m[1]));
   for (const m of app.matchAll(/\bt\('([A-Za-z0-9]+)'\)/g)) keys.add(m[1]);

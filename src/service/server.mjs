@@ -57,6 +57,7 @@ export async function createService({ port, log = line => process.stderr.write(`
   runtime.service = service;
   service.openPob = (options = {}) => {
     if (bridge.connected) return { alreadyOpen: true, ...bridge.info };
+    if (service.pobProcess?.exitCode === null && !service.pobProcess.signalCode) return { opening: true, pid: service.pobProcess.pid };
     const child = launchPob(runtime.install(), { port: bridge.port, token: bridge.token }, options);
     service.pobProcess = child;
     // A PoB that exits before connecting may be applying an update on its first run.
@@ -85,8 +86,9 @@ export async function createService({ port, log = line => process.stderr.write(`
   })();
   service.reopenAfterUpdate = reopenAfterUpdate;
   service.waitForPob = (timeoutMs = 45000) => bridge.connected ? Promise.resolve(bridge.info) : new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(Object.assign(new Error('The PoB window did not connect in time.'), { code: 'LIVE_TIMEOUT' })), timeoutMs);
-    bridge.once('connected', info => { clearTimeout(timer); resolve(info); });
+    const connected = info => { clearTimeout(timer); resolve(info); };
+    const timer = setTimeout(() => { bridge.off('connected', connected); reject(Object.assign(new Error('The PoB window did not connect in time.'), { code: 'LIVE_TIMEOUT' })); }, timeoutMs);
+    bridge.once('connected', connected);
   });
   // PoB window font and translation: the window asks for the glyphs it is missing; the
   // language is remembered.
@@ -117,7 +119,7 @@ export async function createService({ port, log = line => process.stderr.write(`
     }
     // The AI button in the PoB title bar: bring an open panel forward, or open one.
     if (event?.kind === 'open-panel') {
-      if (!event.panelFound) openAgentPanel(service.url);
+      if (!event.panelFound || event.panelFocused === false) Promise.resolve(openAgentPanel(service.url)).catch(error => log(`panel: ${error.message}`));
       broadcast('focus-panel', {});
       return;
     }

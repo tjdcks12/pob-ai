@@ -3,12 +3,31 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pobai-panel-'));
 process.env.POB_AI_HOME = home;
 fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify({ lastUpdateCheck: Date.now() }));
 const { createService } = await import('../src/service/server.mjs');
 after(() => fs.rmSync(home, { recursive: true, force: true }));
+
+test('repeated open requests reuse the PoB being started and timed-out waits release listeners', async () => {
+  const service = await createService({ port: 0, log: () => {} });
+  const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { windowsHide: true, stdio: 'ignore' });
+  await once(child, 'spawn');
+  service.pobProcess = child;
+  try {
+    assert.deepEqual(service.openPob(), { opening: true, pid: child.pid });
+    assert.deepEqual(service.openPob(), { opening: true, pid: child.pid });
+    const before = service.bridge.listenerCount('connected');
+    await assert.rejects(service.waitForPob(1), { code: 'LIVE_TIMEOUT' });
+    assert.equal(service.bridge.listenerCount('connected'), before);
+  } finally {
+    const stopped = once(child, 'close'); child.kill(); await stopped;
+    service.close();
+  }
+});
 
 test('PoB settings and the authenticated settings button open a separate modal without opening AI', async () => {
   const agent = [], settings = [];
@@ -53,6 +72,8 @@ test('a browser subscriber does not suppress opening the desktop panel', async (
     assert.match(new TextDecoder().decode(focus.value), /event: focus-panel/);
     service.bridge.emit('event', { kind: 'open-panel', panelFound: true });
     assert.equal(opened.length, 1, 'the existing native panel is reused');
+    service.bridge.emit('event', { kind: 'open-panel', panelFound: true, panelFocused: false });
+    assert.equal(opened.length, 2, 'the host retries activation when Windows declined the first attempt');
   } finally {
     abort.abort();
     service.close();
