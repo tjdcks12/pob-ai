@@ -1,5 +1,5 @@
 -- PoB AI title bar: replaces the Windows caption of the PoB window with a 36px bar drawn in Lua
--- (PoB AI mark, the window title PoB sets, an "AI" button that opens the agent panel, and
+-- (PoB AI mark, the window title PoB sets, settings and AI agent buttons, and
 -- minimize / maximize / close). No PoB file is changed:
 --   * The window keeps its normal styles; a comctl32 window subclass answers WM_NCCALCSIZE with
 --     "no frame" (the whole window is client area, inset by the frame while maximized so it fits
@@ -19,8 +19,9 @@
 -- Icons (adapter/live/assets): white PNGs tinted with SetDrawColor. tb-minus-32, tb-close-32 and
 -- tb-sparkles-32 are Lucide minus, x and sparkles at 32px (2x of 16px); tb-square-26 and
 -- tb-restore-26 are Lucide square and copy at 26px (2x of 13px), all with stroke-width 1.75,
--- matching poe2way's title bar. pobai-mark-36 is ui/icon.svg without its dark tile, gold made
--- white, at 36px (2x of 18px). They were rendered from inline SVG with headless Chrome
+-- matching poe2way's title bar. poe2way-mark-64 is the original poe2way brand asset.
+-- tb-settings-32 uses the existing Lucide settings path from ui/icons.svg, rendered with WPF.
+-- The control icons were rendered from inline SVG with headless Chrome
 -- (--default-background-color=00000000) and cropped with System.Drawing, keeping only alpha.
 local ffi = require('ffi')
 local bit = require('bit')
@@ -52,6 +53,7 @@ uint32_t GetDpiForWindow(void*);
 int GetSystemMetricsForDpi(int, uint32_t);
 int AdjustWindowRectExForDpi(POBAI_RECT*, uint32_t, int, uint32_t, uint32_t);
 int WideCharToMultiByte(uint32_t, uint32_t, const uint16_t*, int, char*, int, const char*, int*);
+uint32_t GetCurrentProcessId(void);
 typedef struct GLFWwindow GLFWwindow;
 GLFWwindow* glfwGetCurrentContext(void);
 void* glfwGetWin32Window(GLFWwindow*);
@@ -60,6 +62,7 @@ local user32 = ffi.load('user32')
 local comctl = ffi.load('comctl32')
 local kernel32 = ffi.load('kernel32')
 local glfw = ffi.load('glfw3')
+local panel = dofile(POBAI_ADAPTER .. '/live/panel.lua')
 
 local WM = { CLOSE = 0x0010, GETMINMAXINFO = 0x0024, NCCALCSIZE = 0x0083, NCHITTEST = 0x0084, NCLBUTTONDOWN = 0x00A1,
 	NCLBUTTONUP = 0x00A2, NCLBUTTONDBLCLK = 0x00A3, SYSCOMMAND = 0x0112, NCMOUSELEAVE = 0x02A2 }
@@ -71,9 +74,6 @@ local SUBCLASS_ID = 0x504F4241 -- "POBA"
 local EDGE = 6                 -- resize border inside the window, in virtual px
 local LAYER = 10000             -- above PoB's popups (1000) and the agent overlay (950)
 local MOUSE = { LEFTBUTTON = true, RIGHTBUTTON = true, MIDDLEBUTTON = true, MOUSE4 = true, MOUSE5 = true, WHEELUP = true, WHEELDOWN = true }
--- ui/icon.svg gradient stops, used to tint the white mark (the darker stop on the light theme).
-local MARK = { dark = { 0.965, 0.769, 0.325 }, light = { 0.769, 0.416, 0.106 } }
-
 local S = { title = '', themeId = 'dark', procErrors = 0, pobDown = {}, layout = { aiFrom = 0, aiTo = 0 } }
 local raw = {}
 
@@ -108,6 +108,7 @@ local function barPart(fromRight)
 	if fromRight < btn * 2 then return 'max' end
 	if fromRight < btn * 3 then return 'min' end
 	if fromRight >= S.layout.aiFrom and fromRight < S.layout.aiTo then return 'ai' end
+	if S.layout.settingsFrom and fromRight >= S.layout.settingsFrom and fromRight < S.layout.settingsTo then return 'settings' end
 	return nil
 end
 
@@ -184,9 +185,10 @@ end
 jit.off(safeProc)
 
 -- ===== Drawing =====
-local function loadImage(name)
+local function loadImage(name, mipmap)
 	local handle = NewImageHandle()
-	handle:Load(POBAI_ADAPTER .. '/live/assets/' .. name)
+	if mipmap then handle:Load(POBAI_ADAPTER .. '/live/assets/' .. name, 'CLAMP', 'MIPMAP')
+	else handle:Load(POBAI_ADAPTER .. '/live/assets/' .. name) end
 	local w = handle:ImageSize()
 	assert(w and w > 0, 'cannot load ' .. name)
 	return handle
@@ -254,13 +256,18 @@ local function drawBar()
 	icon(S.img.sparkles, aiLeft + 10 + 8, 16, aiColor)
 	color(aiColor)
 	textDraw(aiLeft + 10 + 16 + 6, math.floor((bar - 14) / 2), 'LEFT', 14, 'VAR BOLD', 'AI')
+	local settingsRight, settingsW = aiLeft - 4, 30
+	local settingsLeft = settingsRight - settingsW
+	S.layout.settingsFrom, S.layout.settingsTo = vw - settingsRight, vw - settingsLeft
+	if hover == 'settings' then color(t['surface-hover']) raw.DrawImage(nil, settingsLeft, 6, settingsW, bar - 13) end
+	icon(S.img.settings, settingsLeft + settingsW / 2, 16, hover == 'settings' and t.fg or t['fg-2'])
 
-	-- PoB AI mark and the window title, clipped before the AI button.
-	color(S.themeId == 'light' and MARK.light or MARK.dark)
+	-- Original poe2way mark and the window title, clipped before the AI button.
+	color({ 1, 1, 1 })
 	raw.DrawImage(S.img.mark, 12, (bar - 18) / 2, 18, 18)
 	local titleLeft = 12 + 18 + 8
-	if aiLeft - 12 > titleLeft then
-		raw.SetViewport(titleLeft, 0, aiLeft - 12 - titleLeft, bar)
+	if settingsLeft - 12 > titleLeft then
+		raw.SetViewport(titleLeft, 0, settingsLeft - 12 - titleLeft, bar)
 		color(t['fg-2'])
 		textDraw(0, math.floor((bar - 14) / 2), 'LEFT', 14, 'VAR', S.title)
 		raw.SetViewport()
@@ -279,7 +286,10 @@ local function act(part)
 	elseif part == 'max' then
 		toggleMaximize(S.hwnd)
 	elseif part == 'ai' then
-		if pobai_emit then pobai_emit({ kind = 'open-panel' }) end
+		local result = panel.focus()
+		if pobai_emit then pobai_emit({ kind = 'open-panel', panelFound = result.found }) end
+	elseif part == 'settings' then
+		if pobai_emit then pobai_emit({ kind = 'open-settings', ownerPid = tonumber(kernel32.GetCurrentProcessId()) }) end
 	end
 end
 
@@ -394,9 +404,9 @@ local function unwrapGlobals()
 	wrappers = {}
 end
 
---- Follows the PoB window theme: 'light' uses the light tokens, 'dark' and 'pob' the dark ones.
+--- Follows every PoB window palette; the original PoB template uses the dark caption.
 function window.setTheme(id)
-	S.themeId = id == 'light' and 'light' or 'dark'
+	S.themeId = S.tokens and S.tokens[id] and id or 'dark'
 	if S.tokens then S.palette = S.tokens[S.themeId] end
 end
 
@@ -410,8 +420,9 @@ local function install()
 	raw.DrawString = POBAI_RAW and POBAI_RAW.DrawString or DrawString
 	raw.DrawStringWidth = POBAI_RAW and POBAI_RAW.DrawStringWidth or DrawStringWidth
 	S.img = {
-		mark = loadImage('pobai-mark-36.png'), minus = loadImage('tb-minus-32.png'), square = loadImage('tb-square-26.png'),
+		mark = loadImage('poe2way-mark-64.png', true), minus = loadImage('tb-minus-32.png'), square = loadImage('tb-square-26.png'),
 		restore = loadImage('tb-restore-26.png'), close = loadImage('tb-close-32.png'), sparkles = loadImage('tb-sparkles-32.png'),
+		settings = loadImage('tb-settings-32.png'),
 	}
 
 	local win = glfw.glfwGetCurrentContext()
@@ -422,6 +433,7 @@ local function install()
 	S.title = cleanTitle(windowText(h))
 	local aiW = aiWidth()
 	S.layout.aiFrom, S.layout.aiTo = S.btn * 3 + 8, S.btn * 3 + 8 + aiW
+	S.layout.settingsFrom, S.layout.settingsTo = S.layout.aiTo + 4, S.layout.aiTo + 34
 
 	-- Where the client area is now: the window shrinks onto it, so the saved window size stays
 	-- the same from one start to the next.

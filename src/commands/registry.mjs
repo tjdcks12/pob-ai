@@ -2,6 +2,7 @@
 // `name` is also the adapter op name unless `op` is given. Commands with `local` run in Node.
 import { bool, int, json, list, str } from './schema.mjs';
 import { LOCAL } from './local.mjs';
+import { THEME_OPTIONS } from '../../ui/themes.js';
 
 const node = str('node', 'Passive node name (any unique part) or numeric id', { required: true, positional: true, rest: true });
 const group = int('group', 'Skill group number from `pob skills list`', { required: true, positional: true });
@@ -274,17 +275,17 @@ export const COMMANDS = [
   { name: 'ui.trade', summary: 'Open PoB\'s trade window (it signs in to the trade site itself)', live: true },
   { name: 'ui.buy_similar', summary: 'Open PoB\'s Buy Similar window for an item', live: true,
     args: [str('item', 'Item id or equipped slot', { required: true, positional: true, rest: true })] },
-  { name: 'ui.theme', summary: 'PoB window theme: pob (the look of PoB itself), dark or light (remembered for next time)', local: LOCAL.theme,
-    args: [str('theme', 'Theme name', { required: true, positional: true, enum: ['pob', 'dark', 'light', 'default', 'ember', 'vaal', 'midnight', 'parchment'] })] },
+  { name: 'ui.theme', summary: 'Shared panel and PoB theme: pob (original), dark, light, ocean, forest or sand (remembered for next time)', local: LOCAL.theme,
+    args: [str('theme', 'Theme name', { required: true, positional: true, enum: THEME_OPTIONS })] },
   { name: 'ui.language', summary: 'Show the PoB window in another language (remembered for next time)', local: LOCAL.windowLanguage,
-    args: [str('language', 'en, ko, ja, zh-Hant, ru, de, fr, es, pt-BR or th', { required: true, positional: true, enum: ['en', 'ko', 'ja', 'zh-Hant', 'ru', 'de', 'fr', 'es', 'pt-BR', 'th'] })],
-    details: 'Game names come from the game client; the interface text of PoB is translated by PoB AI. Text without a translation stays in English.' },
+    args: [str('language', 'system, en, ko, ja, zh-Hant, ru, de, fr, es, pt-BR or th', { required: true, positional: true, enum: ['system', 'en', 'ko', 'ja', 'zh-Hant', 'ru', 'de', 'fr', 'es', 'pt-BR', 'th'] })],
+    details: 'The default, system, follows the Windows display language. An explicit language overrides it. Game names come from the game client; the interface text of PoB is translated by PoB AI. Text without a translation stays in English.' },
   { name: 'ui.language_apply', summary: 'Apply a window language dictionary now (advanced)', live: true, timeoutMs: 120000,
     args: [str('locale', 'Language', { required: true }), str('dict', 'Dictionary file')] },
   { name: 'ui.title_bar', summary: 'Use the PoB AI title bar on the PoB window, or the Windows one (applies the next time PoB opens)', local: LOCAL.titleBar,
     args: [str('style', 'custom or windows', { required: true, positional: true, enum: ['custom', 'windows'] })] },
   { name: 'ui.theme_apply', summary: 'Apply a theme to the open PoB window now (advanced)', op: 'ui.theme', live: true,
-    args: [str('theme', 'Theme name', { required: true, positional: true, enum: ['pob', 'dark', 'light', 'default', 'ember', 'vaal', 'midnight', 'parchment'] })] },
+    args: [str('theme', 'Theme name', { required: true, positional: true, enum: THEME_OPTIONS })] },
 ];
 
 const byName = new Map(COMMANDS.map(c => [c.name, c]));

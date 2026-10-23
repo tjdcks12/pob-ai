@@ -1,7 +1,7 @@
 /* PoB AI design tokens, shared by the agent panel (CSS) and the PoB window (adapter/live/tokens.lua
    reads this file). Values follow poe2way desktop's design system: flat panels told apart by
    background steps, one blue accent, 4px corners, no shadows or gradients.
-   Themes: "dark" (default) and "light". The third theme, "pob", keeps Path of Building's own look
+   Templates: dark, light, ocean, forest and sand. The initial template, "pob", keeps PoB's own look
    and needs no tokens.
    Format rules (the Lua reader depends on them, test/tokens.test.mjs checks them):
    one declaration per line as `--name: value;`, colours as #rrggbb, sizes in px. */
@@ -13,21 +13,22 @@
   --radius-small: 3px;
   --titlebar-h: 36px;
   --titlebar-btn-w: 44px;
-  --bg: #1c1c1f;
-  --surface: #31313c;
-  --surface-inner: #282830;
-  --surface-hover: #424254;
-  --divider: #1c1c1f;
-  --line: #424254;
-  --fg: #ffffff;
-  --fg-2: #b4b4c5;
-  --fg-3: #9999ad;
-  --fg-4: #515163;
-  --primary: #5383e8;
-  --primary-strong: #4171d6;
-  --primary-soft: #28344e;
-  --primary-line: #2f436e;
-  --primary-text: #b3cdff;
+  --bg: #171b23;
+  --surface: #202631;
+  --surface-inner: #1b2029;
+  --surface-hover: #2c3543;
+  --table-alt: #1e2430;
+  --divider: #171b23;
+  --line: #343e4e;
+  --fg: #e7edf5;
+  --fg-2: #a6b2c4;
+  --fg-3: #8a98ae;
+  --fg-4: #62728b;
+  --primary: #719dff;
+  --primary-strong: #5383e8;
+  --primary-soft: #263858;
+  --primary-line: #395789;
+  --primary-text: #b4cdff;
   --on-primary: #ffffff;
   --red: #e84057;
   --red-soft: #59343b;
@@ -43,16 +44,17 @@
   --radius-small: 3px;
   --titlebar-h: 36px;
   --titlebar-btn-w: 44px;
-  --bg: #edeef1;
+  --bg: #edf1f6;
   --surface: #ffffff;
-  --surface-inner: #f7f7f9;
-  --surface-hover: #e4e6ef;
-  --divider: #edeef1;
-  --line: #dbe0e4;
-  --fg: #202d37;
-  --fg-2: #4b5763;
-  --fg-3: #5e6a76;
-  --fg-4: #a3adb6;
+  --surface-inner: #fafbfd;
+  --surface-hover: #e7edf6;
+  --table-alt: #f1f5fa;
+  --divider: #edf1f6;
+  --line: #d5deea;
+  --fg: #202c3e;
+  --fg-2: #4c5e76;
+  --fg-3: #60718a;
+  --fg-4: #8797ad;
   --primary: #5383e8;
   --primary-strong: #4171d6;
   --primary-soft: #ecf2ff;
@@ -64,6 +66,99 @@
   --red-line: #ffd8d9;
   --ok: #006b5c;
   --warn: #985000;
+}
+
+[data-theme="ocean"] {
+  --font: "Pretendard Variable", "Segoe UI", "Malgun Gothic", "Yu Gothic UI", "Microsoft JhengHei UI", "Leelawadee UI", sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+  --radius: 4px;
+  --radius-small: 3px;
+  --titlebar-h: 36px;
+  --titlebar-btn-w: 44px;
+  --bg: #111f2b;
+  --surface: #182d3b;
+  --surface-inner: #142632;
+  --surface-hover: #234353;
+  --table-alt: #1a3140;
+  --divider: #111f2b;
+  --line: #345568;
+  --fg: #e1f1f6;
+  --fg-2: #a5c0cc;
+  --fg-3: #89a7b8;
+  --fg-4: #627f91;
+  --primary: #60c7d7;
+  --primary-strong: #79d7e3;
+  --primary-soft: #1e4452;
+  --primary-line: #337183;
+  --primary-text: #a2e6ec;
+  --on-primary: #102c36;
+  --red: #f27d91;
+  --red-soft: #4b2b3b;
+  --red-line: #754052;
+  --ok: #6bceae;
+  --warn: #efb76f;
+}
+
+[data-theme="forest"] {
+  --font: "Pretendard Variable", "Segoe UI", "Malgun Gothic", "Yu Gothic UI", "Microsoft JhengHei UI", "Leelawadee UI", sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+  --radius: 4px;
+  --radius-small: 3px;
+  --titlebar-h: 36px;
+  --titlebar-btn-w: 44px;
+  --bg: #18221d;
+  --surface: #23352b;
+  --surface-inner: #1c2b23;
+  --surface-hover: #344a3c;
+  --table-alt: #25392d;
+  --divider: #18221d;
+  --line: #435b49;
+  --fg: #e7eee1;
+  --fg-2: #b6c6ac;
+  --fg-3: #9bad93;
+  --fg-4: #71866e;
+  --primary: #a5c796;
+  --primary-strong: #bad7ab;
+  --primary-soft: #324a32;
+  --primary-line: #5f7b54;
+  --primary-text: #d0e7c2;
+  --on-primary: #1a2c1b;
+  --red: #ee8b86;
+  --red-soft: #4b302e;
+  --red-line: #784b43;
+  --ok: #8bcea9;
+  --warn: #dfba7a;
+}
+
+[data-theme="sand"] {
+  --font: "Pretendard Variable", "Segoe UI", "Malgun Gothic", "Yu Gothic UI", "Microsoft JhengHei UI", "Leelawadee UI", sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+  --radius: 4px;
+  --radius-small: 3px;
+  --titlebar-h: 36px;
+  --titlebar-btn-w: 44px;
+  --bg: #eee8dc;
+  --surface: #faf6ed;
+  --surface-inner: #f5f0e7;
+  --surface-hover: #e4dbca;
+  --table-alt: #eee6d6;
+  --divider: #eee8dc;
+  --line: #cfc2ad;
+  --fg: #352e26;
+  --fg-2: #685946;
+  --fg-3: #75644f;
+  --fg-4: #9b8c77;
+  --primary: #89613b;
+  --primary-strong: #74502e;
+  --primary-soft: #e9dcc7;
+  --primary-line: #ceaf82;
+  --primary-text: #6b4a27;
+  --on-primary: #ffffff;
+  --red: #af3742;
+  --red-soft: #f5e1df;
+  --red-line: #dca9a3;
+  --ok: #3e694e;
+  --warn: #855214;
 }
 
 /* Pretendard has no Han characters; keep Japanese and Chinese glyphs from their own system fonts. */

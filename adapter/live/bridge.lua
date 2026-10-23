@@ -81,6 +81,12 @@ local function poll()
 end
 
 local main = POBAI_MAIN
+-- SimpleGraphic skips OnFrame for an inactive window once Common.lua's coroutine list
+-- contains no suspended work. A socket waiting for its next command is still work: retain
+-- one suspended coroutine so switching to the agent panel cannot stop the bridge. It does
+-- not run operations; poll and util.onMain continue to run on PoB's main Lua thread.
+main.__pobaiBridgeWait = coroutine.create(function() coroutine.yield() end)
+coroutine.resume(main.__pobaiBridgeWait)
 local frame = main.OnFrame
 POBAI_FRAMES = 0
 main.OnFrame = function(self, ...)

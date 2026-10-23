@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="ui/icon.svg" width="88" alt="PoB AI">
+<img src="docs/images/poe2way-logo.svg" width="88" height="88" alt="PoB AI (poe2way 로고)">
 
 # PoB AI
 
@@ -18,10 +18,10 @@
 </div>
 
 <p align="center">
-  <img src="docs/images/tree-highlight.jpg" width="72%" alt="PoB AI가 가까운 노드 중 가장 효율이 좋은 노드로 패시브 트리를 이동하고 계산 결과를 표시한 화면">
-  <img src="docs/images/panel-ko.jpg" width="24%" alt="PoB AI 에이전트 패널">
+  <img src="docs/images/window-ko.png" width="72%" alt="오션 테마와 기존 분류색을 적용한 PoB 계산 화면">
+  <img src="docs/images/panel-ko.jpg" width="24%" alt="Claude Code와 Codex 대화 탭이 있는 AI Agent 패널">
 </p>
-<p align="center"><sub>왼쪽: <code>pob calc node-power</code>가 5포인트 안에서 가장 효율이 좋은 노드를 찾고, <code>pob ui show-node</code>가 PoB 화면에서 그 노드로 이동해 표시한 모습입니다. 오른쪽: 에이전트 패널입니다.</sub></p>
+<p align="center"><sub>오션 테마를 적용한 PoB와 별도 AI Agent 패널입니다. 대화 탭·모델 선택·이미지 첨부는 에이전트 패널에서, 일반 설정은 별도 창에서 사용합니다.</sub></p>
 
 ---
 
@@ -34,28 +34,31 @@ Path of Building은 PoE2 빌드를 가장 정확하게 계산하는 도구이지
 - **한 번만 받으면 됩니다.** 이미 설치한 PoB에 PoB 파일을 하나도 바꾸지 않고 붙습니다. PoB는 평소처럼
   스스로 업데이트하고 PoB AI는 그대로 따라갑니다. PoB AI 자체 업데이트도 클릭 한 번이면 됩니다.
 - **편집기 전체를 명령으로.** 빌드와 폴더, 로드아웃, 캐릭터 가져오기, 패시브 트리, 스킬·젬, 아이템
-  (제작, 기름 부여, 룬, 타락), 거래소 검색, 설정, 계산, 파티, 메모, PoB 옵션까지 142개 명령으로 다룹니다.
+  (제작, 기름 부여, 룬, 타락), 거래소 검색, 설정, 계산, 파티, 메모, PoB 옵션까지 143개 명령으로 다룹니다.
 - **위치를 직접 보여 줍니다.** "적 종류는 어디서 바꿔?"라고 물으면 에이전트가 PoB를 설정 탭으로
   바꾸고 해당 항목을 강조합니다. 패시브 노드, 아이템 슬롯, 젬 그룹, 스탯도 같은 방식입니다.
 - **실제 계산값만.** 가정 계산, 패시브 노드 효율 순위, 빌드 비교 모두 PoB 자체 계산기를 씁니다.
 - **어디서나 내 언어로.** PoB 창, 패널, 에이전트 답변을 10개 언어와 게임 공식 용어로 보여 줍니다.
   게임에서 복사한 아이템은 어느 클라이언트 언어든 PoB가 읽는 영어 문구로 바꿉니다.
-- **더 깔끔한 PoB.** 기본·라이트 테마는 PoB의 버튼, 입력란, 패널을 새로 그리고 모든 글자를 Pretendard로
-  보여 주며, Windows 제목줄 대신 AI 버튼이 있는 제목줄을 씁니다. PoB 테마는 Path of Building 모습 그대로입니다.
+- **두 창에 같은 테마를.** PoB 원본·다크·라이트·오션·포레스트·샌드 중 한 번만 고르면 패널과 PoB 창에
+  함께 적용합니다. 초기 기본값은 PoB 원본입니다. 다른 테마는 Pretendard, 창 너비에 맞는 계산 표,
+  테마에 맞춘 툴팁을 사용하며 기존 분류색을 유지합니다.
+- **AI와 설정을 따로.** 제목줄의 **AI** 버튼은 에이전트 패널을 열거나 앞으로 가져옵니다.
+  **톱니 버튼**은 화면·언어·PoB·에이전트 구성을 위한 별도 설정 모달을 엽니다.
 - **이미 쓰는 에이전트를 그대로.** Claude Code나 Codex를 기존 로그인으로 실행합니다. 카드에서 고르고, 여러
   탭에서 동시에 대화하고, 모델과 추론 강도를 정하고, 스크린샷을 첨부할 수 있습니다. API 키가 필요 없습니다.
 
 <p align="center">
-  <img src="docs/images/window-ko.jpg" width="96%" alt="PoB AI가 한국어로 보여 주는 PoB 계산 탭">
+  <img src="docs/images/settings-ko.jpg" width="72%" alt="공통 테마 6개와 시스템 언어 설정을 제공하는 설정 창">
 </p>
-<p align="center"><sub><code>pob ui language ko</code>로 한국어로 바꾼 PoB 계산 탭입니다. 게임 용어는 게임 클라이언트에서, PoB 자체 화면 문구는 PoB AI가 번역한 것을 씁니다.</sub></p>
+<p align="center"><sub>테마는 한 곳에서 골라 두 창에 함께 적용합니다. 패널과 PoB 창의 기본 언어는 Windows 표시 언어를 따르며, 직접 선택할 수도 있습니다.</sub></p>
 
 ## 설치
 
 **필요한 것:** Windows 10/11, 그리고 대화 기능을 쓰려면 로그인된
 [Claude Code](https://docs.claude.com/en/docs/claude-code)(또는 Codex).
 
-1. **Releases**에서 `pob-ai-<버전>-win-x64.zip`을 받아 아무 곳에나 압축을 풉니다. Node.js가 들어 있습니다.
+1. **[Releases](https://github.com/tjdcks12/pob-ai/releases)**에서 `pob-ai-<버전>-win-x64.zip`을 받아 아무 곳에나 압축을 풉니다. Node.js가 들어 있습니다.
 2. **`PoB AI.cmd`**를 더블클릭하면 PoB와 에이전트 패널이 열립니다.
 
 PoB AI는 보통의 설치 위치에서 [Path of Building Community (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases)를
@@ -84,15 +87,20 @@ node bin/pob.mjs help
 
 ## 이렇게 물어보세요
 
-> 피나클 보스 기준으로 피해를 제대로 측정하도록 PoB를 세팅해 줘.
+대화 탭 옆의 **+**로 Claude Code나 Codex 대화를 추가합니다. 탭마다 입력 초안과 첨부 이미지를
+유지합니다. 입력창 옆에서 모델과 추론 강도를 고르고, **대화 기록**에서 이전 대화를 이어갈 수 있습니다.
 
-> 6포인트 안에서 피해를 가장 많이 올려 주는 패시브가 뭐야? 어디 있는지 보여 줘.
+> 내 빌드에서 가장 먼저 개선할 점 3가지를 알려줘.
 
-> https://pobb.in/… 가져와서 내 빌드랑 비교해 줘.
+> 보스전 DPS가 부풀려진 설정이 있는지 확인해줘.
 
-> 이 아이템 넣고 뭐가 달라지는지 알려 줘. *(게임에서 복사한 아이템 붙여 넣기)*
+> 패시브 5포인트만 재배치해서 피해를 높일 수 있을까?
 
-> 지금 끼고 있는 반지랑 비슷한 걸 거래소에서 찾아 줘.
+> 어느 장비부터 바꾸면 좋을지, 필요한 옵션과 함께 알려줘.
+
+> 주력 스킬의 보조 젬 조합을 비교해줘.
+
+> 한 방에 죽기 쉬운 원인과 방어 보완 방법을 알려줘.
 
 에이전트는 질문한 언어로, 게임 공식 용어를 써서 답합니다.
 
@@ -134,12 +142,15 @@ PoB의 *Find Timeless Jewel*(영겁의 보석 찾기)은 PoB PoE2 자체에서 �
 
 ## 내 언어로
 
+패널과 PoB 창의 기본 언어는 Windows 표시 언어를 따릅니다. 설정에서 언어를 직접 고르면 그 선택을 유지하며, **시스템 설정 따름**(PoB 창은 `pob ui language system`도 가능)을 선택하면 다시 Windows 언어를 따릅니다. 지원하지 않는 시스템 언어는 영어로 표시합니다.
+
 | | |
 | --- | --- |
-| **PoB 창** | `pob ui language ko`(또는 패널 설정): English, 한국어, 日本語, 繁體中文, Русский, Deutsch, Français, Español, Português (Brasil), ไทย. 게임 이름은 게임 클라이언트의 공식 용어를, PoB 화면 문구 약 2,000개는 PoB AI의 번역을 씁니다. |
+| **PoB 창** | `pob ui language ko`(또는 설정 모달): English, 한국어, 日本語, 繁體中文, Русский, Deutsch, Français, Español, Português (Brasil), ไทย. 게임 이름은 게임 클라이언트의 공식 용어를, PoB 화면 문구 약 2,000개는 PoB AI의 번역을 씁니다. |
 | **에이전트와 명령** | 질문한 언어로 답하고, 게임 이름을 그 언어로 받고 돌려줍니다(`--lang`). |
 | **아이템** | 10개 언어 게임 클라이언트에서 복사한 문구를 PoB용으로 바꿉니다. 바꾸지 못한 줄은 몰래 버리지 않고 알려 줍니다. |
-| **테마** | 패널과 PoB 창 모두 PoB·기본·라이트(`pob ui theme pob\|dark\|light`). 기본·라이트는 PoB 컨트롤을 새로 그리고 글자를 Pretendard로 보여 주며, PoB는 원래 모습 그대로입니다. |
+| **테마** | PoB 원본·다크·라이트·오션·포레스트·샌드(`pob ui theme pob\|dark\|light\|ocean\|forest\|sand`). 설정에서 한 번 선택하면 패널과 PoB 창에 함께 적용하며, PoB가 꺼져 있으면 다음 실행 때 적용합니다. 새 설치 기본값은 PoB 원본입니다. 다른 테마는 Pretendard와 창 너비에 맞는 계산 표를 사용하고 기존 분류색을 유지합니다. |
+| **패널 창** | 별도 Edge WebView2 창에서 poe2way 로고, 드래그 가능한 상단 메뉴, 최소화·최대화·닫기 버튼을 한 줄에 표시합니다. Windows의 Evergreen WebView2 Runtime을 사용하며, 사용할 수 없으면 기존 Edge 앱 창으로 엽니다. 소스 실행 시 첫 실행에서 창 셸을 빌드하거나 `npm run build:panel`로 미리 빌드할 수 있습니다. |
 
 PoB의 비트맵 글꼴에는 ASCII 글자만 있어서, PoB AI가 Pretendard(태국어·일본어·중국어는 Windows 글꼴)로
 만든 글리프 아틀라스에서 PoB와 똑같은 위치에 글자를 그립니다. 영어보다 긴 번역은 그 자리에 맞게 좁혀
@@ -149,7 +160,7 @@ PoB의 비트맵 글꼴에는 ASCII 글자만 있어서, PoB AI가 Pretendard(�
 
 - **PoB**는 평소처럼 스스로 업데이트합니다. PoB AI는 설치된 버전에 그대로 붙고, PoB가 업데이트로
   다시 시작해도 자동으로 다시 연결됩니다.
-- **PoB AI**는 하루 한 번 새 버전을 확인해 패널에서 알려 줍니다. **업데이트**를 누르거나
+- **PoB AI**는 하루 한 번 새 버전을 확인해 **설정 창**에서 알려 줍니다. **업데이트**를 누르거나
   `pob update apply --restart`를 실행하세요. 받은 파일은 SHA-256으로 검증한 뒤 데이터 폴더에 풀고,
   다음 시작부터 사용합니다. PoB 창은 열린 채로 다시 연결됩니다.
 
@@ -189,18 +200,23 @@ PoB 실행 파일은 첫 번째 인자로 진입 스크립트를 받습니다. P
 
 ## 현재 상태
 
-초기 미리보기입니다. Windows 11, PoB PoE2 0.22.0과 0.23.1에서 다음을 확인했습니다: 모든 명령에 어댑터
-동작이 있는지, 그리고 빌드·트리·스킬·아이템·설정·계산·세트·파티·옵션 동작을 백그라운드 엔진에서 실행하는 테스트(`npm test`),
-PoB 창 브리지, 강조, 테마, 창 번역, PoB 제자리 재시작(PoB의 일반 업데이트
-경로)과 PoB 업데이터의 재실행(모의 시험), 로컬 릴리스 서버를 이용한 PoB AI 자체 업데이트와 PoB 설치.
+이 문서는 현재 미리보기 소스 기준입니다. 배포 ZIP은 해당 릴리스 버전을 따릅니다.
+Windows 11, PoB PoE2 0.22.0과 0.23.1에서 호환성을 확인했습니다. 현재 **134개 테스트가 통과**하며,
+편집 명령, 에이전트 세션, 언어 선택, 공통 테마 저장, 팝업 표시, 업데이트 등을 검사합니다.
 
-아직 확인하지 못한 것: 로그인된 Claude Code나 Codex와의 실제 대화(대역 에이전트로만 시험),
-실제 로그인으로 PoE 계정 캐릭터 가져오기, 공개 릴리스(첫 GitHub 릴리스와 함께 업데이트 피드가 열립니다).
+실제 PoB와 WebView2 창에서 6개 테마, 전환 전후 계산값 유지, AI·설정 창 분리, 입력 초안 유지,
+작은 창 배치를 확인했습니다. 실제 PoE 계정 캐릭터 가져오기, Windows 10, 다중 모니터,
+Windows 화면 배율은 추가 수동 확인이 필요합니다.
 
 ## 개발
 
-```bash
-npm test                          # 단위 테스트와 내 PoB를 쓰는 엔진 테스트(못 찾으면 POB_PATH 지정)
+엔진 테스트는 평소 사용하는 PoB와 분리한 사본 및 임시 데이터 폴더에서 실행합니다.
+
+```powershell
+$env:POB_PATH = 'D:\Tests\PoB-PoE2'  # 테스트용 PoB 사본
+$env:POB_AI_HOME = Join-Path $env:TEMP ('pob-ai-test-' + [guid]::NewGuid().ToString('N'))
+npm test
+npm run build:panel               # 네이티브 WebView2 창 셸 빌드
 node scripts/package.mjs          # dist/pob-ai-<버전>-win-x64.zip, dist/latest.json
 node scripts/gen-commands.mjs     # docs/COMMANDS.md 다시 만들기
 ```

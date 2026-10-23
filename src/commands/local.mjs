@@ -10,6 +10,8 @@ import { installPob } from '../pob/install.mjs';
 import { inspectInstall, locatePob } from '../pob/locate.mjs';
 import { statePath, updateConfig } from '../state.mjs';
 import { APP_ROOT, applyUpdate, checkForUpdate, installedUpdate, VERSION } from '../update/updater.mjs';
+import { windowLocale } from '../i18n/system-locale.mjs';
+import { resolveTheme } from '../../ui/themes.js';
 
 const SERVICE_MAIN = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../service/main.mjs');
 const LAUNCHER = path.join(APP_ROOT, 'launcher.mjs');
@@ -252,15 +254,18 @@ export const LOCAL = {
 
   async windowLanguage(args, runtime) {
     updateConfig({ pobLanguage: args.language });
+    const language = windowLocale(args.language);
     let applied = null;
-    if (runtime.liveConnected && runtime.service?.windowLanguage) applied = await runtime.service.windowLanguage(args.language);
-    return { target: runtime.liveConnected ? 'live' : 'app', result: { language: args.language, applied: Boolean(applied), entries: applied?.entries, remembered: true } };
+    if (runtime.liveConnected && runtime.service?.windowLanguage) applied = await runtime.service.windowLanguage(language);
+    return { target: runtime.liveConnected ? 'live' : 'app', result: { language, preference: args.language, applied: Boolean(applied), entries: applied?.entries, remembered: true } };
   },
 
   async theme(args, runtime) {
-    updateConfig({ pobTheme: args.theme });
-    if (runtime.liveConnected) await runtime.run('ui.theme_apply', { theme: args.theme });
-    return { target: runtime.liveConnected ? 'live' : 'app', result: { theme: args.theme, applied: runtime.liveConnected, remembered: true } };
+    const theme = resolveTheme(args.theme);
+    if (runtime.liveConnected) await runtime.run('ui.theme_apply', { theme });
+    updateConfig({ pobTheme: theme });
+    runtime.service?.broadcast('theme', { theme });
+    return { target: runtime.liveConnected ? 'live' : 'app', result: { theme, applied: runtime.liveConnected, remembered: true } };
   },
 
   async titleBar(args) {

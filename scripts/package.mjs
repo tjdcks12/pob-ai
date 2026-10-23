@@ -23,6 +23,7 @@ const dist = path.join(root, 'dist');
 const stage = path.join(dist, 'stage');
 const top = path.join(stage, 'PoB AI');
 const zipName = `pob-ai-${version}-win-x64.zip`;
+execFileSync(process.execPath, [path.join(root, 'scripts/build-panel.mjs')], { stdio: 'inherit', windowsHide: true });
 
 fs.rmSync(stage, { recursive: true, force: true });
 fs.mkdirSync(top, { recursive: true });
@@ -32,6 +33,7 @@ const copy = (from, to = from, filter = () => true) => {
 };
 for (const file of ['PoB AI.cmd', 'launcher.mjs', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'README.md', 'README.ko.md']) copy(file);
 for (const dir of ['bin', 'src', 'adapter', 'ui']) copy(dir);
+copy('desktop/bin', 'desktop/bin');
 copy('data', 'data', rel => !rel.startsWith('data/ui/glossary') && !/\.part\d*\.json$/.test(rel));
 copy('docs', 'docs');
 

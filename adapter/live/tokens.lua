@@ -1,5 +1,5 @@
 -- Reads ui/tokens.css, the design tokens the agent panel uses, so the PoB window draws with the
--- same colours and sizes. Returns { dark = {...}, light = {...} }: colours as { r, g, b } (0-1),
+-- same colours and sizes. Returns a map by theme id: colours as { r, g, b } (0-1),
 -- px sizes as numbers, anything else as the raw string. Errors when the file cannot be read; the
 -- callers (skin, title bar) fall back to PoB's own look.
 local tokens = {}
@@ -24,10 +24,10 @@ end
 function tokens.load()
 	local text = assert(pobai_read_file(POBAI_ADAPTER .. '/../ui/tokens.css'), 'ui/tokens.css not found')
 	text = text:gsub('/%*.-%*/', '')
-	local dark = text:match(':root, %[data%-theme="dark"%]%s*(%b{})')
-	local light = text:match('%[data%-theme="light"%]%s*(%b{})')
-	assert(dark and light, 'ui/tokens.css has no dark or light block')
-	return { dark = parseBlock(dark), light = parseBlock(light) }
+	local out = {}
+	for id, body in text:gmatch('%[data%-theme="([%w%-]+)"%]%s*(%b{})') do out[id] = parseBlock(body) end
+	assert(out.dark and out.light, 'ui/tokens.css has no dark or light block')
+	return out
 end
 
 return tokens

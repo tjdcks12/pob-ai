@@ -1,4 +1,6 @@
-import { LOCALES, locale, setLocale, t } from './i18n.js';
+import { LOCALES, locale, localePreference, systemLocale, setLocale, t } from './i18n.js';
+import { refreshWindowChrome } from './window.js';
+import { THEMES, THEME_NAMES, resolveTheme } from './themes.js';
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -10,7 +12,17 @@ const icon = name => `<svg class="p-icon"><use href="icons.svg#i-${name}"/></svg
 
 // The service hands the panel its token once in the URL; keep it for this window only.
 const params = new URLSearchParams(location.search);
-if (params.get('token')) { sessionStorage.setItem('pobai.token', params.get('token')); history.replaceState(null, '', location.pathname); }
+const settingsView = params.get('view') === 'settings';
+document.documentElement.dataset.view = settingsView ? 'settings' : 'agent';
+if (settingsView) {
+  document.body.append($('settings-template').content.cloneNode(true));
+  document.querySelector('.agent-brand h1').setAttribute('data-i18n', 'settings');
+}
+if (params.get('token')) {
+  sessionStorage.setItem('pobai.token', params.get('token'));
+  params.delete('token');
+  history.replaceState(null, '', location.pathname + (params.size ? '?' + params : ''));
+}
 const token = sessionStorage.getItem('pobai.token') ?? '';
 const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
 
@@ -23,38 +35,51 @@ const run = (command, args = {}) => api('/api/run', { command, args, lang: local
 
 const state = {
   live: false, update: null, providers: [], provider: store.get('pobai.provider', ''), models: {},
-  tabs: [], active: null, attachments: [], pickerChoice: null,
+  tabs: [], active: null, attachments: [], idle: { draft: '', attachments: [] }, pickerChoice: null,
 };
 
 // ---------- themes ----------
-// pob = Path of Building's own look, dark/light = poe2way style. Older saved names map onto these.
-const THEMES = ['pob', 'dark', 'light'];
-const THEME_NAMES = { pob: 'themePob', dark: 'themeDark', light: 'themeLight' };
-const migrateTheme = id => ({ default: 'pob', ember: 'dark', vaal: 'dark', midnight: 'dark', parchment: 'light' }[id] ?? (THEMES.includes(id) ? id : 'dark'));
+// The service's remembered PoB theme is shared by every panel and the PoB window.
 function setTheme(id) {
-  document.documentElement.dataset.theme = id;
-  store.set('pobai.theme', id);
+  state.theme = resolveTheme(id);
+  document.documentElement.dataset.theme = state.theme;
+  refreshWindowChrome();
 }
 function renderThemeCards() {
-  const current = document.documentElement.dataset.theme;
+  if (!settingsView) return;
   $('theme-cards').innerHTML = THEMES.map(id => `<label class="theme-card" data-theme="${id}">
-    <input type="radio" name="panel-theme" value="${id}" ${id === current ? 'checked' : ''}>
-    <span class="theme-preview"><span class="theme-lines"><i></i><i></i></span><b></b></span>
+    <input type="radio" name="theme" value="${id}" ${id === state.theme ? 'checked' : ''}>
+    <span class="theme-preview" aria-hidden="true"><span class="preview-nav"></span><span class="preview-sheet"><i></i><i></i><i></i></span></span>
     <span class="theme-name">${escapeHtml(t(THEME_NAMES[id]))}</span></label>`).join('');
-  $('theme-cards').querySelectorAll('input').forEach(input => input.addEventListener('change', () => setTheme(input.value)));
-  $('window-theme').innerHTML = THEMES.map(id => `<option value="${id}">${escapeHtml(t(THEME_NAMES[id]))}</option>`).join('');
-  $('window-theme').value = state.windowTheme ?? 'dark';
+  $('theme-cards').querySelectorAll('input').forEach(input => input.addEventListener('change', async () => {
+    const reply = await run('ui.theme', { theme: input.value }).catch(error => ({ ok: false, error }));
+    if (reply.ok) setTheme(reply.result.theme);
+    else showNotice(`${t('error')}: ${reply.error?.message ?? ''}`);
+    renderThemeCards();
+  }));
 }
-setTheme(migrateTheme(store.get('pobai.theme', 'dark')));
+setTheme(document.documentElement.dataset.theme);
 
 // ---------- language ----------
+function renderLocaleOptions() {
+  if (!settingsView) return;
+  const options = `<option value="system">${escapeHtml(t('systemLanguage'))} (${LOCALES[systemLocale()]})</option>`
+    + Object.entries(LOCALES).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+  $('locale').innerHTML = options;
+  $('locale').value = localePreference();
+  $('window-language').innerHTML = options;
+  $('window-language').value = state.windowLanguage ?? 'system';
+}
 function applyI18n() {
+  renderLocaleOptions();
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-title]').forEach(el => { el.title = t(el.dataset.title); el.setAttribute('aria-label', t(el.dataset.title)); });
   document.querySelectorAll('[data-placeholder]').forEach(el => { el.placeholder = t(el.dataset.placeholder); });
   document.querySelectorAll('[data-suggest]').forEach(el => { el.textContent = t(el.dataset.suggest); });
   renderThemeCards();
+  refreshWindowChrome();
   renderStatus();
+  if (settingsView) { document.title = 'PoB AI · ' + t('settings'); renderAgents(); showUpdate(state.update); return; }
   refreshBuild();
   showUpdate(state.update);
   renderAgents();
@@ -62,10 +87,14 @@ function applyI18n() {
   renderModelLabel();
   for (const tab of state.tabs) for (const view of tab.views) renderAssistant(view);
 }
-$('locale').innerHTML = Object.entries(LOCALES).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
-$('locale').value = locale();
-$('locale').addEventListener('change', e => { setLocale(e.target.value); applyI18n(); });
-setLocale(locale());
+if (settingsView) {
+  $('locale').addEventListener('change', e => { setLocale(e.target.value); applyI18n(); });
+}
+setLocale(localePreference(), { remember: false });
+window.addEventListener('storage', e => {
+  if (e.key === 'pobai.locale') { setLocale(e.newValue, { remember: false }); applyI18n(); }
+  if (e.key === 'pobai.providersChanged') { state.models = {}; loadProviders(); }
+});
 
 // ---------- dialogs ----------
 function openModal(dialog, focus) {
@@ -81,12 +110,16 @@ function openModal(dialog, focus) {
   if (!dialog.open) dialog.showModal();
   focus?.focus();
 }
-$('open-settings').addEventListener('click', () => { loadProviders(); openModal($('settings-dialog')); });
+async function openSettings(focus) {
+  const reply = await api('/api/settings/open', { focus });
+  if (!reply.ok) showNotice(`${t('error')}: ${reply.error?.message ?? ''}`);
+}
 $('open-history').addEventListener('click', () => { loadHistory(); openModal($('history-dialog')); });
 
 // ---------- PoB status & build card ----------
 function renderStatus() {
   const pill = $('pob-status');
+  pill.setAttribute('aria-label', state.live ? t('connected') : t('openPob'));
   pill.className = `status-pill ${state.live ? 'on' : 'off'}`;
   pill.querySelector('.label').textContent = state.live ? t('connected') : `${t('disconnected')} · ${t('openPob')}`;
 }
@@ -103,7 +136,7 @@ async function openPob() {
 function showPobProblem(error) {
   if (error?.code === 'POB_NOT_FOUND') {
     showNotice(t('pobNotFound'));
-    openModal($('settings-dialog'), $('pob-path'));
+    openSettings('pob-path');
   } else showNotice(`${t('error')}: ${error?.message ?? ''}`);
 }
 $('pob-status').addEventListener('click', () => { if (!state.live) openPob(); });
@@ -129,24 +162,33 @@ async function refreshBuild() {
 
 function listenEvents() {
   const source = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
+  source.addEventListener('theme', e => { setTheme(JSON.parse(e.data).theme); renderThemeCards(); });
+  if (settingsView) return;
   source.addEventListener('pob', e => { state.live = JSON.parse(e.data).connected; renderStatus(); refreshBuild(); });
   source.addEventListener('build-changed', () => refreshBuild());
   source.addEventListener('update', e => showUpdate(JSON.parse(e.data)));
-  source.addEventListener('focus-panel', () => { window.focus(); $('input').focus(); });
+  source.addEventListener('focus-panel', () => {
+    if (document.hasFocus()) $('input').focus({ preventScroll: true });
+  });
 }
 
 function showNotice(text) {
   const note = document.createElement('div');
   note.className = 'notice';
   note.textContent = text;
-  $('chat').prepend(note);
+  (settingsView ? $('settings-dialog').querySelector('.p-dialog-body') : $('chat')).prepend(note);
 }
 
 // ---------- PoB window settings & PoB AI updates ----------
-$('window-language').innerHTML = Object.entries(LOCALES).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
-$('window-language').addEventListener('change', e => run('ui.language', { language: e.target.value }));
-$('window-theme').addEventListener('change', e => { state.windowTheme = e.target.value; run('ui.theme', { theme: e.target.value }); });
-$('title-bar').addEventListener('change', e => run('ui.title_bar', { style: e.target.checked ? 'custom' : 'windows' }));
+if (settingsView) {
+  $('window-language').addEventListener('change', async e => {
+    const next = e.target.value;
+    const reply = await run('ui.language', { language: next });
+    if (reply.ok) state.windowLanguage = next;
+    else { renderLocaleOptions(); showNotice(`${t('error')}: ${reply.error?.message ?? ''}`); }
+  });
+  $('title-bar').addEventListener('change', e => run('ui.title_bar', { style: e.target.checked ? 'custom' : 'windows' }));
+}
 function showUpdate(update) {
   state.update = update?.available ? update : null;
   $('update-banner').hidden = !state.update;
@@ -166,18 +208,22 @@ async function usePob(args, busyLabel) {
   renderStatus();
   if (!reply.ok) return showNotice(reply.error?.code === 'POB_NOT_FOUND' && args.pobPath ? t('pobFolderInvalid') : `${t('error')}: ${reply.error?.message ?? ''}`);
   $('pob-path').value = reply.result?.dir ?? '';
-  $('chat').querySelectorAll('.notice').forEach(el => el.remove());
+  document.querySelectorAll('.notice').forEach(el => el.remove());
   openPob();
 }
-$('pob-path-apply').addEventListener('click', () => { const dir = $('pob-path').value.trim(); if (dir) usePob({ pobPath: dir }); });
-$('pob-install').addEventListener('click', () => usePob({ installPob: true }, t('installingPob')));
+if (settingsView) {
+  $('pob-path-apply').addEventListener('click', () => { const dir = $('pob-path').value.trim(); if (dir) usePob({ pobPath: dir }); });
+  $('pob-install').addEventListener('click', () => usePob({ installPob: true }, t('installingPob')));
+}
 async function loadStatus() {
   const reply = await api('/api/status').catch(() => null);
   if (!reply?.ok) return;
+  setTheme(reply.settings?.pobTheme ?? 'pob');
+  renderThemeCards();
+  if (!settingsView) { showUpdate(reply.update); return; }
   $('pob-path').value = reply.pob?.dir ?? '';
-  $('window-language').value = reply.settings?.pobLanguage ?? 'en';
-  state.windowTheme = migrateTheme(reply.settings?.pobTheme || 'dark');
-  $('window-theme').value = state.windowTheme;
+  state.windowLanguage = reply.settings?.pobLanguage ?? 'system';
+  renderLocaleOptions();
   $('title-bar').checked = reply.settings?.pobTitleBar !== 'windows';
   showUpdate(reply.update);
 }
@@ -194,7 +240,7 @@ async function loadProviders() {
   if (!providerById(state.provider)?.available) state.provider = available[0]?.id ?? state.providers[0]?.id ?? '';
   state.loadedProviders = true;
   renderAgents();
-  renderModelLabel();
+  if (!settingsView) renderModelLabel();
 }
 function chooseProvider(id) {
   state.provider = id;
@@ -205,6 +251,7 @@ function chooseProvider(id) {
 async function pickPath(id) {
   const reply = await api(`/api/agent/providers/${id}/pick`, { title: t('chooseExecutable', { agent: providerName(id) }) });
   if (!reply.ok) showNotice(reply.error?.code === 'AGENT_PATH_INVALID' ? t('errPathInvalid', { agent: providerName(id) }) : t('errNotRunnable'));
+  if (reply.ok && !reply.cancelled) store.set('pobai.providersChanged', String(Date.now()));
   await loadProviders();
 }
 
@@ -218,7 +265,7 @@ function pickerHtml(popover) {
       <small class="${p.available ? 'ok' : ''}">${escapeHtml(t(p.available ? 'agentAvailable' : 'agentNeedsPath'))}</small></span>
       ${p.id === state.provider ? `<span class="agent-provider-check">${icon('check')}</span>` : ''}</button>`).join('');
   const note = chosen && !chosen.available
-    ? `<p class="agent-picker-note"><span>${escapeHtml(t('chooseExecutable', { agent: chosen.label }))}</span><button type="button" data-pick="${chosen.id}">${icon('folder-open')}${escapeHtml(t('choosePath'))}</button></p>` : '';
+    ? `<p class="agent-picker-note"><span>${escapeHtml(t('chooseExecutable', { agent: chosen.label }))}</span><button type="button" data-settings>${icon('settings')}${escapeHtml(t('settings'))}</button></p>` : '';
   const actions = popover
     ? `<button type="button" class="agent-primary agent-start" data-start ${chosen?.available ? '' : 'disabled'}>${escapeHtml(t('startWith', { agent: chosen?.label ?? '' }))}</button>
        <button type="button" class="agent-quiet" data-resume>${icon('history')}${escapeHtml(t('resumePrevious'))}</button>` : '';
@@ -238,14 +285,17 @@ function wirePicker(root) {
       root.querySelector(`[data-provider="${next.dataset.provider}"]`)?.focus();
     });
   });
-  root.querySelector('[data-pick]')?.addEventListener('click', e => pickPath(e.currentTarget.dataset.pick));
+  root.querySelector('[data-settings]')?.addEventListener('click', () => openSettings());
   root.querySelector('[data-start]')?.addEventListener('click', () => { closePopovers(); newTab(state.provider); $('input').focus(); });
   root.querySelector('[data-resume]')?.addEventListener('click', () => { closePopovers(); loadHistory(); openModal($('history-dialog')); });
 }
 function renderAgents() {
-  $('picker-inline').innerHTML = pickerHtml(false);
-  wirePicker($('picker-inline'));
-  if (!$('picker-popover').hidden) { $('picker-popover').innerHTML = pickerHtml(true); wirePicker($('picker-popover')); }
+  if (!settingsView) {
+    $('picker-inline').innerHTML = pickerHtml(false);
+    wirePicker($('picker-inline'));
+    if (!$('picker-popover').hidden) { $('picker-popover').innerHTML = pickerHtml(true); wirePicker($('picker-popover')); }
+    return;
+  }
   $('agent-rows').innerHTML = state.providers.map(p => {
     const where = p.command ? `${t({ custom: 'pathCustom', env: 'pathEnv', auto: 'pathAuto' }[p.source] ?? 'pathAuto')} · ${p.command}` : t('agentNeedsPath');
     return `<div class="agent-row">${mark(p.id)}<div><div class="set-title">${escapeHtml(p.label)}</div>
@@ -255,7 +305,11 @@ function renderAgents() {
       ${p.available ? `<button type="button" class="agent-quiet" data-login="${p.id}">${icon('log-in')}${escapeHtml(t('signIn'))}</button>` : ''}</div></div>`;
   }).join('');
   $('agent-rows').querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => pickPath(b.dataset.pick)));
-  $('agent-rows').querySelectorAll('[data-auto]').forEach(b => b.addEventListener('click', async () => { await request('DELETE', `/api/agent/providers/${b.dataset.auto}/path`); loadProviders(); }));
+  $('agent-rows').querySelectorAll('[data-auto]').forEach(b => b.addEventListener('click', async () => {
+    const reply = await request('DELETE', `/api/agent/providers/${b.dataset.auto}/path`);
+    if (reply.ok) store.set('pobai.providersChanged', String(Date.now()));
+    loadProviders();
+  }));
   $('agent-rows').querySelectorAll('[data-login]').forEach(b => b.addEventListener('click', () => api(`/api/agent/providers/${b.dataset.login}/login`, {})));
 }
 
@@ -270,11 +324,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopover
 document.addEventListener('mousedown', e => {
   if (!e.target.closest('#picker-popover, #new-chat, #model-popover, #model-button')) closePopovers();
 });
+function positionPicker() {
+  const top = Math.min($('new-chat').getBoundingClientRect().bottom + 6, window.innerHeight - 120);
+  $('picker-popover').style.setProperty('--picker-top', `${Math.max(12, top)}px`);
+}
+window.addEventListener('resize', () => { if (!$('picker-popover').hidden) positionPicker(); });
 $('new-chat').addEventListener('click', () => {
-  if (!state.tabs.length) { activate(null); $('input').focus(); return; }
   const open = $('picker-popover').hidden;
   closePopovers();
   if (!open) return;
+  positionPicker();
   $('picker-popover').hidden = false;
   $('new-chat').setAttribute('aria-expanded', 'true');
   renderAgents();
@@ -332,12 +391,17 @@ $('model-button').addEventListener('click', async () => {
 // ---------- images ----------
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
 function addImages(files) {
+  const attachments = state.attachments;
   for (const file of files) {
-    if (state.attachments.length >= 4) { showNotice(t('imageTooMany')); break; }
+    if (attachments.length >= 4) { showNotice(t('imageTooMany')); break; }
     if (!IMAGE_TYPES.includes(file.type)) { showNotice(t('imageInvalid')); continue; }
     if (file.size > 5 * 1024 * 1024) { showNotice(t('imageTooLarge')); continue; }
     const reader = new FileReader();
-    reader.onload = () => { state.attachments.push({ name: file.name || 'image', dataUrl: reader.result }); renderAttachments(); };
+    reader.onload = () => {
+      if (attachments.length >= 4) return;
+      attachments.push({ name: file.name || 'image', dataUrl: reader.result });
+      if (state.attachments === attachments) renderAttachments();
+    };
     reader.readAsDataURL(file);
   }
 }
@@ -394,7 +458,7 @@ function markdown(text) {
 }
 
 // ---------- conversation tabs ----------
-// A tab is one chat: { key, sessionId, provider, title, model, effort, running, pane, views }.
+// Each tab keeps its own conversation, model choice and unsent composer content.
 let nextKey = 1;
 const activeTab = () => state.tabs.find(tab => tab.key === state.active) ?? null;
 function saveTabs() {
@@ -404,26 +468,41 @@ function saveTabs() {
 function newTab(provider, session = {}) {
   const pane = document.createElement('div');
   pane.className = 'chat-pane';
+  pane.id = `chat-pane-${nextKey}`;
+  pane.setAttribute('role', 'tabpanel');
+  pane.setAttribute('aria-labelledby', `session-tab-${nextKey}`);
   $('chat').append(pane);
   const tab = { key: nextKey++, sessionId: session.id ?? null, provider: session.provider ?? provider, title: session.title ?? '',
-    model: session.model ?? null, effort: session.effort ?? null, running: false, pane, views: [] };
-  if (!session.id) { tab.model = currentChoice().model; tab.effort = currentChoice().effort; }
+    model: session.model ?? null, effort: session.effort ?? null, running: false, pane, views: [], draft: '', attachments: [] };
+  if (!session.id) {
+    tab.model = store.get(`pobai.model.${tab.provider}`, '') || null;
+    tab.effort = store.get(`pobai.effort.${tab.provider}`, '') || null;
+  }
   state.tabs.push(tab);
   activate(tab.key);
   return tab;
 }
 function activate(key) {
+  const previous = activeTab() ?? (state.active === null ? state.idle : null);
+  if (previous) { previous.draft = $('input').value; previous.attachments = state.attachments; }
   state.active = key;
+  const current = activeTab() ?? state.idle;
+  $('input').value = current.draft;
+  state.attachments = current.attachments;
+  autosize();
+  renderAttachments();
   for (const tab of state.tabs) tab.pane.hidden = tab.key !== key;
   updateEmpty();
   renderTabs();
   renderModelLabel();
   renderSend();
   saveTabs();
+  $('sessions').querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 function updateEmpty() {
   const tab = activeTab();
   $('empty').hidden = Boolean(tab && tab.pane.childElementCount);
+  $('picker-inline').hidden = Boolean(tab);
 }
 function closeTab(key) {
   const index = state.tabs.findIndex(tab => tab.key === key);
@@ -432,16 +511,25 @@ function closeTab(key) {
   tab.pane.remove();
   if (state.active === key) activate(state.tabs[Math.min(index, state.tabs.length - 1)]?.key ?? null);
   else { renderTabs(); saveTabs(); }
+  ($('sessions').querySelector('[aria-selected=true]') ?? $('new-chat')).focus();
 }
 function renderTabs() {
   const nav = $('sessions');
-  nav.hidden = !state.tabs.length;
+  nav.setAttribute('aria-label', t('chatTabs'));
   nav.innerHTML = state.tabs.map((tab, i) => `<div class="agent-session-tab" data-active="${tab.key === state.active}">
-      <button type="button" role="tab" aria-selected="${tab.key === state.active}" data-tab="${tab.key}" title="${escapeHtml(tab.title || providerName(tab.provider))}">
+      <button id="session-tab-${tab.key}" type="button" role="tab" aria-selected="${tab.key === state.active}" aria-controls="${tab.pane.id}" tabindex="${tab.key === state.active ? 0 : -1}" data-tab="${tab.key}" title="${escapeHtml(tab.title || providerName(tab.provider))}">
         ${mark(tab.provider)}<span>${escapeHtml(providerName(tab.provider))} ${i + 1}</span><span class="agent-dot ${tab.running ? 'on' : ''}"></span></button>
-      <button type="button" class="agent-session-close" data-close-tab="${tab.key}" title="${escapeHtml(t('closeChat'))}" aria-label="${escapeHtml(t('closeChat'))}">${icon('x')}</button></div>`).join('');
+      <button type="button" class="agent-session-close" data-close-tab="${tab.key}" title="${escapeHtml(t('closeChat'))}" aria-label="${escapeHtml(t('closeChat'))}">${icon('x')}</button></div>`).join('') || `<span class="agent-session-empty">${escapeHtml(t('newChat'))}</span>`;
   nav.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => activate(Number(b.dataset.tab))));
   nav.querySelectorAll('[data-close-tab]').forEach(b => b.addEventListener('click', () => closeTab(Number(b.dataset.closeTab))));
+  nav.querySelectorAll('[data-tab]').forEach((button, i) => button.addEventListener('keydown', e => {
+    const last = state.tabs.length - 1;
+    const next = { ArrowRight: (i + 1) % state.tabs.length, ArrowLeft: (i + last) % state.tabs.length, Home: 0, End: last }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    activate(state.tabs[next].key);
+    nav.querySelector('[aria-selected=true]')?.focus();
+  }));
 }
 
 // ---------- messages ----------
@@ -539,6 +627,7 @@ function renderSend() {
 
 async function send(text, images = state.attachments, target = activeTab()) {
   if (!text.trim() && !images.length) return;
+  const fromComposer = images === state.attachments;
   let tab = target;
   if (!tab) {
     if (!providerById(state.provider)?.available) { renderAgents(); return; }
@@ -554,7 +643,11 @@ async function send(text, images = state.attachments, target = activeTab()) {
   renderTabs(); renderSend();
   const body = { sessionId: tab.sessionId, provider: tab.provider, message: text, locale: locale(), images: images.length ? images : undefined };
   if (!tab.sessionId || tab.choiceChanged) { body.model = tab.model; body.effort = tab.effort; tab.choiceChanged = false; }
-  if (images === state.attachments) { state.attachments = []; renderAttachments(); }
+  if (fromComposer) {
+    (target ?? state.idle).attachments = [];
+    state.attachments = [];
+    renderAttachments();
+  }
   try {
     const response = await fetch('/api/agent/chat', { method: 'POST', headers, body: JSON.stringify(body) });
     if (!response.ok || !response.body) view.error = (await response.json().catch(() => ({}))).error?.code ?? 'AGENT_FAILED';
@@ -636,7 +729,7 @@ async function loadHistory() {
   const sessions = (reply.sessions ?? []).slice().reverse();
   if (!sessions.length) { list.innerHTML = `<li class="history-empty">${escapeHtml(t('noHistory'))}</li>`; return; }
   list.innerHTML = sessions.map(s => `<li>
-      <button type="button" class="open" data-open="${s.id}">${mark(s.provider)}<span class="title">${escapeHtml(s.title || providerName(s.provider))}</span>
+      <button type="button" class="open" data-open="${s.id}">${mark(s.provider)}<span class="title" title="${escapeHtml(s.title || providerName(s.provider))}">${escapeHtml(s.title || providerName(s.provider))}</span>
         <span class="date">${escapeHtml(new Date(s.updatedAt ?? s.createdAt).toLocaleDateString(locale()))}</span></button>
       <button type="button" class="agent-icon del" data-delete="${s.id}" title="${escapeHtml(t('deleteChat'))}" aria-label="${escapeHtml(t('deleteChat'))}">${icon('trash-2')}</button></li>`).join('');
   list.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => { $('history-dialog').close(); openChat(b.dataset.open); }));
@@ -664,6 +757,15 @@ async function restoreTabs() {
 }
 
 applyI18n();
-loadProviders().then(restoreTabs);
+if (settingsView) {
+  const dialog = $('settings-dialog');
+  dialog.open = true;
+  dialog.setAttribute('aria-modal', 'true');
+  const close = () => { if (window.chrome?.webview) window.chrome.webview.postMessage('window:close'); else window.close(); };
+  dialog.querySelector('[data-close]').onclick = close;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+  loadProviders();
+  if (params.get('focus') === 'pob-path') $('pob-path').focus();
+} else loadProviders().then(restoreTabs);
 loadStatus();
 listenEvents();

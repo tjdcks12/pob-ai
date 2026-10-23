@@ -31,4 +31,5 @@ jobs:
           $exe = Get-ChildItem pob -Recurse -Filter 'Path of Building-PoE2.exe' | Select-Object -First 1
           "POB_PATH=$($exe.DirectoryName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           "PoB $($release.tag_name) at $($exe.DirectoryName)"
+      - run: npm run build:panel
       - run: npm test

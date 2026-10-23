@@ -1,6 +1,7 @@
 // Service side of the PoB window font: which font draws each character, what the window may ask
 // for, the bundled font files, and (on Windows) a real atlas page drawn by text-renderer.ps1.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -74,5 +75,21 @@ test('an atlas page is drawn and then read from the cache', { skip: process.plat
     assert.deepEqual(again, page);
     assert.ok(Date.now() - started < 1000, 'from the cache');
     await assert.rejects(atlas.render({ ...request, px: -1 }), /Bad glyph request/);
+  } finally { atlas.close(); }
+});
+
+test('small glyphs retain smooth alpha coverage', { skip: process.platform !== 'win32' && 'Windows only (GDI+)', timeout: 60000 }, async () => {
+  const atlas = new GlyphAtlas();
+  try {
+    const page = await atlas.render({ face: 'regular', px: 14, group: 'base', clusters: ['A', 'g', '한', '설', '정', 'ж', 'ที่', '體'] });
+    const script = [
+      'Add-Type -AssemblyName System.Drawing',
+      "$bitmap = [System.Drawing.Bitmap]::new('" + page.path.replaceAll("'", "''") + "')",
+      '$levels = [System.Collections.Generic.HashSet[int]]::new()',
+      'try { for ($y = 0; $y -lt $bitmap.Height; $y++) { for ($x = 0; $x -lt $bitmap.Width; $x++) { [void]$levels.Add($bitmap.GetPixel($x, $y).A) } } } finally { $bitmap.Dispose() }',
+      '$levels.Count',
+    ].join('\n');
+    const levels = Number(execFileSync('powershell.exe', ['-NoProfile', '-Command', script], { encoding: 'utf8', windowsHide: true }).trim());
+    assert.ok(levels > 64, 'small text needs smooth edges; only ' + levels + ' alpha levels');
   } finally { atlas.close(); }
 });

@@ -17,13 +17,15 @@ import { readConfig, readJson, statePath, writeJson } from '../state.mjs';
 import { SERVICE_FILE } from './client.mjs';
 import { checkForUpdate, updateCheckDue } from '../update/updater.mjs';
 import { handleMcp } from './mcp.mjs';
-import { openPanel } from './panel.mjs';
+import { openPanel, openSettings } from './panel.mjs';
+import { systemLocale, windowLocale } from '../i18n/system-locale.mjs';
+import { resolveTheme } from '../../ui/themes.js';
 
 const UI_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../ui');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png', '.ico': 'image/x-icon' };
 
-export async function createService({ port, log = line => process.stderr.write(`${line}\n`) } = {}) {
+export async function createService({ port, log = line => process.stderr.write(`${line}\n`), openAgentPanel = openPanel, openSettingsPanel = openSettings } = {}) {
   // The address of the previous run is reused when free, so an open agent panel reconnects
   // after a restart (an update) instead of pointing at a dead port.
   const previous = readJson(SERVICE_FILE(), {});
@@ -42,6 +44,14 @@ export async function createService({ port, log = line => process.stderr.write(`
   if (bridge.port !== saved.port || bridge.token !== saved.token) writeJson(statePath('bridge.json'), { port: bridge.port, token: bridge.token });
   const runtime = new Runtime({ bridge, log });
   const service = { token, bridge, runtime, broadcast, log, pobProcess: null };
+  service.openSettings = async (focus, ownerPid = service.pobProcess?.exitCode === null ? service.pobProcess.pid : 0) => {
+    // An existing PoB can reconnect after a service restart without being our child process.
+    if (!ownerPid && bridge.connected) {
+      const windows = await listPobProcesses(runtime.install()).catch(() => []);
+      if (windows.length === 1) ownerPid = windows[0].pid;
+    }
+    return openSettingsPanel(service.url, { ownerPid: Number.isSafeInteger(ownerPid) && ownerPid > 0 ? ownerPid : 0, focus: focus === 'pob-path' ? focus : undefined });
+  };
   runtime.service = service;
   service.openPob = (options = {}) => {
     if (bridge.connected) return { alreadyOpen: true, ...bridge.info };
@@ -90,8 +100,8 @@ export async function createService({ port, log = line => process.stderr.write(`
     if (service.pobProcess) service.pobProcess.bridgeConnected = true;
     if (runtime.cachedInstall && info.version && info.version !== runtime.cachedInstall.version) runtime.refreshInstall();
     broadcast('pob', { connected: true, ...info });
-    const language = readConfig().pobLanguage;
-    if (language && language !== 'en') service.windowLanguage(language).catch(error => log(`window language: ${error.message}`));
+    const language = windowLocale(readConfig().pobLanguage);
+    service.windowLanguage(language).catch(error => log(`window language: ${error.message}`));
   });
   bridge.on('disconnected', () => {
     broadcast('pob', { connected: false, updating: updating?.mode });
@@ -99,9 +109,14 @@ export async function createService({ port, log = line => process.stderr.write(`
     if (updating?.mode === 'basic') reopenAfterUpdate();
   });
   bridge.on('event', event => {
+    if (event?.kind === 'open-settings') {
+      Promise.resolve(service.openSettings(undefined, event.ownerPid)).catch(error => log(`settings: ${error.message}`));
+      return;
+    }
     // The AI button in the PoB title bar: bring an open panel forward, or open one.
     if (event?.kind === 'open-panel') {
-      if (events.size) broadcast('focus-panel', {}); else openPanel(service.url);
+      if (!event.panelFound) openAgentPanel(service.url);
+      broadcast('focus-panel', {});
       return;
     }
     if (event?.kind === 'pob-updating') {
@@ -156,11 +171,16 @@ export async function createService({ port, log = line => process.stderr.write(`
   async function api(req, res, url) {
     const route = `${req.method} ${url.pathname}`;
     if (route === 'GET /api/health') return send(res, 200, { ok: true });
+    if (route === 'POST /api/settings/open') {
+      const body = await readBody(req);
+      const result = await service.openSettings(body.focus);
+      return send(res, 200, { ok: true, ...result });
+    }
     if (route === 'GET /api/status') {
       let install = null;
       try { install = runtime.install(); } catch (error) { install = { error: error.message }; }
-      const { pobLanguage = 'en', pobTheme = 'dark', pobTitleBar = 'custom' } = readConfig();
-      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers(), settings: { pobLanguage, pobTheme, pobTitleBar }, update: service.update ?? null });
+      const { pobLanguage = 'system', pobTheme = 'pob', pobTitleBar = 'custom' } = readConfig();
+      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers(), settings: { pobLanguage, pobLanguageResolved: windowLocale(pobLanguage), systemLocale: systemLocale(), pobTheme: resolveTheme(pobTheme), pobTitleBar }, update: service.update ?? null });
     }
     if (route === 'GET /api/commands') {
       return send(res, 200, { ok: true, commands: COMMANDS.map(({ local, ...c }) => c) });
@@ -194,6 +214,9 @@ export async function createService({ port, log = line => process.stderr.write(`
       res.writeHead(404); return res.end('Not found');
     }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
+    if (file === path.join(UI_DIR, 'index.html')) return res.end(fs.readFileSync(file, 'utf8')
+      .replace('<html ', `<html data-system-locale="${systemLocale()}" `)
+      .replace('data-theme="dark"', `data-theme="${resolveTheme(readConfig().pobTheme)}"`));
     fs.createReadStream(file).pipe(res);
   }
 

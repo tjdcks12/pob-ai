@@ -3,4 +3,5 @@ node_modules/
 *.log
 test/artifacts/
 dist/
+desktop/bin/
 data/ui/glossary/

@@ -118,9 +118,14 @@ function Render-Atlas($req) {
   }
   $pageW = [Math]::Max(1, $pageW)
   $pageH = $y + $cellH
-  $bmp = New-Object System.Drawing.Bitmap $pageW, $pageH, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  # Small GDI+ glyphs have only 16 coverage levels. Rasterise above the target resolution,
+  # then downsample once so Hangul strokes and diagonals keep smooth edges at PoB's UI sizes.
+  # Positions, advances and returned atlas coordinates remain in the original physical pixels.
+  $rasterScale = 3
+  $bmp = New-Object System.Drawing.Bitmap ($pageW * $rasterScale), ($pageH * $rasterScale), ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $g = [System.Drawing.Graphics]::FromImage($bmp)
   $g.Clear([System.Drawing.Color]::Transparent)
+  $g.ScaleTransform($rasterScale, $rasterScale)
   $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
   $inv = [System.Globalization.CultureInfo]::InvariantCulture
   $parts = New-Object System.Collections.Generic.List[string]
@@ -131,7 +136,15 @@ function Render-Atlas($req) {
     $parts.Add(('[{0},{1},{2},{3},{4},{5},{6}]' -f $cell.x, $cell.y, $cell.w, $cellH, (-$pad), (-$pad), $cell.advance.ToString('0.###', $inv)))
   }
   $g.Dispose()
-  $bmp.Save($req.out, [System.Drawing.Imaging.ImageFormat]::Png)
+  $output = New-Object System.Drawing.Bitmap $pageW, $pageH, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $resample = [System.Drawing.Graphics]::FromImage($output)
+  $resample.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
+  $resample.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+  $resample.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+  $resample.DrawImage($bmp, 0, 0, $pageW, $pageH)
+  $resample.Dispose()
+  $output.Save($req.out, [System.Drawing.Imaging.ImageFormat]::Png)
+  $output.Dispose()
   $bmp.Dispose()
   return ('{{"id":{0},"w":{1},"h":{2},"glyphs":[{3}]}}' -f $req.id, $pageW, $pageH, ($parts -join ','))
 }

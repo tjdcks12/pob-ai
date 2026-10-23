@@ -30,4 +30,6 @@ test('settings and history are dialogs, nothing expands in place', () => {
   assert.doesNotMatch(app, /<details/);
   assert.match(html, /<dialog id="settings-dialog"/);
   assert.match(html, /<dialog id="history-dialog"/);
+  assert.match(html, /<template id="settings-template">\s*<dialog id="settings-dialog"/);
+  assert.doesNotMatch(html, /id="open-settings"/, 'the agent header has no general settings button');
 });

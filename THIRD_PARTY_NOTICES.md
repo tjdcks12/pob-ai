@@ -34,6 +34,14 @@ SOFTWARE.
 
 Source: https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2
 
+## Microsoft Edge WebView2
+
+The separate Windows panel uses the Evergreen WebView2 Runtime installed on Windows.
+The small host bundles the unmodified .NET SDK assemblies and x64 loader from
+Microsoft.Web.WebView2 1.0.4314.35 (NuGet). Its redistribution license and notices ship
+in desktop/bin/WebView2-LICENSE.txt and WebView2-NOTICE.txt.
+https://www.nuget.org/packages/Microsoft.Web.WebView2/
+
 ## koffi
 
 Node.js foreign function interface used to load PoB's `lua51.dll`.

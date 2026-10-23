@@ -18,7 +18,7 @@ export const FONT_DIR = path.resolve(here, '../../data/fonts');
 export const EM = 0.875;
 export const BASELINE = 0.8125;
 // Bump when the rendering changes so cached pages are drawn again.
-const VERSION = 2;
+const VERSION = 3;
 
 const PRETENDARD = 'Pretendard';
 const GENERIC = [PRETENDARD, 'Segoe UI', 'Segoe UI Symbol', 'Malgun Gothic', 'Yu Gothic UI', 'Microsoft JhengHei UI', 'Leelawadee UI', 'Nirmala UI'];

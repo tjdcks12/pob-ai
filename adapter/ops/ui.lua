@@ -258,6 +258,12 @@ return function(ops, util)
 		return { opened = 'Buy similar', item = item.title or item.name }
 	end
 
+	-- Development aid (not a CLI command): exercise native panel activation from the live PoB.
+	ops['ui.panel_focus'] = function()
+		live()
+		return dofile(POBAI_ADAPTER .. '/live/panel.lua').focus()
+	end
+
 	-- Development aid (not a CLI command): restart the PoB script like PoB's own updater does.
 	ops['engine.restart'] = function()
 		live()
@@ -278,7 +284,7 @@ return function(ops, util)
 	end
 
 	ops['ui.language_apply'] = function(args)
-		live()
+		util.check(POBAI_MODE == 'live', 'LIVE_REQUIRED', 'This needs the PoB window. Open it with `pob open`.')
 		if not args.locale or args.locale == 'en' then
 			POBAI_TRANSLATE.disable()
 			return { language = 'en' }
@@ -329,8 +335,8 @@ return function(ops, util)
 	end
 
 	ops['ui.theme'] = function(args)
-		live()
+		util.check(POBAI_MODE == 'live', 'LIVE_REQUIRED', 'This needs the PoB window. Open it with `pob open`.')
 		POBAI_THEME.apply(args.theme)
-		return { theme = args.theme }
+		return { theme = POBAI_THEME.current }
 	end
 end

@@ -63,6 +63,8 @@ local function paint(x, y, w, h, radius, fill, border)
 	end
 	rawSetDrawColor(r, g, b, a)
 end
+skin.paint = paint
+local sheets = dofile(POBAI_ADAPTER .. '/live/calcs-skin.lua')
 
 -- Colours PoB asked for -------------------------------------------------------------------
 
@@ -203,8 +205,11 @@ local function paintButton(s, _, b, fr)
 	local l = level(b) or 0.5
 	if near(l, 0.33) or near(fr, 0.5) then fill = T['surface-inner']                -- disabled, pressed
 	elseif near(l, 1) then fill = s.self:GetProperty('locked') and T['primary-soft'] or hoverFill
-	else fill = T['surface-hover'] end
+	else fill = T.surface end
 	paint(b.x, b.y, b.w, b.h, SMALL, fill)
+	if s.self:GetProperty('locked') then
+		paint(b.x + 6, b.y + b.h - 2, b.w - 12, 2, 1, T.primary)
+	end
 end
 -- After the box, plain rectangles are the "+" and "-" glyphs (or the pressed tint on an image).
 local function matchButton(s, x, y, w, h)
@@ -341,6 +346,68 @@ SETUP.TextListControl = function(s)
 	return true
 end
 
+-- Floating calculation sheets keep PoB's native drag, close, collapse and cell hit geometry.
+-- Filter only their paint: an opaque panel, a category rail, neutral rules and striped rows.
+local function matchCalcOverlay(s, x, y, w, h)
+	if s.n == 0 then
+		s.n = 1
+		s.px, s.py, s.pw, s.ph = x, y, w, h
+		s.rowY, s.rowIndex = nil, 0
+		paint(x, y, w, h, PANEL, T['surface-inner'], T.line)
+		return true
+	end
+	if h == 1 and near(w, s.pw) and (near(y, s.py) or near(y, s.py + s.ph - 1)) then return true end
+	if w == 1 and near(h, s.ph) and (near(x, s.px) or near(x, s.px + s.pw - 1)) then return true end
+	if near(x, s.px + 1) and near(y, s.py + 1) and near(w, s.pw - 2) and h == 22 then
+		local accent = sheets.categoryAccent(s.self.colour, T)
+		paint(x, y, w, h, SMALL, accent.header)
+		paint(x + 2, y + 4, 3, h - 8, 0, accent.rail)
+		for i = 0, 2 do paint(x + 11, y + 6 + i * 4, 10, 1, 0, T['fg-3']) end
+		return true
+	end
+	if h == 18 and w > 2 then
+		if s.rowY ~= y then s.rowY, s.rowIndex = y, s.rowIndex + 1 end
+		local fill = s.rowIndex % 2 == 0 and T['table-alt'] or T['surface-inner']
+		paint(x, y, w, h, 0, fill)
+		return true
+	end
+	if h <= 2 or w <= 2 then
+		paint(x, y, w <= 2 and 1 or w, h <= 2 and 1 or h, 0, T.line)
+		return true
+	end
+	return false
+end
+local function setupCalcOverlay(s)
+	s.match = matchCalcOverlay
+	return true
+end
+
+-- Calculation cell popups are CalcBreakdownControl, not Tooltip. Their native background
+-- is translucent black and their frames green; keep all content/scrolling, repaint the shell.
+local function matchCalcBreakdown(s, x, y, w, h)
+	local thickness = s.self.borderThickness
+	if s.n == 0 then
+		s.n = 1
+		s.px, s.py, s.pw, s.ph = x - thickness, y - thickness, w + thickness * 2, h + thickness * 2
+		paint(s.px, s.py, s.pw, s.ph, PANEL, T['surface-inner'], s.self.pinned and T.primary or T.line)
+		return true
+	end
+	if near(h, thickness) and near(w, s.pw) and (near(y, s.py) or near(y, s.py + s.ph - thickness)) then return true end
+	if near(w, thickness) and near(h, s.ph) and (near(x, s.px) or near(x, s.px + s.pw - thickness)) then return true end
+	if h == 1 or w == 1 then
+		local r, g, b = rawColour()
+		local highlight = near(r, 0) and near(g, 1) and near(b, 0)
+		paint(x, y, w, h, 0, highlight and T.primary or T.line)
+		return true
+	end
+	return false
+end
+SETUP.CalcBreakdownControl = function(s, self)
+	if not self.sourceData then return false end
+	s.match = matchCalcBreakdown
+	return true
+end
+
 -- Tooltip:Draw :543-797. Its first plain rectangle is the background (inside a 1 px frame drawn
 -- at the end); it becomes one rounded panel with the frame in the tooltip's colour, and the four
 -- outer frame lines are dropped. Lines between columns stay.
@@ -404,6 +471,13 @@ local mainWrapped = false
 local function install()
 	local classes = common and common.classes
 	if not classes then return end
+	sheets.install(classes.CalcSectionControl, skin)
+	sheets.installTab(classes.CalcsTab, skin)
+	local section = classes.CalcSectionControl
+	if section and section.DrawOverlay and not section.__pobaiOverlayPaint then
+		section.DrawOverlay = wrap(section.DrawOverlay, setupCalcOverlay)
+		section.__pobaiOverlayPaint = true
+	end
 	for name, setup in pairs(SETUP) do
 		local class = classes[name]
 		local draw = class and rawget(class, 'Draw')

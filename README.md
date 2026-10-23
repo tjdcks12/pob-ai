@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="ui/icon.svg" width="88" alt="PoB AI">
+<img src="docs/images/poe2way-logo.svg" width="88" height="88" alt="PoB AI (poe2way logo)">
 
 # PoB AI
 
@@ -18,10 +18,10 @@ English · [한국어](README.ko.md)
 </div>
 
 <p align="center">
-  <img src="docs/images/tree-highlight.jpg" width="72%" alt="PoB AI centres the passive tree on the best nearby notable and labels the calculated gain">
-  <img src="docs/images/panel-en.jpg" width="24%" alt="The PoB AI agent panel">
+  <img src="docs/images/window-en.png" width="72%" alt="PoB's calculation tables in the Ocean theme, with category colours preserved">
+  <img src="docs/images/panel-en.jpg" width="24%" alt="The AI Agent panel with Claude Code and Codex chat tabs">
 </p>
-<p align="center"><sub>Left: <code>pob calc node-power</code> found the best notable within 5 points, and <code>pob ui show-node</code> centred and labelled it in PoB. Right: the agent panel.</sub></p>
+<p align="center"><sub>The Ocean theme in PoB and the separate AI Agent panel. Chat tabs, model controls and image attachments stay in the agent panel; general settings have their own window.</sub></p>
 
 ---
 
@@ -33,7 +33,7 @@ command line, so every step is real PoB work you can see, undo and save.
 
 - **Download once.** PoB AI attaches to the Path of Building you already have, without changing a
   single PoB file. PoB keeps updating itself and PoB AI follows; PoB AI updates itself with one click.
-- **The whole editor from the command line.** 142 commands cover builds and folders, loadouts,
+- **The whole editor from the command line.** 143 commands cover builds and folders, loadouts,
   character import, passive tree, skills and gems, items (crafting, anoints, runes, corruption),
   trade searches, configuration, calculations, party, notes and PoB's own options.
 - **It shows you where.** Ask "where do I set the enemy type?" and the agent switches PoB to the
@@ -43,24 +43,26 @@ command line, so every step is real PoB work you can see, undo and save.
 - **Your language, everywhere.** The PoB window, the panel and the agent's answers in ten languages,
   with the official in-game names. Items copied from the game in any client language are converted
   to the English text PoB reads.
-- **A cleaner PoB.** Two modern themes (Default and Light) redraw PoB's buttons, fields and panels,
-  draw all text in Pretendard and replace the Windows title bar with one that has an AI button.
-  The PoB theme keeps Path of Building exactly as it is.
+- **One theme for both windows.** Choose PoB original, Dark, Light, Ocean, Forest or Sand once
+  for the panel and PoB together. PoB original is the initial default. Custom themes use Pretendard,
+  responsive calculation tables and themed tooltips while keeping PoB's category colours.
+- **AI and settings, separately.** The title bar's **AI** button opens or brings the agent panel
+  forward. The **gear** opens a separate settings modal for appearance, languages, PoB and agent setup.
 - **Uses the agent you already have.** Claude Code or Codex runs with your existing sign-in: pick it
   from the cards, chat in several tabs at once, choose the model and reasoning effort, attach
   screenshots. No API keys.
 
 <p align="center">
-  <img src="docs/images/window-ko.jpg" width="96%" alt="The PoB Calcs tab shown in Korean by PoB AI">
+  <img src="docs/images/settings-en.jpg" width="72%" alt="Settings with the six shared themes and the system-language option">
 </p>
-<p align="center"><sub>PoB's Calcs tab in Korean: <code>pob ui language ko</code>. Game names come from the game client; PoB's own interface text is translated by PoB AI.</sub></p>
+<p align="center"><sub>One theme selection applies to both windows. Panel and PoB languages follow the Windows display language by default, with manual overrides available.</sub></p>
 
 ## Install
 
 **Requirements:** Windows 10/11 and, for chat, [Claude Code](https://docs.claude.com/en/docs/claude-code)
 (or Codex) signed in.
 
-1. Download `pob-ai-<version>-win-x64.zip` from **Releases** and unzip it anywhere. Node.js is included.
+1. Download `pob-ai-<version>-win-x64.zip` from **[Releases](https://github.com/tjdcks12/pob-ai/releases)** and unzip it anywhere. Node.js is included.
 2. Double-click **`PoB AI.cmd`**. It opens your PoB and the agent panel.
 
 PoB AI finds [Path of Building Community (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases)
@@ -89,15 +91,21 @@ node bin/pob.mjs help
 
 ## Talk to it
 
-> Set up PoB to measure my damage properly against a pinnacle boss.
+Use **+** beside the chat tabs to start another conversation with Claude Code or Codex. Each tab
+keeps its own draft and attachments. Choose the model and reasoning effort beside the composer,
+or open **History** to resume a previous conversation.
 
-> Which passive within 6 points gives me the most damage? Show me where it is.
+> Review my build and suggest the top 3 improvements.
 
-> Import https://pobb.in/… and compare it with my build.
+> Check my boss DPS for unrealistic settings.
 
-> Add this item and tell me what it changes. *(paste the item copied in game)*
+> Can I improve damage by reallocating 5 passive points?
 
-> Find rings like the one I'm wearing on the trade site.
+> Which gear should I upgrade first, and what stats should I look for?
+
+> Compare support gem options for my main skill.
+
+> Why am I vulnerable to one-shots, and how can I fix it?
 
 The agent answers in your language and uses the official in-game names.
 
@@ -139,12 +147,15 @@ PoB's *Find Timeless Jewel* search is switched off in PoB PoE2 itself, so it has
 
 ## Your language
 
+The panel and PoB window follow the Windows display language by default. Choosing a language in Settings overrides it; choose **System default** (or `pob ui language system` for PoB) to follow Windows again. Unsupported system languages fall back to English.
+
 | | |
 | --- | --- |
-| **PoB window** | `pob ui language ko` (or the panel's settings): English, 한국어, 日本語, 繁體中文, Русский, Deutsch, Français, Español, Português (Brasil), ไทย. Official names from the game client; about 2,000 PoB interface phrases translated by PoB AI. |
+| **PoB window** | `pob ui language ko` (or the settings modal): English, 한국어, 日本語, 繁體中文, Русский, Deutsch, Français, Español, Português (Brasil), ไทย. Official names from the game client; about 2,000 PoB interface phrases translated by PoB AI. |
 | **Agent and commands** | Answers in your language; game names are accepted and returned in it (`--lang`). |
 | **Items** | Text copied from the game client in any of the ten languages is converted for PoB. Lines that cannot be converted are reported, never dropped silently. |
-| **Themes** | PoB, Default and Light for the panel and the PoB window (`pob ui theme pob\|dark\|light`). Default and Light restyle PoB's controls and draw its text in Pretendard; PoB keeps PoB's own look. |
+| **Themes** | PoB original, Dark, Light, Ocean, Forest and Sand (`pob ui theme pob\|dark\|light\|ocean\|forest\|sand`). One choice in Settings applies to the panel and PoB window together, and is used the next time PoB opens if it is closed. New installations start with PoB original. Custom themes use Pretendard and responsive calculation tables while keeping PoB's category colours. |
+| **Panel window** | A separate Edge WebView2 window with the poe2way logo, one draggable header and custom minimize/maximize/close controls. Windows supplies the Evergreen WebView2 Runtime; the normal Edge app is a fallback. Local source checkouts build the small window shell on first launch, or with `npm run build:panel`. |
 
 PoB's bitmap fonts only contain ASCII, so PoB AI draws text from a glyph atlas made with Pretendard
 (and Windows fonts for Thai, Japanese and Chinese) at the exact positions PoB would use. A
@@ -154,7 +165,7 @@ translation wider than the English is squeezed into its space. Text without a tr
 
 - **PoB** updates itself as always. PoB AI attaches to whichever version is installed, and after
   PoB restarts for its own update, PoB AI is attached again automatically.
-- **PoB AI** checks for a new version once a day and offers it in the panel. Click **Update** or run
+- **PoB AI** checks for a new version once a day and offers it in **Settings**. Click **Update** or run
   `pob update apply --restart`. The update is verified (SHA-256), unpacked into your data folder
   and used from the next start. The PoB window stays open and reconnects.
 
@@ -195,20 +206,24 @@ Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-Early preview, verified on Windows 11 with PoB PoE2 0.22.0 and 0.23.1: every command has an adapter
-operation, and the engine suite runs build, tree, skill, item, config, calc, set, party and option
-operations against the background engine (`npm test`); the PoB window bridge, highlights, themes and window translation,
-PoB's in-place restart (the path of PoB's usual updates) and a simulated relaunch by PoB's updater,
-PoB AI self-update and PoB installation against a local release server.
+This README describes the current preview source; release ZIPs follow their own version.
+Compatibility has been checked on Windows 11 with PoB PoE2 0.22.0 and 0.23.1. The current suite
+has **134 passing tests**, covering editor operations, agent sessions, language selection, shared
+theme persistence, popup rendering and updates.
 
-Not yet verified: a full chat with a signed-in Claude Code or Codex (tested with a stand-in agent),
-PoE account character import with a real sign-in, and a published release (the update feed goes
-live with the first GitHub release).
+Local PoB and WebView2 checks cover all six themes, unchanged calculation results across theme
+switches, separate AI/settings windows, chat drafts, and compact layouts. Real PoE account import,
+Windows 10, multiple monitors and Windows display scaling still need manual verification.
 
 ## Development
 
-```bash
-npm test                          # unit tests, plus engine tests against your PoB (set POB_PATH if it is not found)
+Use a disposable PoB copy and an isolated data folder for engine tests:
+
+```powershell
+$env:POB_PATH = 'D:\Tests\PoB-PoE2'  # a copy of PoB, separate from the one you use
+$env:POB_AI_HOME = Join-Path $env:TEMP ('pob-ai-test-' + [guid]::NewGuid().ToString('N'))
+npm test
+npm run build:panel               # build the native WebView2 window shell
 node scripts/package.mjs          # dist/pob-ai-<version>-win-x64.zip and dist/latest.json
 node scripts/gen-commands.mjs     # regenerate docs/COMMANDS.md
 ```

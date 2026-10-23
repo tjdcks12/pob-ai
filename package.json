@@ -15,6 +15,7 @@
     "start": "node src/service/main.mjs --open",
     "test": "node --test test/*.test.mjs",
     "pob": "node bin/pob.mjs",
+    "build:panel": "node scripts/build-panel.mjs",
     "docs": "node scripts/gen-commands.mjs"
   },
   "dependencies": {

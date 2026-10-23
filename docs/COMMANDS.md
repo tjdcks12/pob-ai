@@ -987,13 +987,13 @@ Open PoB's Buy Similar window for an item *(needs the PoB window)*
 
 ### `pob ui theme <theme>`
 
-PoB window theme: pob (the look of PoB itself), dark or light (remembered for next time)
+Shared panel and PoB theme: pob (original), dark, light, ocean, forest or sand (remembered for next time)
 
 ### `pob ui language <language>`
 
 Show the PoB window in another language (remembered for next time)
 
-Game names come from the game client; the interface text of PoB is translated by PoB AI. Text without a translation stays in English.
+The default, system, follows the Windows display language. An explicit language overrides it. Game names come from the game client; the interface text of PoB is translated by PoB AI. Text without a translation stays in English.
 
 ### `pob ui language-apply`
 

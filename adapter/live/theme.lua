@@ -2,8 +2,8 @@
 -- functions (SetDrawColor and colour codes inside DrawString text) and never keeps local copies
 -- of them, so wrapping the globals reaches every control. Neutral greys are remapped onto the
 -- theme; rarity, damage-type and other saturated colours keep their hue.
--- Themes: "pob" is Path of Building's own look (nothing wrapped), "dark" and "light" are the
--- poe2way looks: colours from ui/tokens.css, and PoB's controls redrawn by skin.lua.
+-- "pob" keeps Path of Building's own look. Other palettes come from ui/tokens.css,
+-- with PoB's controls redrawn by skin.lua.
 local theme = { current = 'pob' }
 
 -- Saved ids from earlier versions, which had other palettes.
@@ -28,7 +28,8 @@ local function palette(t, isLight)
 		isLight = isLight, tokens = t,
 	}
 end
-local PALETTES = TOKENS and { dark = palette(TOKENS.dark, false), light = palette(TOKENS.light, true) } or {}
+local PALETTES = {}
+for id, t in pairs(TOKENS or {}) do PALETTES[id] = palette(t, t.bg[1] > .5) end
 
 -- Raw drawing functions captured before any wrapping; text goes through POBAI_TEXT_DRAW so the
 -- window translation (translate.lua) and the theme compose.
@@ -224,5 +225,5 @@ function theme.tokens()
 	return p and p.tokens
 end
 
-theme.names = { 'pob', 'dark', 'light' }
+theme.names = { 'pob', 'dark', 'light', 'ocean', 'forest', 'sand' }
 return theme

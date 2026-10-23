@@ -10,7 +10,8 @@ const run = (file, args) => new Promise(resolve => {
 
 /** @returns {Promise<{ pid: number, exe: string, commandLine: string, shim: boolean }[]>} */
 export async function listPobProcesses(install) {
-  const script = `Get-CimInstance Win32_Process -Filter "Name='${EXE_NAME}'" | Select-Object ProcessId,ExecutablePath,CommandLine | ConvertTo-Json -Compress`;
+  // Windows PowerShell otherwise encodes Korean install paths with its console code page.
+  const script = `$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); Get-CimInstance Win32_Process -Filter "Name='${EXE_NAME}'" | Select-Object ProcessId,ExecutablePath,CommandLine | ConvertTo-Json -Compress`;
   const out = (await run('powershell.exe', ['-NoProfile', '-Command', script])).trim();
   if (!out) return [];
   const rows = [].concat(JSON.parse(out));
