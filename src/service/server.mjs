@@ -19,7 +19,9 @@ import { checkForUpdate, updateCheckDue } from '../update/updater.mjs';
 import { handleMcp } from './mcp.mjs';
 import { openPanel, openSettings } from './panel.mjs';
 import { systemLocale, windowLocale } from '../i18n/system-locale.mjs';
+import { normalizeLocalePreference } from '../../ui/locale.js';
 import { resolveTheme } from '../../ui/themes.js';
+import { listenHttp } from './http-port.mjs';
 
 const UI_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../ui');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -179,8 +181,8 @@ export async function createService({ port, log = line => process.stderr.write(`
     if (route === 'GET /api/status') {
       let install = null;
       try { install = runtime.install(); } catch (error) { install = { error: error.message }; }
-      const { pobLanguage = 'system', pobTheme = 'pob', pobTitleBar = 'custom' } = readConfig();
-      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers(), settings: { pobLanguage, pobLanguageResolved: windowLocale(pobLanguage), systemLocale: systemLocale(), pobTheme: resolveTheme(pobTheme), pobTitleBar }, update: service.update ?? null });
+      const { pobLanguage = 'system', pobTheme = 'pob' } = readConfig();
+      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers(), settings: { pobLanguage, pobLanguageResolved: windowLocale(pobLanguage), systemLocale: systemLocale(), pobTheme: resolveTheme(pobTheme) }, update: service.update ?? null });
     }
     if (route === 'GET /api/commands') {
       return send(res, 200, { ok: true, commands: COMMANDS.map(({ local, ...c }) => c) });
@@ -215,19 +217,16 @@ export async function createService({ port, log = line => process.stderr.write(`
     }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
     if (file === path.join(UI_DIR, 'index.html')) return res.end(fs.readFileSync(file, 'utf8')
-      .replace('<html ', `<html data-system-locale="${systemLocale()}" `)
+      .replace('<html ', `<html data-system-locale="${systemLocale()}" data-language="${normalizeLocalePreference(readConfig().pobLanguage)}" `)
       .replace('data-theme="dark"', `data-theme="${resolveTheme(readConfig().pobTheme)}"`));
     fs.createReadStream(file).pipe(res);
   }
 
-  const listen = p => new Promise((resolve, reject) => {
-    server.once('error', reject);
-    server.listen(p, '127.0.0.1', () => { server.removeListener('error', reject); resolve(); });
-  });
-  await listen(port ?? previous.port ?? 0).catch(error => {
-    if (error.code !== 'EADDRINUSE' || port) throw error;
-    return listen(0);
-  });
+  try { await listenHttp(server, port ?? previous.port ?? 0, { fixed: Boolean(port), log }); }
+  catch (error) {
+    atlas.close(); agents.close(); runtime.close(); bridge.close();
+    throw error;
+  }
   service.port = server.address().port;
   service.url = `http://127.0.0.1:${service.port}/?token=${token}`;
   writeJson(SERVICE_FILE(), { port: service.port, token, pid: process.pid, startedAt: new Date().toISOString() });

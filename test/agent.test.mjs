@@ -38,6 +38,24 @@ test('codex: model, effort and images', () => {
   assert.ok(args[first + 4].startsWith('--'), 'a flag follows the images so `-` stays the prompt');
 });
 
+test('full access is explicit for both agents, including resumed chats and switching it off', () => {
+  for (const provider of ['codex', 'claude']) for (const providerSessionId of [undefined, 'existing-chat']) {
+    for (const fullAccess of [undefined, false, true, 'true']) {
+      const { args } = buildTurn({ provider, providerSessionId, fullAccess, text: 'hi' });
+      const enabled = fullAccess === true;
+      if (provider === 'codex') {
+        assert.equal(args.includes('--dangerously-bypass-approvals-and-sandbox'), enabled);
+        assert.equal(args.includes('sandbox_mode="workspace-write"'), !enabled);
+      } else {
+        assert.equal(args.includes('--dangerously-skip-permissions'), enabled);
+        assert.equal(args.includes('--disallowedTools'), !enabled);
+        assert.equal(args.includes('--allowedTools'), !enabled);
+        if (!enabled) assert.equal(valueAfter(args, '--permission-mode'), 'dontAsk', 'resume cannot inherit bypass mode');
+      }
+    }
+  }
+});
+
 test('effort: medium by default unless the chosen Codex model has no medium', () => {
   const catalog = [{ id: 'fast', efforts: ['low', 'high'] }, { id: 'full', efforts: ['low', 'medium'] }];
   assert.equal(effortFor({ provider: 'codex', model: 'fast' }, catalog), null);

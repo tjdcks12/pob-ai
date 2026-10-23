@@ -38,10 +38,11 @@
 //          current `phase`, every text so far (full, not partial), then live events until `end`.
 //          When nothing is running it sends only { type: 'end', sessionId, running: false }.
 //   DELETE /api/agent/sessions/:id         -> { ok }  Stops a running turn and deletes the chat and its images.
-//   POST   /api/agent/chat  { message, sessionId?, provider?, model?, effort?, locale?, images?: [{ name, dataUrl }] }
+//   POST   /api/agent/chat  { message, sessionId?, provider?, model?, effort?, fullAccess?, locale?, images?: [{ name, dataUrl }] }
 //          -> event stream (text/event-stream, one JSON object per `data:` line); 400/409 JSON before it starts.
 //          No sessionId starts a chat with `provider` (default claude). `model`/`effort` given on any message
 //          are kept for the following turns of that chat; null goes back to the CLI default model / medium.
+//          fullAccess is a boolean, defaults to false, and is remembered only for that chat.
 //          Images: up to 4 PNG, JPEG, GIF or WebP data URLs, 5 MB each, 64 MB per chat. `message` may be
 //          empty when images are attached.
 //   POST   /api/agent/stop  { sessionId }  -> { ok, stopped }
@@ -160,7 +161,7 @@ export function effortFor({ provider, model, effort }, catalog = []) {
 
 /**
  * Command line and stdin for one turn.
- * turn: { provider, providerSessionId?, model?, effort?, locale?, text, images?: [{ path, mediaType }] }
+ * turn: { provider, providerSessionId?, model?, effort?, fullAccess?, locale?, text, images?: [{ path, mediaType }] }
  */
 export function buildTurn(turn, { catalog = [], readFile = fs.readFileSync } = {}) {
   const note = turn.locale ? `The user's interface language is ${turn.locale}. Reply in that language unless they write in another one.` : '';
@@ -168,8 +169,9 @@ export function buildTurn(turn, { catalog = [], readFile = fs.readFileSync } = {
   const images = turn.images ?? [];
   let text = String(turn.text ?? '');
   if (turn.provider === 'claude') {
-    const args = ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
-      '--allowedTools', ...POB_TOOLS, '--disallowedTools', 'Edit', 'Write', 'NotebookEdit'];
+    const args = ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--include-partial-messages'];
+    if (turn.fullAccess === true) args.push('--dangerously-skip-permissions');
+    else args.push('--permission-mode', 'dontAsk', '--allowedTools', ...POB_TOOLS, '--disallowedTools', 'Edit', 'Write', 'NotebookEdit');
     if (note) args.push('--append-system-prompt', note);
     if (turn.providerSessionId) args.push('--resume', turn.providerSessionId);
     if (turn.model) args.push('--model', turn.model);
@@ -183,7 +185,9 @@ export function buildTurn(turn, { catalog = [], readFile = fs.readFileSync } = {
   // `exec resume` has no -s/--sandbox, so the sandbox is set with -c for both forms.
   const args = turn.providerSessionId ? ['exec', 'resume', turn.providerSessionId] : ['exec'];
   for (const image of images) args.push('-i', image.path); // each followed by a flag, so `-` stays the prompt
-  args.push('--json', '--skip-git-repo-check', '-c', 'sandbox_mode="workspace-write"', '-c', 'sandbox_workspace_write.network_access=true');
+  args.push('--json', '--skip-git-repo-check');
+  if (turn.fullAccess === true) args.push('--dangerously-bypass-approvals-and-sandbox');
+  else args.push('-c', 'sandbox_mode="workspace-write"', '-c', 'sandbox_workspace_write.network_access=true');
   if (turn.model) args.push('-m', turn.model);
   if (effort) args.push('-c', `model_reasoning_effort="${effort}"`);
   args.push('-');
@@ -283,17 +287,19 @@ export class AgentHub {
     if (session && this.running.has(session.id)) throw coded('BUSY', 409);
     const model = body.model !== undefined ? (body.model || null) : (session?.model ?? null);
     const effort = body.effort !== undefined ? (body.effort || null) : (session?.effort ?? null);
+    if (body.fullAccess !== undefined && typeof body.fullAccess !== 'boolean') throw coded('BAD_REQUEST');
+    const fullAccess = body.fullAccess ?? (session?.fullAccess === true);
     if (model && !validModel(model)) throw coded('MODEL_INVALID');
     if (effort && !validEffort(provider, effort)) throw coded('EFFORT_INVALID');
     const catalog = provider === 'codex' ? codexModels() : [];
     const info = model && catalog.find(m => m.id === model);
     if (info && effort && info.efforts.length && !info.efforts.includes(effort)) throw coded('EFFORT_INVALID');
-    return { message, images, session, provider, model, effort, catalog };
+    return { message, images, session, provider, model, effort, fullAccess, catalog };
   }
 
   /** Streams one chat turn as server-sent events. */
   async chat(body, res) {
-    const { message, images, provider, model, effort, catalog, ...rest } = this.#prepare(body);
+    const { message, images, provider, model, effort, fullAccess, catalog, ...rest } = this.#prepare(body);
     let session = rest.session;
     const isNew = !session;
     if (isNew) {
@@ -302,7 +308,7 @@ export class AgentHub {
     }
     saveImages(IMAGES_DIR(session.id), images);
     if (isNew) this.sessions.push(session);
-    Object.assign(session, { model, effort });
+    Object.assign(session, { model, effort, fullAccess });
 
     const attachments = images.map(({ id, name, mediaType }) => ({ id, name, mediaType }));
     const userMessage = { role: 'user', text: message, at: new Date().toISOString(), ...(attachments.length ? { images: attachments } : {}) };
@@ -311,7 +317,7 @@ export class AgentHub {
     this.running.set(session.id, turn);
     res.on('close', () => turn.listeners.delete(res));
     sse(res);
-    turn.start = { type: 'start', sessionId: session.id, provider, model, effort, images: attachments };
+    turn.start = { type: 'start', sessionId: session.id, provider, model, effort, fullAccess, images: attachments };
     this.#emit(turn, turn.start);
 
     const finish = (extra = {}) => {
@@ -327,7 +333,7 @@ export class AgentHub {
       return finish();
     }
     const { args, input } = buildTurn({
-      provider, providerSessionId: session.providerSessionId, model, effort, locale: body.locale, text: message,
+      provider, providerSessionId: session.providerSessionId, model, effort, fullAccess, locale: body.locale, text: message,
       images: attachments.map(image => ({ path: imageFile(session.id, image), mediaType: image.mediaType })),
     }, { catalog });
     const env = { ...process.env, PATH: `${BIN_DIR}${path.delimiter}${process.env.PATH}`, POB_AI_LOCALE: body.locale ?? '' };
@@ -452,7 +458,7 @@ export class AgentHub {
     }
 
     if (route === 'GET /api/agent/sessions') {
-      return send(res, 200, { ok: true, sessions: this.sessions.map(({ messages, providerSessionId, ...s }) => ({ ...s, updatedAt: s.updatedAt ?? s.createdAt, model: s.model ?? null, effort: s.effort ?? null, turns: messages.length, running: this.running.has(s.id) })) });
+      return send(res, 200, { ok: true, sessions: this.sessions.map(({ messages, providerSessionId, ...s }) => ({ ...s, updatedAt: s.updatedAt ?? s.createdAt, model: s.model ?? null, effort: s.effort ?? null, fullAccess: s.fullAccess === true, turns: messages.length, running: this.running.has(s.id) })) });
     }
     const image = url.pathname.match(/^\/api\/agent\/sessions\/([\w-]+)\/images\/([0-9a-f]{64})$/);
     if (image && req.method === 'GET') {
@@ -466,7 +472,7 @@ export class AgentHub {
     const match = url.pathname.match(/^\/api\/agent\/sessions\/([\w-]+)$/);
     if (match && req.method === 'GET') {
       const session = this.sessions.find(s => s.id === match[1]);
-      return session ? send(res, 200, { ok: true, session: { ...session, running: this.running.has(session.id) } }) : send(res, 404, { ok: false, error: { code: 'NOT_FOUND' } });
+      return session ? send(res, 200, { ok: true, session: { ...session, fullAccess: session.fullAccess === true, running: this.running.has(session.id) } }) : send(res, 404, { ok: false, error: { code: 'NOT_FOUND' } });
     }
     if (match && req.method === 'DELETE') {
       this.stop(match[1]);

@@ -1,5 +1,6 @@
 // Shared by the local service and browser: the ten languages the app can display.
 export const SUPPORTED_LOCALES = ['en', 'ko', 'ja', 'zh-Hant', 'ru', 'de', 'fr', 'es', 'pt-BR', 'th'];
+export const normalizeLocalePreference = value => SUPPORTED_LOCALES.includes(value) ? value : 'system';
 
 export function matchLocale(languages) {
   for (const language of languages) {

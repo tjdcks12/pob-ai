@@ -34,6 +34,7 @@ export function candidates() {
   if (process.env.POB_PATH) list.push({ source: 'env', dir: process.env.POB_PATH });
   const configured = readConfig().pobPath;
   if (configured) list.push({ source: 'config', dir: configured });
+  list.push({ source: 'managed', dir: path.join(stateDir(), 'pob') });
   const registry = registryInstallLocation();
   if (registry) list.push({ source: 'registry', dir: registry });
   if (process.env.APPDATA) list.push({ source: 'appdata', dir: path.join(process.env.APPDATA, 'Path of Building Community (PoE2)') });

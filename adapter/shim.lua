@@ -61,13 +61,11 @@ launch.OnInit = function(self, ...)
 	pobai_log(ok and 'bridge loaded' or ('bridge failed to load: ' .. tostring(err)))
 	-- PoB AI title bar in place of the Windows caption. Runs again after PoB's Restart(), which
 	-- re-runs this script; on any failure the window keeps its Windows caption.
-	if os.getenv('POBAI_TITLEBAR') ~= 'windows' then
-		ok, err = pcall(function()
-			dofile(adapter .. '/live/window.lua')
-			POBAI_WINDOW.install()
-		end)
-		if not ok then pobai_log('title bar not installed: ' .. tostring(err)) end
-	end
+	ok, err = pcall(function()
+		dofile(adapter .. '/live/window.lua')
+		POBAI_WINDOW.install()
+	end)
+	if not ok then pobai_log('title bar not installed: ' .. tostring(err)) end
 end
 
 -- PoB's Restart() (dev F5, "normal" self-update) reloads the entry script from the script

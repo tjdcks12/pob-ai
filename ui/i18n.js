@@ -1,6 +1,6 @@
 // Panel strings in the ten supported languages. Game terms come from PoB itself.
 // {agent}, {version} are filled in by the panel.
-import { SUPPORTED_LOCALES, matchLocale, resolveLocale } from './locale.js';
+import { matchLocale, resolveLocale, normalizeLocalePreference } from './locale.js';
 export const LOCALES = {
   en: 'English', ko: '한국어', ja: '日本語', 'zh-Hant': '繁體中文', ru: 'Русский',
   de: 'Deutsch', fr: 'Français', es: 'Español', 'pt-BR': 'Português (Brasil)', th: 'ไทย',
@@ -8,6 +8,11 @@ export const LOCALES = {
 
 export const STRINGS = {
   en: {
+    fullAccess: 'Allow full access',
+    fullAccessDesc: 'This chat only, from the next message. Allows file changes and command execution without approval prompts.',
+    pobFolderDesc: 'The selected or detected PoB folder. Changes apply the next time PoB opens.',
+    pobFolderSaved: 'Folder saved. Reopen PoB to use this installation.',
+    visitWebsite: 'Open the poe2way website',
     systemLanguage: 'System default',
     chatTabs: 'Conversations',
     connected: 'PoB connected', disconnected: 'PoB not open', openPob: 'Open PoB', opening: 'Opening PoB…',
@@ -27,7 +32,6 @@ export const STRINGS = {
     language: 'Language', theme: 'Theme', themePob: 'PoB original', themeDark: 'Dark', themeLight: 'Light',
     themeOcean: 'Ocean', themeForest: 'Forest', themeSand: 'Sand',
     windowLanguage: 'Window language', windowTheme: 'Window template',
-    titleBar: 'PoB AI title bar', titleBarDesc: 'Replaces the Windows title bar of the PoB window. Applies the next time PoB opens.',
     pobFolder: 'PoB folder', apply: 'Use', installPob: 'Install PoB', installingPob: 'Installing PoB…',
     pobNotFound: 'Path of Building (PoE2) was not found. Enter its folder in Settings, or install PoB from there.',
     pobFolderInvalid: 'No PoB (PoE2) in that folder. Pick the folder that contains "Path of Building-PoE2.exe".',
@@ -50,6 +54,11 @@ export const STRINGS = {
     errPathInvalid: 'Choose the .exe, .cmd or .bat file of {agent}.',
   },
   ko: {
+    fullAccess: '전체 권한 허용',
+    fullAccessDesc: '이 대화의 다음 메시지부터 파일 수정과 명령 실행을 추가 승인 없이 허용합니다.',
+    pobFolderDesc: '지정하거나 자동으로 찾은 PoB 폴더입니다. 변경은 PoB를 다시 열 때 적용됩니다.',
+    pobFolderSaved: '폴더를 저장했습니다. 이 설치본을 사용하려면 PoB를 다시 열어주세요.',
+    visitWebsite: 'poe2way 웹사이트 열기',
     systemLanguage: '시스템 설정 따름',
     chatTabs: '대화 탭',
     connected: 'PoB 연결됨', disconnected: 'PoB 꺼짐', openPob: 'PoB 열기', opening: 'PoB 여는 중…',
@@ -69,7 +78,6 @@ export const STRINGS = {
     language: '언어', theme: '테마', themePob: 'PoB 원본', themeDark: '다크', themeLight: '라이트',
     themeOcean: '오션', themeForest: '포레스트', themeSand: '샌드',
     windowLanguage: '창 언어', windowTheme: '창 템플릿',
-    titleBar: 'PoB AI 제목줄', titleBarDesc: 'PoB 창의 Windows 제목줄을 바꿉니다. 다음에 PoB를 열 때 적용됩니다.',
     pobFolder: 'PoB 폴더', apply: '적용', installPob: 'PoB 설치', installingPob: 'PoB 설치 중…',
     pobNotFound: 'Path of Building (PoE2)를 찾지 못했습니다. 설정에서 PoB 폴더를 지정하거나 PoB를 설치하세요.',
     pobFolderInvalid: '그 폴더에서 PoB(PoE2)를 찾지 못했습니다. "Path of Building-PoE2.exe"가 있는 폴더를 지정하세요.',
@@ -92,6 +100,11 @@ export const STRINGS = {
     errPathInvalid: '{agent}의 .exe, .cmd, .bat 파일을 고르세요.',
   },
   ja: {
+    fullAccess: 'フルアクセスを許可',
+    fullAccessDesc: 'この会話の次のメッセージから、確認なしでファイルの変更とコマンドの実行を許可します。',
+    pobFolderDesc: '指定または自動検出した PoB フォルダーです。変更は次回の PoB 起動時に反映されます。',
+    pobFolderSaved: 'フォルダーを保存しました。このインストールを使うには PoB を開き直してください。',
+    visitWebsite: 'poe2way のウェブサイトを開く',
     systemLanguage: 'システム設定に従う',
     chatTabs: 'チャットタブ',
     connected: 'PoB 接続中', disconnected: 'PoB 未起動', openPob: 'PoB を開く', opening: 'PoB を起動中…',
@@ -111,7 +124,6 @@ export const STRINGS = {
     language: '言語', theme: 'テーマ', themePob: 'PoB オリジナル', themeDark: 'ダーク', themeLight: 'ライト',
     themeOcean: 'オーシャン', themeForest: 'フォレスト', themeSand: 'サンド',
     windowLanguage: 'ウィンドウの言語', windowTheme: 'ウィンドウテンプレート',
-    titleBar: 'PoB AI タイトルバー', titleBarDesc: 'PoB ウィンドウの Windows タイトルバーを置き換えます。次に PoB を開いたときに反映されます。',
     pobFolder: 'PoB フォルダー', apply: '適用', installPob: 'PoB をインストール', installingPob: 'PoB をインストール中…',
     pobNotFound: 'Path of Building (PoE2) が見つかりません。設定で PoB のフォルダーを指定するか、PoB をインストールしてください。',
     pobFolderInvalid: 'そのフォルダーに PoB (PoE2) がありません。「Path of Building-PoE2.exe」があるフォルダーを指定してください。',
@@ -134,6 +146,11 @@ export const STRINGS = {
     errPathInvalid: '{agent} の .exe・.cmd・.bat ファイルを選んでください。',
   },
   'zh-Hant': {
+    fullAccess: '允許完整存取權限',
+    fullAccessDesc: '僅適用於此對話，從下一則訊息起允許修改檔案與執行命令，無需再次核准。',
+    pobFolderDesc: '指定或自動偵測的 PoB 資料夾。變更會在下次開啟 PoB 時套用。',
+    pobFolderSaved: '已儲存資料夾。請重新開啟 PoB 以使用此安裝版本。',
+    visitWebsite: '開啟 poe2way 網站',
     systemLanguage: '跟隨系統設定',
     chatTabs: '對話分頁',
     connected: 'PoB 已連線', disconnected: 'PoB 未開啟', openPob: '開啟 PoB', opening: '正在開啟 PoB…',
@@ -153,7 +170,6 @@ export const STRINGS = {
     language: '語言', theme: '主題', themePob: 'PoB 原版', themeDark: '深色', themeLight: '淺色',
     themeOcean: '海洋', themeForest: '森林', themeSand: '沙色',
     windowLanguage: '視窗語言', windowTheme: '視窗範本',
-    titleBar: 'PoB AI 標題列', titleBarDesc: '取代 PoB 視窗的 Windows 標題列。下次開啟 PoB 時生效。',
     pobFolder: 'PoB 資料夾', apply: '套用', installPob: '安裝 PoB', installingPob: '正在安裝 PoB…',
     pobNotFound: '找不到 Path of Building (PoE2)。請在設定中指定 PoB 資料夾，或從那裡安裝 PoB。',
     pobFolderInvalid: '該資料夾中找不到 PoB (PoE2)。請指定含有「Path of Building-PoE2.exe」的資料夾。',
@@ -176,6 +192,11 @@ export const STRINGS = {
     errPathInvalid: '請選擇 {agent} 的 .exe、.cmd 或 .bat 檔案。',
   },
   ru: {
+    fullAccess: 'Разрешить полный доступ',
+    fullAccessDesc: 'Только в этом чате, со следующего сообщения. Разрешает изменение файлов и выполнение команд без запросов подтверждения.',
+    pobFolderDesc: 'Выбранная или найденная папка PoB. Изменения применяются при следующем запуске PoB.',
+    pobFolderSaved: 'Папка сохранена. Откройте PoB заново, чтобы использовать эту установку.',
+    visitWebsite: 'Открыть сайт poe2way',
     systemLanguage: 'Как в системе',
     chatTabs: 'Вкладки чатов',
     connected: 'PoB подключён', disconnected: 'PoB не запущен', openPob: 'Открыть PoB', opening: 'Открываю PoB…',
@@ -195,7 +216,6 @@ export const STRINGS = {
     language: 'Язык', theme: 'Тема', themePob: 'Оригинал PoB', themeDark: 'Тёмная', themeLight: 'Светлая',
     themeOcean: 'Океан', themeForest: 'Лес', themeSand: 'Песок',
     windowLanguage: 'Язык окна', windowTheme: 'Шаблон окна',
-    titleBar: 'Заголовок PoB AI', titleBarDesc: 'Заменяет заголовок Windows у окна PoB. Применится при следующем запуске PoB.',
     pobFolder: 'Папка PoB', apply: 'Применить', installPob: 'Установить PoB', installingPob: 'Установка PoB…',
     pobNotFound: 'Path of Building (PoE2) не найден. Укажите его папку в настройках или установите PoB оттуда.',
     pobFolderInvalid: 'В этой папке нет PoB (PoE2). Укажите папку, в которой лежит «Path of Building-PoE2.exe».',
@@ -218,6 +238,11 @@ export const STRINGS = {
     errPathInvalid: 'Выберите файл .exe, .cmd или .bat для {agent}.',
   },
   de: {
+    fullAccess: 'Vollzugriff erlauben',
+    fullAccessDesc: 'Nur für diesen Chat, ab der nächsten Nachricht. Erlaubt Dateiänderungen und Befehle ohne weitere Bestätigung.',
+    pobFolderDesc: 'Der gewählte oder erkannte PoB-Ordner. Änderungen gelten beim nächsten Start von PoB.',
+    pobFolderSaved: 'Ordner gespeichert. Öffne PoB erneut, um diese Installation zu verwenden.',
+    visitWebsite: 'poe2way-Website öffnen',
     systemLanguage: 'Systemeinstellung',
     chatTabs: 'Chat-Tabs',
     connected: 'PoB verbunden', disconnected: 'PoB nicht geöffnet', openPob: 'PoB öffnen', opening: 'PoB wird geöffnet…',
@@ -237,7 +262,6 @@ export const STRINGS = {
     language: 'Sprache', theme: 'Design', themePob: 'PoB Original', themeDark: 'Dunkel', themeLight: 'Hell',
     themeOcean: 'Ozean', themeForest: 'Wald', themeSand: 'Sand',
     windowLanguage: 'Fenstersprache', windowTheme: 'Fenstervorlage',
-    titleBar: 'PoB-AI-Titelleiste', titleBarDesc: 'Ersetzt die Windows-Titelleiste des PoB-Fensters. Gilt ab dem nächsten Start von PoB.',
     pobFolder: 'PoB-Ordner', apply: 'Übernehmen', installPob: 'PoB installieren', installingPob: 'PoB wird installiert…',
     pobNotFound: 'Path of Building (PoE2) wurde nicht gefunden. Gib in den Einstellungen den PoB-Ordner an oder installiere PoB dort.',
     pobFolderInvalid: 'In diesem Ordner ist kein PoB (PoE2). Wähle den Ordner mit „Path of Building-PoE2.exe“.',
@@ -260,6 +284,11 @@ export const STRINGS = {
     errPathInvalid: 'Wähle die .exe-, .cmd- oder .bat-Datei von {agent}.',
   },
   fr: {
+    fullAccess: 'Autoriser l’accès complet',
+    fullAccessDesc: 'Pour cette conversation uniquement, dès le prochain message. Autorise la modification de fichiers et les commandes sans confirmation.',
+    pobFolderDesc: 'Dossier PoB choisi ou détecté. Les changements seront appliqués au prochain lancement de PoB.',
+    pobFolderSaved: 'Dossier enregistré. Rouvrez PoB pour utiliser cette installation.',
+    visitWebsite: 'Ouvrir le site poe2way',
     systemLanguage: 'Langue du système',
     chatTabs: 'Onglets de conversation',
     connected: 'PoB connecté', disconnected: 'PoB fermé', openPob: 'Ouvrir PoB', opening: 'Ouverture de PoB…',
@@ -279,7 +308,6 @@ export const STRINGS = {
     language: 'Langue', theme: 'Thème', themePob: 'PoB original', themeDark: 'Sombre', themeLight: 'Clair',
     themeOcean: 'Océan', themeForest: 'Forêt', themeSand: 'Sable',
     windowLanguage: 'Langue de la fenêtre', windowTheme: 'Modèle de fenêtre',
-    titleBar: 'Barre de titre PoB AI', titleBarDesc: 'Remplace la barre de titre Windows de la fenêtre PoB. S\'applique à la prochaine ouverture de PoB.',
     pobFolder: 'Dossier de PoB', apply: 'Appliquer', installPob: 'Installer PoB', installingPob: 'Installation de PoB…',
     pobNotFound: 'Path of Building (PoE2) est introuvable. Indiquez son dossier dans les paramètres ou installez PoB depuis ceux-ci.',
     pobFolderInvalid: 'Aucun PoB (PoE2) dans ce dossier. Choisissez le dossier qui contient « Path of Building-PoE2.exe ».',
@@ -302,6 +330,11 @@ export const STRINGS = {
     errPathInvalid: 'Choisissez le fichier .exe, .cmd ou .bat de {agent}.',
   },
   es: {
+    fullAccess: 'Permitir acceso completo',
+    fullAccessDesc: 'Solo en este chat, a partir del próximo mensaje. Permite modificar archivos y ejecutar comandos sin pedir confirmación.',
+    pobFolderDesc: 'Carpeta de PoB elegida o detectada. Los cambios se aplican al volver a abrir PoB.',
+    pobFolderSaved: 'Carpeta guardada. Vuelve a abrir PoB para usar esta instalación.',
+    visitWebsite: 'Abrir el sitio web de poe2way',
     systemLanguage: 'Idioma del sistema',
     chatTabs: 'Pestañas de conversación',
     connected: 'PoB conectado', disconnected: 'PoB cerrado', openPob: 'Abrir PoB', opening: 'Abriendo PoB…',
@@ -321,7 +354,6 @@ export const STRINGS = {
     language: 'Idioma', theme: 'Tema', themePob: 'PoB original', themeDark: 'Oscuro', themeLight: 'Claro',
     themeOcean: 'Océano', themeForest: 'Bosque', themeSand: 'Arena',
     windowLanguage: 'Idioma de la ventana', windowTheme: 'Plantilla de ventana',
-    titleBar: 'Barra de título de PoB AI', titleBarDesc: 'Sustituye la barra de título de Windows de la ventana de PoB. Se aplica la próxima vez que abras PoB.',
     pobFolder: 'Carpeta de PoB', apply: 'Aplicar', installPob: 'Instalar PoB', installingPob: 'Instalando PoB…',
     pobNotFound: 'No se encontró Path of Building (PoE2). Indica su carpeta en Ajustes o instala PoB desde ahí.',
     pobFolderInvalid: 'No hay PoB (PoE2) en esa carpeta. Elige la carpeta que contiene «Path of Building-PoE2.exe».',
@@ -344,6 +376,11 @@ export const STRINGS = {
     errPathInvalid: 'Elige el archivo .exe, .cmd o .bat de {agent}.',
   },
   'pt-BR': {
+    fullAccess: 'Permitir acesso total',
+    fullAccessDesc: 'Somente nesta conversa, a partir da próxima mensagem. Permite alterar arquivos e executar comandos sem pedir confirmação.',
+    pobFolderDesc: 'Pasta do PoB escolhida ou detectada. As alterações serão aplicadas ao abrir o PoB novamente.',
+    pobFolderSaved: 'Pasta salva. Abra o PoB novamente para usar esta instalação.',
+    visitWebsite: 'Abrir o site poe2way',
     systemLanguage: 'Idioma do sistema',
     chatTabs: 'Abas de conversa',
     connected: 'PoB conectado', disconnected: 'PoB fechado', openPob: 'Abrir PoB', opening: 'Abrindo o PoB…',
@@ -363,7 +400,6 @@ export const STRINGS = {
     language: 'Idioma', theme: 'Tema', themePob: 'PoB original', themeDark: 'Escuro', themeLight: 'Claro',
     themeOcean: 'Oceano', themeForest: 'Floresta', themeSand: 'Areia',
     windowLanguage: 'Idioma da janela', windowTheme: 'Modelo da janela',
-    titleBar: 'Barra de título do PoB AI', titleBarDesc: 'Substitui a barra de título do Windows na janela do PoB. Vale a partir da próxima vez que o PoB abrir.',
     pobFolder: 'Pasta do PoB', apply: 'Aplicar', installPob: 'Instalar o PoB', installingPob: 'Instalando o PoB…',
     pobNotFound: 'O Path of Building (PoE2) não foi encontrado. Informe a pasta dele nas configurações ou instale o PoB por lá.',
     pobFolderInvalid: 'Não há PoB (PoE2) nessa pasta. Escolha a pasta que contém "Path of Building-PoE2.exe".',
@@ -386,6 +422,11 @@ export const STRINGS = {
     errPathInvalid: 'Escolha o arquivo .exe, .cmd ou .bat do {agent}.',
   },
   th: {
+    fullAccess: 'อนุญาตสิทธิ์เต็มรูปแบบ',
+    fullAccessDesc: 'ใช้เฉพาะแชตนี้ตั้งแต่ข้อความถัดไป อนุญาตให้แก้ไขไฟล์และเรียกใช้คำสั่งโดยไม่ต้องขออนุมัติอีก',
+    pobFolderDesc: 'โฟลเดอร์ PoB ที่เลือกหรือตรวจพบอัตโนมัติ การเปลี่ยนแปลงจะมีผลเมื่อเปิด PoB ครั้งถัดไป',
+    pobFolderSaved: 'บันทึกโฟลเดอร์แล้ว เปิด PoB อีกครั้งเพื่อใช้การติดตั้งนี้',
+    visitWebsite: 'เปิดเว็บไซต์ poe2way',
     systemLanguage: 'ใช้ภาษาของระบบ',
     chatTabs: 'แท็บสนทนา',
     connected: 'เชื่อมต่อ PoB แล้ว', disconnected: 'ยังไม่ได้เปิด PoB', openPob: 'เปิด PoB', opening: 'กำลังเปิด PoB…',
@@ -405,7 +446,6 @@ export const STRINGS = {
     language: 'ภาษา', theme: 'ธีม', themePob: 'PoB ดั้งเดิม', themeDark: 'มืด', themeLight: 'สว่าง',
     themeOcean: 'มหาสมุทร', themeForest: 'ป่าไม้', themeSand: 'ทราย',
     windowLanguage: 'ภาษาของหน้าต่าง', windowTheme: 'เทมเพลตหน้าต่าง',
-    titleBar: 'แถบชื่อ PoB AI', titleBarDesc: 'ใช้แทนแถบชื่อของ Windows ในหน้าต่าง PoB มีผลเมื่อเปิด PoB ครั้งถัดไป',
     pobFolder: 'โฟลเดอร์ PoB', apply: 'ใช้', installPob: 'ติดตั้ง PoB', installingPob: 'กำลังติดตั้ง PoB…',
     pobNotFound: 'ไม่พบ Path of Building (PoE2) ระบุโฟลเดอร์ของ PoB ในการตั้งค่า หรือติดตั้ง PoB จากที่นั่น',
     pobFolderInvalid: 'ไม่พบ PoB (PoE2) ในโฟลเดอร์นั้น เลือกโฟลเดอร์ที่มี "Path of Building-PoE2.exe"',
@@ -434,18 +474,17 @@ export function detectLocale() {
 }
 
 function readPreference() {
-  const saved = (() => { try { return localStorage.getItem('pobai.locale'); } catch { return null; } })();
-  return SUPPORTED_LOCALES.includes(saved) ? saved : 'system';
+  return normalizeLocalePreference(document.documentElement.dataset?.language);
 }
 export const systemLocale = () => matchLocale([document.documentElement.dataset?.systemLocale, ...(navigator.languages ?? [navigator.language])]);
 let preference = readPreference();
 let current = detectLocale();
 export const locale = () => current;
 export const localePreference = () => preference;
-export function setLocale(next, { remember = true } = {}) {
-  preference = SUPPORTED_LOCALES.includes(next) ? next : 'system';
+export function setLocale(next) {
+  preference = normalizeLocalePreference(next);
   current = resolveLocale(preference, systemLocale());
-  if (remember) try { localStorage.setItem('pobai.locale', preference); } catch { /* private window */ }
+  if (document.documentElement.dataset) document.documentElement.dataset.language = preference;
   document.documentElement.lang = current;
 }
 /** Translated text; `{name}` placeholders are filled from `vars`. */

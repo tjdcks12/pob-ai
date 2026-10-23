@@ -1,5 +1,5 @@
 -- PoB AI title bar: replaces the Windows caption of the PoB window with a 36px bar drawn in Lua
--- (PoB AI mark, the window title PoB sets, settings and AI agent buttons, and
+-- (PoB AI mark, the window title PoB sets, website, settings and AI agent buttons, and
 -- minimize / maximize / close). No PoB file is changed:
 --   * The window keeps its normal styles; a comctl32 window subclass answers WM_NCCALCSIZE with
 --     "no frame" (the whole window is client area, inset by the frame while maximized so it fits
@@ -20,7 +20,7 @@
 -- tb-sparkles-32 are Lucide minus, x and sparkles at 32px (2x of 16px); tb-square-26 and
 -- tb-restore-26 are Lucide square and copy at 26px (2x of 13px), all with stroke-width 1.75,
 -- matching poe2way's title bar. poe2way-mark-64 is the original poe2way brand asset.
--- tb-settings-32 uses the existing Lucide settings path from ui/icons.svg, rendered with WPF.
+-- tb-settings-32 and tb-external-link-32 use existing Lucide paths from ui/icons.svg, rendered with WPF.
 -- The control icons were rendered from inline SVG with headless Chrome
 -- (--default-background-color=00000000) and cropped with System.Drawing, keeping only alpha.
 local ffi = require('ffi')
@@ -109,6 +109,7 @@ local function barPart(fromRight)
 	if fromRight < btn * 3 then return 'min' end
 	if fromRight >= S.layout.aiFrom and fromRight < S.layout.aiTo then return 'ai' end
 	if S.layout.settingsFrom and fromRight >= S.layout.settingsFrom and fromRight < S.layout.settingsTo then return 'settings' end
+	if S.layout.websiteFrom and fromRight >= S.layout.websiteFrom and fromRight < S.layout.websiteTo then return 'website' end
 	return nil
 end
 
@@ -219,6 +220,7 @@ jit.off(hoveredPart)
 local function textDraw(...) if POBAI_FONT then return POBAI_FONT.draw(...) end return raw.DrawString(...) end
 local function textWidth(...) if POBAI_FONT then return POBAI_FONT.width(...) end return raw.DrawStringWidth(...) end
 local function aiWidth() return 10 + 16 + 6 + textWidth(14, 'VAR BOLD', 'AI') + 10 end
+local function websiteWidth() return 10 + textWidth(13, 'VAR', 'poe2way') + 6 + 14 + 10 end
 
 local function drawBar()
 	local t = S.palette
@@ -261,13 +263,21 @@ local function drawBar()
 	S.layout.settingsFrom, S.layout.settingsTo = vw - settingsRight, vw - settingsLeft
 	if hover == 'settings' then color(t['surface-hover']) raw.DrawImage(nil, settingsLeft, 6, settingsW, bar - 13) end
 	icon(S.img.settings, settingsLeft + settingsW / 2, 16, hover == 'settings' and t.fg or t['fg-2'])
+	local websiteRight, websiteW = settingsLeft - 6, websiteWidth()
+	local websiteLeft = websiteRight - websiteW
+	S.layout.websiteFrom, S.layout.websiteTo = vw - websiteRight, vw - websiteLeft
+	if hover == 'website' then color(t['surface-hover']) raw.DrawImage(nil, websiteLeft, 6, websiteW, bar - 13) end
+	local websiteColor = hover == 'website' and t['primary-text'] or t['fg-2']
+	color(websiteColor)
+	textDraw(websiteLeft + 10, math.floor((bar - 13) / 2), 'LEFT', 13, 'VAR', 'poe2way')
+	icon(S.img.external, websiteRight - 10 - 7, 14, websiteColor)
 
-	-- Original poe2way mark and the window title, clipped before the AI button.
+	-- Original poe2way mark and the window title, clipped before the website link.
 	color({ 1, 1, 1 })
 	raw.DrawImage(S.img.mark, 12, (bar - 18) / 2, 18, 18)
 	local titleLeft = 12 + 18 + 8
-	if settingsLeft - 12 > titleLeft then
-		raw.SetViewport(titleLeft, 0, settingsLeft - 12 - titleLeft, bar)
+	if websiteLeft - 12 > titleLeft then
+		raw.SetViewport(titleLeft, 0, websiteLeft - 12 - titleLeft, bar)
 		color(t['fg-2'])
 		textDraw(0, math.floor((bar - 14) / 2), 'LEFT', 14, 'VAR', S.title)
 		raw.SetViewport()
@@ -290,6 +300,8 @@ local function act(part)
 		if pobai_emit then pobai_emit({ kind = 'open-panel', panelFound = result.found }) end
 	elseif part == 'settings' then
 		if pobai_emit then pobai_emit({ kind = 'open-settings', ownerPid = tonumber(kernel32.GetCurrentProcessId()) }) end
+	elseif part == 'website' then
+		OpenURL('https://www.poe2way.com/' .. (POBAI_TRANSLATE and POBAI_TRANSLATE.locale or 'en'))
 	end
 end
 
@@ -423,6 +435,7 @@ local function install()
 		mark = loadImage('poe2way-mark-64.png', true), minus = loadImage('tb-minus-32.png'), square = loadImage('tb-square-26.png'),
 		restore = loadImage('tb-restore-26.png'), close = loadImage('tb-close-32.png'), sparkles = loadImage('tb-sparkles-32.png'),
 		settings = loadImage('tb-settings-32.png'),
+		external = loadImage('tb-external-link-32.png'),
 	}
 
 	local win = glfw.glfwGetCurrentContext()
@@ -434,6 +447,8 @@ local function install()
 	local aiW = aiWidth()
 	S.layout.aiFrom, S.layout.aiTo = S.btn * 3 + 8, S.btn * 3 + 8 + aiW
 	S.layout.settingsFrom, S.layout.settingsTo = S.layout.aiTo + 4, S.layout.aiTo + 34
+	S.layout.websiteFrom = S.layout.settingsTo + 6
+	S.layout.websiteTo = S.layout.websiteFrom + websiteWidth()
 
 	-- Where the client area is now: the window shrinks onto it, so the saved window size stays
 	-- the same from one start to the next.

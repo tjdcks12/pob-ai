@@ -20,8 +20,7 @@ export function launchPob(install, bridge, { buildFile } = {}) {
     stdio: 'ignore',
     env: {
       ...process.env, POBAI_BRIDGE_PORT: String(bridge.port), POBAI_BRIDGE_TOKEN: bridge.token, POBAI_THEME: config.pobTheme ?? 'pob',
-      // 'custom' draws the PoB AI title bar on the PoB window (adapter/live/window.lua); 'windows' keeps the Windows caption.
-      POBAI_TITLEBAR: config.pobTitleBar ?? 'custom', POBAI_LOG: statePath('logs', 'pob-window.log'),
+      POBAI_LOG: statePath('logs', 'pob-window.log'),
     },
   });
   child.unref();

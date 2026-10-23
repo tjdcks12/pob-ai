@@ -166,12 +166,17 @@ export const LOCAL = {
       window: runtime.service ? { connected: runtime.liveConnected, ...runtime.bridge?.info } : { connected: null, note: 'Run inside the service to know.' }, dataFolder: statePath() } };
   },
 
-  async setup(args) {
-    if (args.installPob) return { target: 'app', result: await installPob() };
-    if (!args.pobPath) throw Object.assign(new Error('Give the PoB folder, or use --install-pob to download PoB.'), { code: 'BAD_ARGS' });
-    const install = inspectInstall(args.pobPath);
-    if (!install) throw Object.assign(new Error(`No PoB (PoE2) install in ${args.pobPath}. Pick the folder that contains "Path of Building-PoE2.exe".`), { code: 'POB_NOT_FOUND' });
-    updateConfig({ pobPath: install.dir });
+  async setup(args, runtime) {
+    let install;
+    if (args.installPob) install = await installPob();
+    else {
+      if (!args.pobPath) throw Object.assign(new Error('Give the PoB folder, or use --install-pob to download PoB.'), { code: 'BAD_ARGS' });
+      install = inspectInstall(args.pobPath);
+      if (!install) throw Object.assign(new Error(`No PoB (PoE2) install in ${args.pobPath}. Pick the folder that contains "Path of Building-PoE2.exe".`), { code: 'POB_NOT_FOUND' });
+      updateConfig({ pobPath: install.dir });
+    }
+    runtime?.refreshInstall();
+    runtime?.service?.broadcast('pob-install', install);
     return { target: 'app', result: install };
   },
 
@@ -253,10 +258,11 @@ export const LOCAL = {
   },
 
   async windowLanguage(args, runtime) {
-    updateConfig({ pobLanguage: args.language });
     const language = windowLocale(args.language);
     let applied = null;
     if (runtime.liveConnected && runtime.service?.windowLanguage) applied = await runtime.service.windowLanguage(language);
+    updateConfig({ pobLanguage: args.language });
+    runtime.service?.broadcast?.('language', { preference: args.language, language });
     return { target: runtime.liveConnected ? 'live' : 'app', result: { language, preference: args.language, applied: Boolean(applied), entries: applied?.entries, remembered: true } };
   },
 
@@ -266,11 +272,6 @@ export const LOCAL = {
     updateConfig({ pobTheme: theme });
     runtime.service?.broadcast('theme', { theme });
     return { target: runtime.liveConnected ? 'live' : 'app', result: { theme, applied: runtime.liveConnected, remembered: true } };
-  },
-
-  async titleBar(args) {
-    updateConfig({ pobTitleBar: args.style });
-    return { target: 'app', result: { style: args.style, appliesNextTime: true } };
   },
 
   async addItem(args, runtime) {

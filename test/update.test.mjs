@@ -7,6 +7,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test, { after, before } from 'node:test';
+import { listenHttp } from '../src/service/http-port.mjs';
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pobai-update-'));
 process.env.POB_AI_HOME = home;
@@ -43,7 +44,7 @@ before(async () => {
     res.writeHead(200);
     res.end(fs.readFileSync(file));
   });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  await listenHttp(server);
   base = `http://127.0.0.1:${server.address().port}`;
   const appZip = path.join(serveDir, 'app.zip');
   fs.writeFileSync(path.join(serveDir, 'latest.json'), JSON.stringify({ version: next, url: 'app.zip', sha256: sha(appZip), size: fs.statSync(appZip).size }));

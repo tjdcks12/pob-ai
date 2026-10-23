@@ -25,11 +25,6 @@
 
   <div id="update-banner" class="banner" hidden><span id="update-text"></span><button id="update-now" type="button" class="agent-primary" data-i18n="updateNow"></button></div>
 
-  <section id="build-card" class="build-card">
-    <div class="build-head"><strong id="build-name"></strong><span id="build-sub"></span></div>
-    <dl id="build-stats" class="stats"></dl>
-  </section>
-
   <div class="agent-sessions">
     <nav id="sessions" class="agent-session-list" role="tablist"></nav>
     <button id="new-chat" class="agent-icon agent-session-add" type="button" data-title="newChat" aria-haspopup="dialog" aria-controls="picker-popover" aria-expanded="false"><svg class="p-icon"><use href="icons.svg#i-plus"/></svg></button>
@@ -62,6 +57,10 @@
       <span class="spacer"></span>
       <button id="send" class="agent-send agent-primary" type="submit" data-title="send"><svg class="p-icon"><use href="icons.svg#i-arrow-up"/></svg></button>
     </div>
+    <div class="agent-permissions">
+      <label><input id="full-access" type="checkbox" aria-describedby="full-access-note"><span data-i18n="fullAccess"></span></label>
+      <p id="full-access-note" data-i18n="fullAccessDesc" hidden></p>
+    </div>
     <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
   </form>
 
@@ -80,11 +79,10 @@
       </section>
       <section class="set-section">
         <h3 class="set-head" data-i18n="sectionPobWindow"></h3>
-        <div class="set-row"><div class="set-title" data-i18n="windowLanguage"></div><div class="set-control"><select id="window-language"></select></div></div>
-        <div class="set-row"><div><div class="set-title" data-i18n="titleBar"></div><p class="set-desc" data-i18n="titleBarDesc"></p></div><div class="set-control"><input id="title-bar" class="switch" type="checkbox"></div></div>
         <div class="set-row stacked">
           <div class="set-title" data-i18n="pobFolder"></div>
           <div class="field-row"><input id="pob-path" type="text" spellcheck="false" autocomplete="off"><button id="pob-path-apply" type="button" data-i18n="apply"></button></div>
+          <p id="pob-path-status" class="set-desc" data-i18n="pobFolderDesc" role="status"></p>
           <div class="set-actions"><button id="pob-install" type="button" class="agent-quiet"><svg class="p-icon"><use href="icons.svg#i-folder-open"/></svg><span data-i18n="installPob"></span></button></div>
         </div>
       </section>
@@ -92,6 +90,11 @@
         <h3 class="set-head" data-i18n="sectionAgents"></h3>
         <div id="agent-rows"></div>
       </section>
+      <footer class="settings-footer">
+        <a class="poe2way-link" data-poe2way href="https://www.poe2way.com/" target="_blank" rel="noopener noreferrer" data-title="visitWebsite">
+          <img src="icon.svg?v=poe2way" alt="" width="20" height="20"><span>poe2way</span><svg class="p-icon" aria-hidden="true"><use href="icons.svg#i-external-link"/></svg>
+        </a>
+      </footer>
     </div>
   </dialog>
   </template>

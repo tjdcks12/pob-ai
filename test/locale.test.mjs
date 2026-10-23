@@ -38,15 +38,17 @@ test('a fresh panel follows Windows display language instead of the browser lang
   assert.equal(writes, 0);
 });
 
-test('manual language choices persist, and returning to system mode stores the preference rather than its resolved language', () => {
-  setLocale('en');
-  assert.equal(detectLocale(), 'en');
-  assert.equal(saved.get('pobai.locale'), 'en');
+test('the panel uses the service language and ignores an old independent browser preference', () => {
+  saved.set('pobai.locale', 'en');
+  document.documentElement.dataset.language = 'ja';
+  assert.equal(detectLocale(), 'ja');
+  setLocale('ja');
+  assert.equal(locale(), 'ja');
   setLocale('system');
   assert.equal(locale(), 'ko');
-  assert.equal(saved.get('pobai.locale'), 'system');
-  setLocale('system', { remember: false });
-  assert.equal(writes, 2, 'syncing another window must not rewrite its preference');
+  assert.equal(document.documentElement.dataset.language, 'system');
+  assert.equal(saved.get('pobai.locale'), 'en', 'legacy browser data is neither the authority nor rewritten');
+  assert.equal(writes, 0);
 });
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pobai-locale-'));
@@ -57,11 +59,53 @@ test('the PoB language command remembers system mode and applies the resolved sy
   const { LOCAL } = await import('../src/commands/local.mjs');
   const { systemLocale } = await import('../src/i18n/system-locale.mjs');
   const applied = [];
-  const runtime = { liveConnected: true, service: { windowLanguage: async language => { applied.push(language); return { entries: 1 }; } } };
+  const events = [];
+  const runtime = { liveConnected: true, service: { windowLanguage: async language => { applied.push(language); return { entries: 1 }; },
+    broadcast: (event, data) => events.push({ event, ...data }) } };
   await LOCAL.windowLanguage({ language: 'en' }, runtime);
   const { result } = await LOCAL.windowLanguage({ language: 'system' }, runtime);
   assert.deepEqual(applied, ['en', systemLocale()]);
   assert.equal(result.preference, 'system');
   assert.equal(result.language, systemLocale());
   assert.equal(JSON.parse(fs.readFileSync(path.join(home, 'config.json'))).pobLanguage, 'system');
+  assert.deepEqual(events.at(-1), { event: 'language', preference: 'system', language: systemLocale() });
+});
+
+test('a failed PoB language change preserves the shared preference and does not notify panels', async () => {
+  const { LOCAL } = await import('../src/commands/local.mjs');
+  const { updateConfig, readConfig } = await import('../src/state.mjs');
+  updateConfig({ pobLanguage: 'ja' });
+  const events = [];
+  await assert.rejects(LOCAL.windowLanguage({ language: 'ko' }, { liveConnected: true, service: {
+    windowLanguage: async () => { throw new Error('PoB unavailable'); }, broadcast: event => events.push(event),
+  } }));
+  assert.equal(readConfig().pobLanguage, 'ja');
+  assert.deepEqual(events, []);
+});
+
+test('the shared language reaches open panels, new settings windows and a restarted service', async () => {
+  const { createService } = await import('../src/service/server.mjs');
+  const { updateConfig } = await import('../src/state.mjs');
+  updateConfig({ pobLanguage: 'en', lastUpdateCheck: Date.now() });
+  let service = await createService({ port: 0, log: () => {} });
+  const abort = new AbortController();
+  try {
+    const endpoint = route => new URL(route, service.url);
+    const headers = { authorization: 'Bearer ' + service.token, 'content-type': 'application/json' };
+    const stream = await fetch(endpoint('/api/events'), { headers, signal: abort.signal });
+    const reader = stream.body.getReader();
+    await reader.read();
+    const result = await fetch(endpoint('/api/run'), { method: 'POST', headers,
+      body: JSON.stringify({ command: 'ui.language', args: { language: 'ja' } }) }).then(r => r.json());
+    assert.equal(result.ok, true);
+    assert.equal(result.result.applied, false);
+    assert.match(new TextDecoder().decode((await reader.read()).value), /event: language\ndata: {"preference":"ja","language":"ja"}/);
+    for (const route of ['/', '/?view=settings']) assert.match(await fetch(endpoint(route)).then(r => r.text()), /data-language="ja"/);
+    abort.abort(); service.close();
+    service = await createService({ port: 0, log: () => {} });
+    const status = await fetch(new URL('/api/status', service.url), { headers: { authorization: 'Bearer ' + service.token } }).then(r => r.json());
+    assert.equal(status.settings.pobLanguage, 'ja');
+    assert.equal(status.settings.pobLanguageResolved, 'ja');
+    assert.match(await fetch(new URL('/', service.url)).then(r => r.text()), /data-language="ja"/);
+  } finally { abort.abort(); service.close(); }
 });

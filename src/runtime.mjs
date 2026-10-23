@@ -75,7 +75,13 @@ export class Runtime {
     if (command.local) {
       // Node-side commands call other commands inside the same queue slot; queuing them
       // again would wait for this very job.
-      const nested = Object.create(this, { run: { value: (n, a = {}, o = {}) => this.#run(n, a, { target, ...o }) } });
+      const nested = Object.create(this, {
+        run: { value: (n, a = {}, o = {}) => this.#run(n, a, { target, ...o }) },
+        // Local commands share the real runtime's install/engine state, not a shadow
+        // cache on this queue-bypassing view.
+        install: { value: () => this.install() },
+        refreshInstall: { value: () => this.refreshInstall() },
+      });
       return command.local(args, nested);
     }
     const live = target === 'headless' ? false : this.liveConnected;

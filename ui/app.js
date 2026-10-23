@@ -1,6 +1,7 @@
 import { LOCALES, locale, localePreference, systemLocale, setLocale, t } from './i18n.js';
 import { refreshWindowChrome } from './window.js';
 import { THEMES, THEME_NAMES, resolveTheme } from './themes.js';
+import { normalizeLocalePreference } from './locale.js';
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -35,7 +36,7 @@ const run = (command, args = {}) => api('/api/run', { command, args, lang: local
 
 const state = {
   live: false, update: null, providers: [], provider: store.get('pobai.provider', ''), models: {},
-  tabs: [], active: null, attachments: [], idle: { draft: '', attachments: [] }, pickerChoice: null,
+  tabs: [], active: null, attachments: [], idle: { draft: '', attachments: [], fullAccess: false }, pickerChoice: null,
 };
 
 // ---------- themes ----------
@@ -67,8 +68,6 @@ function renderLocaleOptions() {
     + Object.entries(LOCALES).map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
   $('locale').innerHTML = options;
   $('locale').value = localePreference();
-  $('window-language').innerHTML = options;
-  $('window-language').value = state.windowLanguage ?? 'system';
 }
 function applyI18n() {
   renderLocaleOptions();
@@ -76,11 +75,11 @@ function applyI18n() {
   document.querySelectorAll('[data-title]').forEach(el => { el.title = t(el.dataset.title); el.setAttribute('aria-label', t(el.dataset.title)); });
   document.querySelectorAll('[data-placeholder]').forEach(el => { el.placeholder = t(el.dataset.placeholder); });
   document.querySelectorAll('[data-suggest]').forEach(el => { el.textContent = t(el.dataset.suggest); });
+  document.querySelectorAll('[data-poe2way]').forEach(el => { el.href = `https://www.poe2way.com/${locale()}`; });
   renderThemeCards();
   refreshWindowChrome();
   renderStatus();
   if (settingsView) { document.title = 'PoB AI · ' + t('settings'); renderAgents(); showUpdate(state.update); return; }
-  refreshBuild();
   showUpdate(state.update);
   renderAgents();
   renderTabs();
@@ -88,11 +87,19 @@ function applyI18n() {
   for (const tab of state.tabs) for (const view of tab.views) renderAssistant(view);
 }
 if (settingsView) {
-  $('locale').addEventListener('change', e => { setLocale(e.target.value); applyI18n(); });
+  $('locale').addEventListener('change', async e => {
+    const select = e.target;
+    select.disabled = true;
+    try {
+      const reply = await run('ui.language', { language: select.value });
+      if (!reply.ok) throw new Error(reply.error?.message ?? '');
+      setLocale(reply.result.preference); applyI18n();
+    } catch (error) { renderLocaleOptions(); showNotice(`${t('error')}: ${error.message}`); }
+    finally { select.disabled = false; }
+  });
 }
-setLocale(localePreference(), { remember: false });
+setLocale(localePreference());
 window.addEventListener('storage', e => {
-  if (e.key === 'pobai.locale') { setLocale(e.newValue, { remember: false }); applyI18n(); }
   if (e.key === 'pobai.providersChanged') { state.models = {}; loadProviders(); }
 });
 
@@ -116,7 +123,7 @@ async function openSettings(focus) {
 }
 $('open-history').addEventListener('click', () => { loadHistory(); openModal($('history-dialog')); });
 
-// ---------- PoB status & build card ----------
+// ---------- PoB connection ----------
 function renderStatus() {
   const pill = $('pob-status');
   pill.setAttribute('aria-label', state.live ? t('connected') : t('openPob'));
@@ -141,31 +148,13 @@ function showPobProblem(error) {
 }
 $('pob-status').addEventListener('click', () => { if (!state.live) openPob(); });
 
-const fmt = value => typeof value === 'number' ? value.toLocaleString(locale(), { maximumFractionDigits: value < 100 ? 1 : 0 }) : (value ?? '–');
-async function refreshBuild() {
-  const reply = await run('build.summary').catch(() => null);
-  const summary = reply?.ok ? reply.result : null;
-  if (!summary?.loaded) {
-    $('build-name').textContent = t('noBuild');
-    $('build-sub').textContent = '';
-    $('build-stats').innerHTML = '';
-    return;
-  }
-  $('build-name').textContent = summary.name || 'Build';
-  const loc = key => summary[`${key}_${locale()}`] ?? summary[key];
-  $('build-sub').textContent = [loc('ascendancy') || loc('class'), `${t('level')} ${summary.level}`, summary.mainSkill && `${t('mainSkill')}: ${loc('mainSkill')}`].filter(Boolean).join(' · ');
-  const s = summary.stats ?? {};
-  const dps = s.FullDPS || s.CombinedDPS || s.TotalDPS || s['Minion.CombinedDPS'] || s['Minion.TotalDPS'];
-  const cells = [['dps', dps], ['life', s.Life], ['es', s.EnergyShield], ['ehp', s.TotalEHP]];
-  $('build-stats').innerHTML = cells.filter(([, v]) => v !== undefined).map(([k, v]) => `<div><dt>${escapeHtml(t(k))}</dt><dd>${fmt(v)}</dd></div>`).join('');
-}
-
 function listenEvents() {
   const source = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
   source.addEventListener('theme', e => { setTheme(JSON.parse(e.data).theme); renderThemeCards(); });
+  source.addEventListener('language', e => { setLocale(JSON.parse(e.data).preference); applyI18n(); });
+  source.addEventListener('pob-install', () => { if (settingsView) loadStatus(); });
+  source.addEventListener('pob', e => { state.live = JSON.parse(e.data).connected; renderStatus(); });
   if (settingsView) return;
-  source.addEventListener('pob', e => { state.live = JSON.parse(e.data).connected; renderStatus(); refreshBuild(); });
-  source.addEventListener('build-changed', () => refreshBuild());
   source.addEventListener('update', e => showUpdate(JSON.parse(e.data)));
   source.addEventListener('focus-panel', () => {
     if (document.hasFocus()) $('input').focus({ preventScroll: true });
@@ -180,15 +169,6 @@ function showNotice(text) {
 }
 
 // ---------- PoB window settings & PoB AI updates ----------
-if (settingsView) {
-  $('window-language').addEventListener('change', async e => {
-    const next = e.target.value;
-    const reply = await run('ui.language', { language: next });
-    if (reply.ok) state.windowLanguage = next;
-    else { renderLocaleOptions(); showNotice(`${t('error')}: ${reply.error?.message ?? ''}`); }
-  });
-  $('title-bar').addEventListener('change', e => run('ui.title_bar', { style: e.target.checked ? 'custom' : 'windows' }));
-}
 function showUpdate(update) {
   state.update = update?.available ? update : null;
   $('update-banner').hidden = !state.update;
@@ -202,14 +182,19 @@ $('update-now').addEventListener('click', async () => {
 });
 async function usePob(args, busyLabel) {
   for (const id of ['pob-path-apply', 'pob-install']) $(id).disabled = true;
-  if (busyLabel) $('pob-status').querySelector('.label').textContent = busyLabel;
+  if (busyLabel) $('pob-path-status').textContent = busyLabel;
   const reply = await run('setup', args).catch(error => ({ ok: false, error: { message: error.message } }));
   for (const id of ['pob-path-apply', 'pob-install']) $(id).disabled = false;
   renderStatus();
-  if (!reply.ok) return showNotice(reply.error?.code === 'POB_NOT_FOUND' && args.pobPath ? t('pobFolderInvalid') : `${t('error')}: ${reply.error?.message ?? ''}`);
+  if (!reply.ok) {
+    $('pob-path-status').textContent = t('pobFolderDesc');
+    return showNotice(reply.error?.code === 'POB_NOT_FOUND' && args.pobPath ? t('pobFolderInvalid') : `${t('error')}: ${reply.error?.message ?? ''}`);
+  }
   $('pob-path').value = reply.result?.dir ?? '';
   document.querySelectorAll('.notice').forEach(el => el.remove());
-  openPob();
+  $('pob-path-status').dataset.i18n = state.live ? 'pobFolderSaved' : 'pobFolderDesc';
+  $('pob-path-status').textContent = t($('pob-path-status').dataset.i18n);
+  if (!state.live) openPob();
 }
 if (settingsView) {
   $('pob-path-apply').addEventListener('click', () => { const dir = $('pob-path').value.trim(); if (dir) usePob({ pobPath: dir }); });
@@ -218,13 +203,15 @@ if (settingsView) {
 async function loadStatus() {
   const reply = await api('/api/status').catch(() => null);
   if (!reply?.ok) return;
+  state.live = Boolean(reply.live?.connected);
+  renderStatus();
   setTheme(reply.settings?.pobTheme ?? 'pob');
   renderThemeCards();
+  const language = normalizeLocalePreference(reply.settings?.pobLanguage);
+  if (localePreference() !== language) { setLocale(language); applyI18n(); }
   if (!settingsView) { showUpdate(reply.update); return; }
   $('pob-path').value = reply.pob?.dir ?? '';
-  state.windowLanguage = reply.settings?.pobLanguage ?? 'system';
   renderLocaleOptions();
-  $('title-bar').checked = reply.settings?.pobTitleBar !== 'windows';
   showUpdate(reply.update);
 }
 
@@ -473,7 +460,8 @@ function newTab(provider, session = {}) {
   pane.setAttribute('aria-labelledby', `session-tab-${nextKey}`);
   $('chat').append(pane);
   const tab = { key: nextKey++, sessionId: session.id ?? null, provider: session.provider ?? provider, title: session.title ?? '',
-    model: session.model ?? null, effort: session.effort ?? null, running: false, pane, views: [], draft: '', attachments: [] };
+    model: session.model ?? null, effort: session.effort ?? null, fullAccess: session.fullAccess === true,
+    running: false, pane, views: [], draft: '', attachments: [] };
   if (!session.id) {
     tab.model = store.get(`pobai.model.${tab.provider}`, '') || null;
     tab.effort = store.get(`pobai.effort.${tab.provider}`, '') || null;
@@ -606,7 +594,12 @@ async function readStream(response, tab, view) {
       const data = frame.split('\n').filter(l => l.startsWith('data: ')).map(l => l.slice(6)).join('');
       if (!data) continue;
       const event = JSON.parse(data);
-      if (event.type === 'start') { tab.sessionId = event.sessionId ?? tab.sessionId; saveTabs(); }
+      if (event.type === 'start') {
+        tab.sessionId = event.sessionId ?? tab.sessionId;
+        tab.fullAccess = event.fullAccess === true;
+        if (tab === activeTab()) renderSend();
+        saveTabs();
+      }
       if (event.type === 'phase') view.phase = event.phase;
       if (event.type === 'text') view.texts.set(event.id, event.partial ? (view.texts.get(event.id) ?? '') + event.text : event.text);
       if (event.type === 'error') view.error = event.code;
@@ -623,7 +616,16 @@ function renderSend() {
   button.innerHTML = icon(running ? 'square' : 'arrow-up');
   button.title = t(running ? 'stopResponse' : 'send');
   button.setAttribute('aria-label', button.title);
+  const fullAccess = (activeTab() ?? state.idle).fullAccess === true;
+  $('full-access').checked = fullAccess;
+  $('full-access').disabled = running;
+  $('full-access-note').hidden = !fullAccess;
 }
+
+$('full-access').addEventListener('change', e => {
+  (activeTab() ?? state.idle).fullAccess = e.target.checked;
+  renderSend();
+});
 
 async function send(text, images = state.attachments, target = activeTab()) {
   if (!text.trim() && !images.length) return;
@@ -631,7 +633,10 @@ async function send(text, images = state.attachments, target = activeTab()) {
   let tab = target;
   if (!tab) {
     if (!providerById(state.provider)?.available) { renderAgents(); return; }
+    const fullAccess = state.idle.fullAccess;
     tab = newTab(state.provider);
+    tab.fullAccess = fullAccess;
+    state.idle.fullAccess = false;
   }
   if (tab.running) return;
   if (!tab.title) tab.title = (text.trim() || images[0]?.name || '').slice(0, 60);
@@ -641,7 +646,8 @@ async function send(text, images = state.attachments, target = activeTab()) {
   renderAssistant(view);
   tab.running = true;
   renderTabs(); renderSend();
-  const body = { sessionId: tab.sessionId, provider: tab.provider, message: text, locale: locale(), images: images.length ? images : undefined };
+  const body = { sessionId: tab.sessionId, provider: tab.provider, message: text, fullAccess: tab.fullAccess === true,
+    locale: locale(), images: images.length ? images : undefined };
   if (!tab.sessionId || tab.choiceChanged) { body.model = tab.model; body.effort = tab.effort; tab.choiceChanged = false; }
   if (fromComposer) {
     (target ?? state.idle).attachments = [];

@@ -33,7 +33,7 @@ command line, so every step is real PoB work you can see, undo and save.
 
 - **Download once.** PoB AI attaches to the Path of Building you already have, without changing a
   single PoB file. PoB keeps updating itself and PoB AI follows; PoB AI updates itself with one click.
-- **The whole editor from the command line.** 143 commands cover builds and folders, loadouts,
+- **The whole editor from the command line.** 142 commands cover builds and folders, loadouts,
   character import, passive tree, skills and gems, items (crafting, anoints, runes, corruption),
   trade searches, configuration, calculations, party, notes and PoB's own options.
 - **It shows you where.** Ask "where do I set the enemy type?" and the agent switches PoB to the
@@ -46,7 +46,7 @@ command line, so every step is real PoB work you can see, undo and save.
 - **One theme for both windows.** Choose PoB original, Dark, Light, Ocean, Forest or Sand once
   for the panel and PoB together. PoB original is the initial default. Custom themes use Pretendard,
   responsive calculation tables and themed tooltips while keeping PoB's category colours.
-- **AI and settings, separately.** The title bar's **AI** button opens or brings the agent panel
+- **AI and settings, separately.** The PoB AI title bar is always enabled. Its **AI** button opens or brings the agent panel
   forward. The **gear** opens a separate settings modal for appearance, languages, PoB and agent setup.
 - **Uses the agent you already have.** Claude Code or Codex runs with your existing sign-in: pick it
   from the cards, chat in several tabs at once, choose the model and reasoning effort, attach
@@ -94,6 +94,10 @@ node bin/pob.mjs help
 Use **+** beside the chat tabs to start another conversation with Claude Code or Codex. Each tab
 keeps its own draft and attachments. Choose the model and reasoning effort beside the composer,
 or open **History** to resume a previous conversation.
+
+**Allow full access** below the composer lets that conversation change files and run commands
+without approval prompts, starting with the next message. It is off for new conversations;
+uncheck it to return to the default permissions. Claude Code and Codex both support this option.
 
 > Review my build and suggest the top 3 improvements.
 
@@ -147,7 +151,7 @@ PoB's *Find Timeless Jewel* search is switched off in PoB PoE2 itself, so it has
 
 ## Your language
 
-The panel and PoB window follow the Windows display language by default. Choosing a language in Settings overrides it; choose **System default** (or `pob ui language system` for PoB) to follow Windows again. Unsupported system languages fall back to English.
+One language selection in Settings applies to the panel and PoB window together. Both follow the Windows display language by default; choose **System default** (or `pob ui language system`) to follow Windows again. Unsupported system languages fall back to English.
 
 | | |
 | --- | --- |
@@ -206,9 +210,9 @@ Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-This README describes the current preview source; release ZIPs follow their own version.
+This README describes v0.2.0. Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
 Compatibility has been checked on Windows 11 with PoB PoE2 0.22.0 and 0.23.1. The current suite
-has **134 passing tests**, covering editor operations, agent sessions, language selection, shared
+has **143 passing tests**, covering editor operations, agent sessions and permissions, language selection, shared
 theme persistence, popup rendering and updates.
 
 Local PoB and WebView2 checks cover all six themes, unchanged calculation results across theme

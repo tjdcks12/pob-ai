@@ -991,7 +991,7 @@ Shared panel and PoB theme: pob (original), dark, light, ocean, forest or sand (
 
 ### `pob ui language <language>`
 
-Show the PoB window in another language (remembered for next time)
+Shared panel and PoB language (system default or a chosen language, remembered for next time)
 
 The default, system, follows the Windows display language. An explicit language overrides it. Game names come from the game client; the interface text of PoB is translated by PoB AI. Text without a translation stays in English.
 
@@ -1003,10 +1003,6 @@ Apply a window language dictionary now (advanced) *(needs the PoB window)*
 | --- | --- | --- |
 | `--locale` (required) | string | Language |
 | `--dict` | string | Dictionary file |
-
-### `pob ui title-bar <style>`
-
-Use the PoB AI title bar on the PoB window, or the Windows one (applies the next time PoB opens)
 
 ### `pob ui theme-apply <theme>`
 
