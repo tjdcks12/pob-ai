@@ -59,10 +59,16 @@ test('the original template restores native geometry and drawing exactly', { ski
   assert.deepEqual(r.overlay, r.original, 'floating panes keep their native input geometry');
 });
 
-test('floating calculation sheets use opaque themed panels without native orange frames', { skip }, async () => {
+test('floating calculation sheets are themed when PoB supports them and remain unavailable otherwise', { skip }, async () => {
   const r = await run('popups');
+  assert.equal(r.overlaySupportedAfter, r.overlaySupported, 'the skin does not invent an unsupported PoB API');
+  assert.equal(Array.isArray(r.native.overlay), r.overlaySupported);
   for (const mode of THEMES.filter(id => id !== 'pob')) {
     const calls = r[mode].overlay;
+    if (!r.overlaySupported) {
+      assert.equal(calls, false, 'stable PoB still exercises hover and pinned breakdowns without a floating sheet');
+      continue;
+    }
     assert.ok(calls.some(c => c.kind === 'rect' && c.colour.every((v, i) => v === [...r[mode].surface, 1][i])), 'opaque themed background');
     assert.ok(!calls.some(c => c.kind === 'rect' && c.colour.slice(0, 3).join() === '1,0.5,0'), 'no native orange table frame');
     assert.deepEqual(calls.filter(c => c.kind === 'text').map(c => c.text), r.native.overlay.filter(c => c.kind === 'text').map(c => c.text));

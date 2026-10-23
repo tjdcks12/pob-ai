@@ -3,6 +3,8 @@ local classes = {}
 newClass = function(name) classes[name] = {} return classes[name] end
 dofile(POB .. '/Classes/CalcSectionControl.lua')
 dofile(POB .. '/Classes/CalcBreakdownControl.lua')
+-- Floating sheets exist in updated beta builds, but not in the stable portable ZIP.
+local overlaySupported = type(classes.CalcSectionControl.DrawOverlay) == 'function'
 common = { classes = classes }
 local calls, colour = {}, { 1, 1, 1, 1 }
 local function setColour(r, g, b, a)
@@ -65,7 +67,7 @@ local function snapshot()
 	breakdown.sourceData, tab.displayData = initialSource, nil
 	sheet:UpdateSize() sheet:UpdatePos()
 	mx, my = -1, -1
-	local overlay = capture(function() sheet:DrawOverlay(viewport, {}) end)
+	local overlay = overlaySupported and capture(function() sheet:DrawOverlay(viewport, {}) end) or false
 	breakdown.pinned = false
 	local hover = capture(function() breakdown:Draw(viewport) end)
 	breakdown.pinned = true
@@ -73,14 +75,19 @@ local function snapshot()
 	return { overlay = overlay, hover = hover, pinned = pinned }
 end
 local native = snapshot()
-local result = { native = native }
+local result = { native = native, overlaySupported = overlaySupported }
 for _, mode in ipairs({ 'dark', 'light', 'ocean', 'forest', 'sand' }) do
 	activeTokens = tokens[mode] skin.set(activeTokens)
 	result[mode] = snapshot()
 	result[mode].surface, result[mode].line, result[mode].primary = activeTokens['surface-inner'], activeTokens.line, activeTokens.primary
 end
-mx, my = sheet.overlayX + cell.xOffset + 5, sheet.overlayY + 26 + cell.yOffset + 5
-capture(function() sheet:DrawOverlay(viewport, {}) end)
+if overlaySupported then
+	mx, my = sheet.overlayX + cell.xOffset + 5, sheet.overlayY + 26 + cell.yOffset + 5
+	capture(function() sheet:DrawOverlay(viewport, {}) end)
+else
+	capture(function() breakdown:Draw(viewport) end)
+end
+result.overlaySupportedAfter = type(classes.CalcSectionControl.DrawOverlay) == 'function'
 result.drawFunctionsRestored = DrawImage == rect and DrawImageQuad == quad
 tab.displayData = nil
 skin.set(nil)
