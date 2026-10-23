@@ -464,7 +464,7 @@ export class AgentHub {
           const file = await pickPath(id, (await readBody(req)).title);
           return send(res, 200, file ? { ok: true, provider: await setPath(id, file) } : { ok: true, cancelled: true });
         }
-        if (action === 'login' && req.method === 'POST') { openLogin(id); return send(res, 200, { ok: true }); }
+        if (action === 'login' && req.method === 'POST') { await openLogin(id); return send(res, 200, { ok: true }); }
       } catch (error) {
         if (!error.code) this.log(`agent ${id} ${action}: ${error.stack ?? error}`);
         return failed(error);

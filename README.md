@@ -65,6 +65,10 @@ or Codex (0.50.0 or newer), signed in.
 1. Download `pob-ai-<version>-win-x64.zip` from **[Releases](https://github.com/tjdcks12/pob-ai/releases)** and unzip it anywhere. Node.js is included.
 2. Double-click **`PoB AI.cmd`**. It opens your PoB and the agent panel.
 
+If PoB is not installed, the agent panel still opens and shows **Install PoB** and **Connect existing PoB**.
+Installation downloads the official portable PoB release and opens it automatically. Connecting an existing
+copy opens the folder setting in its own window, which works without a PoB window. The composer and suggested questions stay hidden until PoB is found.
+
 Chat failures explain the cause and the next step: sign-in expiry, an outdated CLI, network or usage limits,
 an unavailable model, or CLI setup problems. **Diagnostics** shows the detected CLI version, exit code and
 scrubbed error details; **Copy diagnostics** makes a report you can share when asking for help.
@@ -101,9 +105,14 @@ Use **+** beside the chat tabs to start another conversation with Claude Code or
 keeps its own draft and attachments. Choose the model and reasoning effort beside the composer,
 or open **History** to resume a previous conversation.
 
-**Allow full access** below the composer lets that conversation change files and run commands
-without approval prompts, starting with the next message. It is off for new conversations;
-uncheck it to return to the default permissions. Claude Code and Codex both support this option.
+The agent picker provides **Sign in with Claude** or **Sign in with ChatGPT** using the installed
+CLI's authentication flow. **Create account** opens the provider's official website, and a setup-guide
+button is shown when the CLI is missing. After installation, return to the panel to detect it again.
+
+Choose **Allow full access** when starting a new conversation to let that chat change files and
+run commands without approval prompts. It is off for every new conversation. To change it later,
+open the model/reasoning menu beside the composer; changes apply from the next message.
+Claude Code and Codex both support this option.
 
 > Review my build and suggest the top 3 improvements.
 
@@ -216,9 +225,9 @@ Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-This README describes v0.2.1. Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
+This README describes v0.2.2. Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
 Compatibility has been checked on Windows 11 with PoB PoE2 0.22.0 and 0.23.1. The current suite
-has **150 passing tests**, covering editor operations, agent sessions, permissions and failure diagnostics, language selection, shared
+has **151 passing tests**, covering editor operations, agent sessions, login, permissions and failure diagnostics, language selection, shared
 theme persistence, popup rendering and updates.
 
 Local PoB and WebView2 checks cover all six themes, unchanged calculation results across theme

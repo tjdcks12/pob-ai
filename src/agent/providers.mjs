@@ -174,18 +174,22 @@ export function pickPath(id, title) {
   });
 }
 
-/** The `cmd /s /c` argument that opens the CLI's own sign-in in a new console window. */
+/** The `cmd /s /c` command; an outer quote pair preserves paths and arguments with spaces. */
 export function loginCommandLine(id, file) {
-  return `"start "" ${[file, ...PROVIDERS[id].login].map(quoteForCmd).join(' ')}"`;
+  return `"${[file, ...PROVIDERS[id].login].map(quoteForCmd).join(' ')}"`;
 }
-export function openLogin(id) {
+export async function openLogin(id) {
   if (!PROVIDERS[id]) throw fail('NOT_FOUND');
   const provider = resolveProvider(id);
   if (!provider.available) throw fail('AGENT_MISSING');
   const child = spawn('cmd.exe', ['/d', '/s', '/c', loginCommandLine(id, provider.command)], {
-    detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true,
+    // detached creates the interactive console; START would auto-wrap .cmd in a broken /K command.
+    detached: true, stdio: 'ignore', windowsHide: false, windowsVerbatimArguments: true,
   });
-  child.on('error', () => {});
+  await new Promise((resolve, reject) => {
+    child.once('spawn', resolve);
+    child.once('error', () => reject(fail('AGENT_NOT_RUNNABLE')));
+  });
   child.unref();
 }
 

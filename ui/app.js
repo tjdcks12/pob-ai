@@ -35,8 +35,8 @@ const api = (path, body) => request(body === undefined ? 'GET' : 'POST', path, b
 const run = (command, args = {}) => api('/api/run', { command, args, lang: locale() });
 
 const state = {
-  live: false, update: null, providers: [], provider: store.get('pobai.provider', ''), models: {},
-  tabs: [], active: null, attachments: [], idle: { draft: '', attachments: [], fullAccess: false }, pickerChoice: null,
+  live: false, pobMissing: false, installingPob: false, update: null, providers: [], provider: store.get('pobai.provider', ''), models: {},
+  tabs: [], active: null, attachments: [], idle: { draft: '', attachments: [], fullAccess: false }, picker: { fullAccess: false },
 };
 
 // ---------- themes ----------
@@ -79,6 +79,7 @@ function applyI18n() {
   renderThemeCards();
   refreshWindowChrome();
   renderStatus();
+  renderPobSetup();
   if (settingsView) { document.title = 'PoB AI · ' + t('settings'); renderAgents(); showUpdate(state.update); return; }
   showUpdate(state.update);
   renderAgents();
@@ -124,6 +125,35 @@ async function openSettings(focus) {
 $('open-history').addEventListener('click', () => { loadHistory(); openModal($('history-dialog')); });
 
 // ---------- PoB connection ----------
+function renderPobSetup() {
+  const showSetup = !settingsView && !state.live && state.pobMissing;
+  $('pob-setup').hidden = !showSetup;
+  $('composer').hidden = showSetup;
+  $('empty').querySelector('h2').hidden = showSetup;
+  $('empty').querySelector('.suggestions').hidden = showSetup;
+  $('setup-install-pob').disabled = state.installingPob;
+  $('setup-existing-pob').disabled = state.installingPob;
+  $('setup-install-pob').textContent = t(state.installingPob ? 'installingPob' : 'installPob');
+}
+$('setup-existing-pob').addEventListener('click', () => openSettings('pob-path'));
+$('setup-install-pob').addEventListener('click', async () => {
+  if (state.installingPob) return;
+  state.installingPob = true;
+  $('pob-setup-status').hidden = true;
+  renderPobSetup();
+  try {
+    const reply = await run('setup', { installPob: true });
+    if (!reply.ok) throw new Error(reply.error?.message ?? t('error'));
+    await loadStatus();
+    await openPob();
+  } catch (error) {
+    $('pob-setup-status').textContent = `${t('error')}: ${error.message}`;
+    $('pob-setup-status').hidden = false;
+  } finally {
+    state.installingPob = false;
+    renderPobSetup();
+  }
+});
 function renderStatus() {
   const pill = $('pob-status');
   pill.setAttribute('aria-label', state.live ? t('connected') : t('openPob'));
@@ -152,8 +182,12 @@ function listenEvents() {
   const source = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
   source.addEventListener('theme', e => { setTheme(JSON.parse(e.data).theme); renderThemeCards(); });
   source.addEventListener('language', e => { setLocale(JSON.parse(e.data).preference); applyI18n(); });
-  source.addEventListener('pob-install', () => { if (settingsView) loadStatus(); });
-  source.addEventListener('pob', e => { state.live = JSON.parse(e.data).connected; renderStatus(); });
+  source.addEventListener('pob-install', () => loadStatus());
+  source.addEventListener('pob', e => {
+    state.live = JSON.parse(e.data).connected;
+    if (state.live) state.pobMissing = false;
+    renderStatus(); renderPobSetup();
+  });
   if (settingsView) return;
   source.addEventListener('update', e => showUpdate(JSON.parse(e.data)));
   source.addEventListener('focus-panel', () => {
@@ -204,7 +238,9 @@ async function loadStatus() {
   const reply = await api('/api/status').catch(() => null);
   if (!reply?.ok) return;
   state.live = Boolean(reply.live?.connected);
+  state.pobMissing = !state.live && !reply.pob?.dir;
   renderStatus();
+  renderPobSetup();
   setTheme(reply.settings?.pobTheme ?? 'pob');
   renderThemeCards();
   const language = normalizeLocalePreference(reply.settings?.pobLanguage);
@@ -219,12 +255,39 @@ async function loadStatus() {
 const providerById = id => state.providers.find(p => p.id === id);
 const providerName = id => providerById(id)?.label ?? id;
 const mark = id => `<span class="agent-provider-mark"><img src="agents/${encodeURIComponent(id)}.svg" alt=""></span>`;
+const PROVIDER_SETUP = {
+  claude: { login: 'loginClaude', note: 'claudeAccountNote', account: 'https://claude.ai/', guide: 'https://code.claude.com/docs/en/quickstart' },
+  codex: { login: 'loginChatgpt', note: 'codexAccountNote', account: 'https://chatgpt.com/', guide: 'https://learn.chatgpt.com/docs/cli' },
+};
+
+function providerAccountHtml(provider) {
+  const info = PROVIDER_SETUP[provider.id];
+  if (!info) return '';
+  return `<div class="agent-account-actions">${provider.available
+    ? `<button type="button" class="agent-primary" data-login="${provider.id}">${icon('log-in')}${escapeHtml(t(info.login))}</button>`
+    : `<a class="agent-link-button agent-primary" href="${info.guide}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('agentInstallGuide', { agent: provider.label }))}${icon('external-link')}</a>`}
+    <a class="agent-link-button" href="${info.account}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('createAccount'))}${icon('external-link')}</a></div>`;
+}
+async function signInProvider(id) {
+  try {
+    const reply = await api(`/api/agent/providers/${id}/login`, {});
+    if (!reply.ok) showNotice(t(reply.error?.code === 'AGENT_MISSING' ? 'errMissing' : 'errNotRunnable', { agent: providerName(id) }));
+  } catch { showNotice(t('errServiceDisconnected')); }
+}
+function wireAccountButtons(root) {
+  root.querySelectorAll('[data-login]').forEach(button => button.addEventListener('click', () => signInProvider(button.dataset.login)));
+}
 
 async function loadProviders() {
   const reply = await api('/api/agent/providers').catch(() => ({ providers: [] }));
+  for (const provider of reply.providers ?? []) {
+    if (providerById(provider.id)?.command !== provider.command) delete state.models[provider.id];
+  }
   state.providers = reply.providers ?? [];
   const available = state.providers.filter(p => p.available);
-  if (!providerById(state.provider)?.available) state.provider = available[0]?.id ?? state.providers[0]?.id ?? '';
+  if (!providerById(state.provider) || (!state.loadedProviders && !providerById(state.provider)?.available)) {
+    state.provider = available[0]?.id ?? state.providers[0]?.id ?? '';
+  }
   state.loadedProviders = true;
   renderAgents();
   if (!settingsView) renderModelLabel();
@@ -242,7 +305,19 @@ async function pickPath(id) {
   await loadProviders();
 }
 
-/** The agent picker (poe2way AgentPicker): provider cards, and on the popover a start button. */
+function permissionsHtml(id, choice, disabled = false) {
+  return `<div class="agent-permissions"><label><input type="checkbox" data-full-access aria-describedby="${id}-note" ${choice.fullAccess ? 'checked' : ''} ${disabled ? 'disabled' : ''}>${escapeHtml(t('fullAccess'))}</label>
+    <p id="${id}-note" ${choice.fullAccess ? '' : 'hidden'}>${escapeHtml(t('fullAccessDesc'))}</p></div>`;
+}
+function wirePermissions(root, choice) {
+  root.querySelector('[data-full-access]')?.addEventListener('change', e => {
+    choice.fullAccess = e.target.checked;
+    root.querySelector('.agent-permissions p').hidden = !choice.fullAccess;
+    if (root === $('model-popover') && !activeTab()) renderAgents();
+  });
+}
+
+/** The agent picker: provider and permissions for this new chat, then start. */
 function pickerHtml(popover) {
   if (!state.loadedProviders) return `<p class="agent-chat-progress"><span class="spinner"></span>${escapeHtml(t('checkingAgents'))}</p>`;
   if (!state.providers.length) return `<p class="agent-picker-note"><span>${escapeHtml(t('noAgent'))}</span></p>`;
@@ -252,14 +327,19 @@ function pickerHtml(popover) {
       <small class="${p.available ? 'ok' : ''}">${escapeHtml(t(p.available ? 'agentAvailable' : 'agentNeedsPath'))}</small></span>
       ${p.id === state.provider ? `<span class="agent-provider-check">${icon('check')}</span>` : ''}</button>`).join('');
   const note = chosen && !chosen.available
-    ? `<p class="agent-picker-note"><span>${escapeHtml(t('chooseExecutable', { agent: chosen.label }))}</span><button type="button" data-settings>${icon('settings')}${escapeHtml(t('settings'))}</button></p>` : '';
+    ? `<button type="button" class="agent-quiet agent-path-shortcut" data-settings>${icon('folder-open')}${escapeHtml(t('choosePath'))}</button>` : '';
+  const account = chosen ? `<div class="agent-account"><p>${escapeHtml(t(PROVIDER_SETUP[chosen.id].note))}</p>${providerAccountHtml(chosen)}${note}</div>` : '';
   const actions = popover
     ? `<button type="button" class="agent-primary agent-start" data-start ${chosen?.available ? '' : 'disabled'}>${escapeHtml(t('startWith', { agent: chosen?.label ?? '' }))}</button>
        <button type="button" class="agent-quiet" data-resume>${icon('history')}${escapeHtml(t('resumePrevious'))}</button>` : '';
   return `<div class="agent-picker"><h3>${escapeHtml(t(popover ? 'newChat' : 'chooseAgent'))}</h3>
-    <div class="agent-provider-grid" role="radiogroup" aria-label="${escapeHtml(t('chooseAgent'))}">${cards}</div>${note}${actions}</div>`;
+    <div class="agent-provider-grid" role="radiogroup" aria-label="${escapeHtml(t('chooseAgent'))}">${cards}</div>${account}
+    ${permissionsHtml(popover ? 'new-chat-permissions' : 'initial-chat-permissions', popover ? state.picker : state.idle)}${actions}</div>`;
 }
-function wirePicker(root) {
+function wirePicker(root, popover = false) {
+  const choice = popover ? state.picker : state.idle;
+  wirePermissions(root, choice);
+  wireAccountButtons(root);
   const cards = [...root.querySelectorAll('[data-provider]')];
   cards.forEach((card, i) => {
     card.addEventListener('click', () => chooseProvider(card.dataset.provider));
@@ -273,14 +353,16 @@ function wirePicker(root) {
     });
   });
   root.querySelector('[data-settings]')?.addEventListener('click', () => openSettings());
-  root.querySelector('[data-start]')?.addEventListener('click', () => { closePopovers(); newTab(state.provider); $('input').focus(); });
+  root.querySelector('[data-start]')?.addEventListener('click', () => {
+    closePopovers(); newTab(state.provider, { fullAccess: choice.fullAccess }); $('input').focus();
+  });
   root.querySelector('[data-resume]')?.addEventListener('click', () => { closePopovers(); loadHistory(); openModal($('history-dialog')); });
 }
 function renderAgents() {
   if (!settingsView) {
     $('picker-inline').innerHTML = pickerHtml(false);
     wirePicker($('picker-inline'));
-    if (!$('picker-popover').hidden) { $('picker-popover').innerHTML = pickerHtml(true); wirePicker($('picker-popover')); }
+    if (!$('picker-popover').hidden) { $('picker-popover').innerHTML = pickerHtml(true); wirePicker($('picker-popover'), true); }
     return;
   }
   $('agent-rows').innerHTML = state.providers.map(p => {
@@ -289,7 +371,7 @@ function renderAgents() {
       <p class="set-desc" title="${escapeHtml(p.command ?? '')}">${escapeHtml(p.available ? where : (p.command ? `${t('pathMissing')} · ${p.command}` : where))}</p></div>
       <div class="set-actions"><button type="button" data-pick="${p.id}">${icon('folder-open')}${escapeHtml(t(p.command ? 'changePath' : 'choosePath'))}</button>
       ${p.source === 'custom' ? `<button type="button" class="agent-quiet" data-auto="${p.id}">${icon('refresh-cw')}${escapeHtml(t('autoDetect'))}</button>` : ''}
-      ${p.available ? `<button type="button" class="agent-quiet" data-login="${p.id}">${icon('log-in')}${escapeHtml(t('signIn'))}</button>` : ''}</div></div>`;
+      ${providerAccountHtml(p)}</div></div>`;
   }).join('');
   $('agent-rows').querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => pickPath(b.dataset.pick)));
   $('agent-rows').querySelectorAll('[data-auto]').forEach(b => b.addEventListener('click', async () => {
@@ -297,7 +379,7 @@ function renderAgents() {
     if (reply.ok) store.set('pobai.providersChanged', String(Date.now()));
     loadProviders();
   }));
-  $('agent-rows').querySelectorAll('[data-login]').forEach(b => b.addEventListener('click', () => api(`/api/agent/providers/${b.dataset.login}/login`, {})));
+  wireAccountButtons($('agent-rows'));
 }
 
 // ---------- popovers ----------
@@ -320,6 +402,7 @@ $('new-chat').addEventListener('click', () => {
   const open = $('picker-popover').hidden;
   closePopovers();
   if (!open) return;
+  state.picker.fullAccess = false;
   positionPicker();
   $('picker-popover').hidden = false;
   $('new-chat').setAttribute('aria-expanded', 'true');
@@ -367,12 +450,14 @@ $('model-button').addEventListener('click', async () => {
   popover.innerHTML = `<label>${escapeHtml(t('model'))}<select id="model-select"><option value="">${escapeHtml(t('modelDefault'))}</option>
       ${catalog.models.map(m => `<option value="${escapeHtml(m.id)}" ${m.id === model ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}</select></label>
     <label>${escapeHtml(t('effort'))}<select id="effort-select">${efforts.map(e => `<option value="${escapeHtml(e)}" ${(effort ?? selected?.defaultEffort ?? catalog.defaultEffort) === e ? 'selected' : ''}>${escapeHtml(effortName(e))}</option>`).join('')}</select></label>
-    <p>${escapeHtml(t('modelNote'))}</p>`;
+    <p>${escapeHtml(t('modelNote'))}</p>
+    ${permissionsHtml('conversation-permissions', activeTab() ?? state.idle, activeTab()?.running)}`;
   popover.hidden = false;
   $('model-button').setAttribute('aria-expanded', 'true');
   const apply = () => setChoice($('model-select').value || null, $('effort-select').value || null);
   $('model-select').addEventListener('change', () => { apply(); closePopovers(); $('model-button').click(); });
   $('effort-select').addEventListener('change', apply);
+  wirePermissions(popover, activeTab() ?? state.idle);
 });
 
 // ---------- images ----------
@@ -471,6 +556,7 @@ function newTab(provider, session = {}) {
   return tab;
 }
 function activate(key) {
+  closePopovers();
   const previous = activeTab() ?? (state.active === null ? state.idle : null);
   if (previous) { previous.draft = $('input').value; previous.attachments = state.attachments; }
   state.active = key;
@@ -577,7 +663,7 @@ function renderAssistant(view) {
       ${view.error ? `<div class="agent-error"><span>${escapeHtml(t(errorKey, { agent }))}</span><div class="agent-error-actions">${actionLabel ? `<button type="button" data-action="${action}">${escapeHtml(t(actionLabel))}</button>` : ''}<button type="button" data-diagnostics>${escapeHtml(t('diagnostics'))}</button></div></div>` : ''}`;
     view.el.querySelector('[data-action]')?.addEventListener('click', () => {
       if (action === 'pick') pickPath(tab.provider);
-      if (action === 'login') api(`/api/agent/providers/${tab.provider}/login`, {});
+      if (action === 'login') signInProvider(tab.provider);
       if (action === 'retry' && view.retry) send(view.retry.text, view.retry.images, tab);
       if (action === 'model') { activate(tab.key); $('model-button').click(); }
     });
@@ -638,16 +724,7 @@ function renderSend() {
   button.innerHTML = icon(running ? 'square' : 'arrow-up');
   button.title = t(running ? 'stopResponse' : 'send');
   button.setAttribute('aria-label', button.title);
-  const fullAccess = (activeTab() ?? state.idle).fullAccess === true;
-  $('full-access').checked = fullAccess;
-  $('full-access').disabled = running;
-  $('full-access-note').hidden = !fullAccess;
 }
-
-$('full-access').addEventListener('change', e => {
-  (activeTab() ?? state.idle).fullAccess = e.target.checked;
-  renderSend();
-});
 
 async function send(text, images = state.attachments, target = activeTab()) {
   if (!text.trim() && !images.length) return;
@@ -804,3 +881,4 @@ if (settingsView) {
 } else loadProviders().then(restoreTabs);
 loadStatus();
 listenEvents();
+window.addEventListener('focus', () => loadProviders());

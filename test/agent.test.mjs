@@ -202,7 +202,7 @@ test('model catalogs keep only safe ids and known efforts', () => {
   assert.ok(validEffort('codex', 'ultra') && !validEffort('claude', 'ultra') && !validEffort('codex', 'huge'));
 });
 
-test('sign-in opens the CLI in its own console through cmd start', () => {
-  assert.equal(loginCommandLine('claude', 'C:\\Users\\me\\.local\\bin\\claude.exe'), '"start "" "C:\\Users\\me\\.local\\bin\\claude.exe" "auth" "login""');
-  assert.equal(loginCommandLine('codex', 'C:\\x\\codex.exe'), '"start "" "C:\\x\\codex.exe" "login""');
+test('sign-in quotes the CLI command for its own interactive console', () => {
+  assert.equal(loginCommandLine('claude', 'C:\\Users\\me\\.local\\bin\\claude.exe'), '""C:\\Users\\me\\.local\\bin\\claude.exe" "auth" "login""');
+  assert.equal(loginCommandLine('codex', 'C:\\x\\codex.exe'), '""C:\\x\\codex.exe" "login""');
 });

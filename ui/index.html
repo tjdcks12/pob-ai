@@ -31,6 +31,15 @@
   </div>
 
   <main id="chat" class="agent-chat-messages" aria-live="polite">
+    <section id="pob-setup" class="pob-setup" aria-labelledby="pob-setup-heading" hidden>
+      <h2 id="pob-setup-heading" data-i18n="pobSetup"></h2>
+      <p data-i18n="pobNotFound"></p>
+      <div class="pob-setup-actions">
+        <button id="setup-install-pob" class="agent-primary" type="button" data-i18n="installPob"></button>
+        <button id="setup-existing-pob" type="button" data-i18n="connectExistingPob"></button>
+      </div>
+      <p id="pob-setup-status" role="status" hidden></p>
+    </section>
     <div id="empty" class="empty">
       <div id="picker-inline"></div>
       <h2 data-i18n="emptyTitle"></h2>
@@ -56,10 +65,6 @@
       <button id="model-button" class="model-button" type="button" aria-haspopup="dialog" aria-expanded="false"><svg class="p-icon"><use href="icons.svg#i-sliders-horizontal"/></svg><span id="model-label"></span></button>
       <span class="spacer"></span>
       <button id="send" class="agent-send agent-primary" type="submit" data-title="send"><svg class="p-icon"><use href="icons.svg#i-arrow-up"/></svg></button>
-    </div>
-    <div class="agent-permissions">
-      <label><input id="full-access" type="checkbox" aria-describedby="full-access-note"><span data-i18n="fullAccess"></span></label>
-      <p id="full-access-note" data-i18n="fullAccessDesc" hidden></p>
     </div>
     <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
   </form>

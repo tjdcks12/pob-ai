@@ -102,6 +102,11 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 /* chat (agent.css:92-113) */
 .agent-chat-messages { position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 4px 16px 16px; }
+.pob-setup { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.pob-setup h2 { margin: 0; font-size: 14px; }
+.pob-setup p { margin: 7px 0 12px; color: var(--fg-2); font-size: 12px; }
+.pob-setup-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pob-setup #pob-setup-status { margin-bottom: 0; color: var(--red); }
 .empty { display: flex; flex-direction: column; gap: 12px; padding: 14px 0; }
 .empty h2 { margin: 6px 0 0; font-size: 13px; font-weight: 600; color: var(--fg-2); }
 .suggestions { display: grid; gap: 6px; }
@@ -154,6 +159,17 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .agent-provider-label small.ok { color: var(--ok); }
 .agent-provider-check { position: absolute; right: 6px; top: 6px; color: var(--primary-text); }
 .agent-provider-check .p-icon { width: 13px; height: 13px; }
+.agent-account { display: grid; gap: 8px; }
+.agent-account p { margin: 0; font-size: 12px; color: var(--fg-3); }
+.agent-account-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.agent-dock .agent-link-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 6px 10px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-inner); color: var(--fg-2); text-decoration: none; font-size: 12px; }
+.agent-dock .agent-link-button.agent-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.agent-dock .agent-link-button:hover { background: var(--surface-hover); color: var(--fg); }
+.agent-dock .agent-link-button.agent-primary:hover { background: var(--primary-strong); color: var(--on-primary); }
+.agent-dock .agent-link-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.agent-link-button .p-icon { width: 13px; height: 13px; }
+.agent-dock .agent-path-shortcut { justify-self: start; padding: 2px 0; min-height: 24px; font-size: 11px; }
 .agent-picker-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 8px 10px; border-radius: var(--radius); background: var(--red-soft); font-size: 12px; }
 .agent-picker-note span { flex: 1; min-width: 160px; }
 .agent-dock .agent-start { min-height: 36px; }
@@ -168,12 +184,13 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .agent-dock .agent-compose textarea { display: block; width: 100%; min-height: 44px; max-height: 160px; resize: none; padding: 0; border: 0; outline: 0; background: transparent; line-height: 1.6; }
 .agent-dock .agent-compose textarea:focus-visible { outline: 0; }
 .agent-compose-actions { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-.agent-permissions { margin-top: 6px; }
-.agent-permissions label { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; font-size: 11px; color: var(--fg-3); cursor: pointer; }
-.agent-dock .agent-permissions input { width: 13px; height: 13px; min-height: 0; margin: 0; padding: 0; accent-color: var(--primary); }
+.agent-permissions { border-top: 1px solid var(--line); padding-top: 10px; }
+.agent-permissions label { display: inline-flex; align-items: center; gap: 7px; min-height: 24px; font-size: 12px; color: var(--fg-2); cursor: pointer; }
+.agent-dock .agent-permissions input { flex: none; width: 14px; height: 14px; min-height: 0; margin: 0; padding: 0; accent-color: var(--primary); }
 .agent-permissions label:has(:checked) { color: var(--warn); }
 .agent-permissions label:has(:disabled) { cursor: default; opacity: .6; }
-.agent-permissions p { margin: 2px 0 0; font-size: 11px; line-height: 1.5; color: var(--fg-3); }
+.agent-permissions p { margin: 4px 0 0; font-size: 11px; line-height: 1.5; color: var(--fg-3); }
+.agent-dock .model-popover .agent-permissions label { display: inline-flex; }
 .agent-dock .agent-send { width: 28px; height: 28px; min-height: 28px; padding: 0; }
 .agent-dock .agent-send.stop { background: var(--surface-hover); border-color: var(--surface-hover); color: var(--fg); }
 .agent-dock .model-button { min-height: 28px; height: 28px; padding: 0 8px; border-color: transparent; background: transparent; color: var(--fg-2); font-size: 12px; max-width: 220px; }
