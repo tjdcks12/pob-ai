@@ -10,8 +10,9 @@ try { install = locatePob(); } catch {}
 const skip = !install && 'PoB (PoE2) not found; set POB_PATH';
 const luaPath = url => fileURLToPath(url).split(path.sep).join('/');
 const results = new Map();
-async function run(fixture = 'sheet') {
-  if (results.has(fixture)) return results.get(fixture);
+async function run(fixture = 'sheet', failDraw = false) {
+  const key = `${fixture}:${failDraw}`;
+  if (results.has(key)) return results.get(key);
   const { default: koffi } = await import('koffi');
   const lib = koffi.load(path.join(install.dir, 'lua51.dll'));
   const create = lib.func('void *luaL_newstate()'), open = lib.func('void luaL_openlibs(void*)');
@@ -24,6 +25,7 @@ async function run(fixture = 'sheet') {
     const source = Buffer.from([
       'POB = ' + JSON.stringify(install.dir.split(path.sep).join('/')),
       'ADAPTER = ' + JSON.stringify(luaPath(new URL('../adapter', import.meta.url))),
+      'FAIL_DRAW = ' + String(failDraw),
       'package.path = POB .. "/lua/?.lua;" .. package.path',
       'local result = dofile(' + JSON.stringify(luaPath(new URL(`./fixtures/template/${fixture}.lua`, import.meta.url))) + ')',
       'return require("dkjson").encode(result)',
@@ -34,7 +36,7 @@ async function run(fixture = 'sheet') {
     const value = Buffer.from(koffi.decode(pointer, 'uint8_t', Number(length[0]))).toString('utf8');
     assert.equal(status, 0, value);
     const result = JSON.parse(value);
-    results.set(fixture, result);
+    results.set(key, result);
     return result;
   } finally { close(state); }
 }
@@ -78,6 +80,7 @@ test('floating calculation sheets are themed when PoB supports them and remain u
 
 test('calculation hover and pinned breakdowns use neutral and blue borders with unchanged content', { skip }, async () => {
   const r = await run('popups');
+  assert.equal(r.nativeFieldsUnchanged, true, 'the skin uses the actual PoB constructor without adding beta-only fields');
   for (const mode of THEMES.filter(id => id !== 'pob')) {
     for (const name of ['hover', 'pinned']) {
       const calls = r[mode][name];
@@ -100,6 +103,14 @@ test('modern rows grow together with their hover targets and embedded controls',
   assert.equal(m.hoverSecond, true);
   assert.ok(m.height > o.height);
   assert.equal(m.height - collapsed.height, 28, 'collapsed section removes its row and bottom padding');
+});
+
+test('a failed calculation popup restores the drawing host before PoB paints its error dialog', { skip }, async () => {
+  const r = await run('popups', true);
+  assert.equal(r.drawFailed, true);
+  assert.match(r.drawError, /simulated native draw failure/);
+  assert.equal(r.restoredAfterFailure, true);
+  assert.equal(r.errorPopupOk, true);
 });
 
 test('all custom palettes retain every formatted value and remove saturated table frames', { skip }, async () => {

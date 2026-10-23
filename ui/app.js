@@ -557,33 +557,54 @@ const PHASES = { inspect: 'phaseInspect', calculate: 'phaseCalculate', lookup: '
   apply: 'phaseApply', show: 'phaseShow', writing: 'phaseWriting', stopping: 'phaseStopping' };
 const ERRORS = {
   AGENT_MISSING: ['errMissing', 'pick'], AGENT_NOT_RUNNABLE: ['errNotRunnable', 'pick'], AGENT_SIGNED_OUT: ['errSignedOut', 'login'],
+  AGENT_OUTDATED: ['errOutdated'],
+  AGENT_RATE_LIMITED: ['errRateLimit'], AGENT_NETWORK: ['errNetwork', 'retry'], AGENT_MODEL_UNAVAILABLE: ['errModelUnavailable', 'model'],
+  SERVICE_DISCONNECTED: ['errServiceDisconnected'],
+  AGENT_SANDBOX: ['errSandbox'], AGENT_CONFIG: ['errConfig'], AGENT_NO_RESPONSE: ['errNoResponse'], AGENT_PROTOCOL: ['errProtocol'],
   AGENT_FAILED: ['errFailed', 'retry'], BUSY: ['errBusy'], AGENT_PATH_INVALID: ['errPathInvalid', 'pick'],
   IMAGE_TOO_MANY: ['imageTooMany'], IMAGE_TOO_LARGE: ['imageTooLarge'], IMAGE_INVALID: ['imageInvalid'], IMAGE_QUOTA: ['imageTooLarge'],
 };
 function renderAssistant(view) {
   const { tab } = view;
-  const agent = providerName(tab.provider);
+  const agent = `${providerName(tab.provider)}${view.diagnostic?.version ? ' ' + view.diagnostic.version : ''}`;
   const text = [...view.texts.values()].join('\n\n');
   const [errorKey, action] = view.error ? ERRORS[view.error] ?? ['error'] : [];
-  const actionLabel = { pick: 'choosePath', login: 'signIn', retry: 'retry' }[action];
+  const actionLabel = { pick: 'choosePath', login: 'signIn', retry: 'retry', model: 'model' }[action];
   keepScroll(() => {
     view.el.innerHTML = `<div class="agent-message-who">${mark(tab.provider)}${escapeHtml(agent)}${view.interrupted ? `<span class="tag">${escapeHtml(t('interrupted'))}</span>` : ''}</div>
       <div class="agent-message-body">${markdown(text)}</div>
       ${view.working ? `<div class="agent-chat-progress"><span class="spinner"></span>${escapeHtml(t(PHASES[view.phase] ?? 'thinking'))}</div>` : ''}
-      ${view.error ? `<div class="agent-error"><span>${escapeHtml(t(errorKey, { agent }))}</span>${actionLabel ? `<button type="button" data-action="${action}">${escapeHtml(t(actionLabel))}</button>` : ''}</div>` : ''}`;
+      ${view.error ? `<div class="agent-error"><span>${escapeHtml(t(errorKey, { agent }))}</span><div class="agent-error-actions">${actionLabel ? `<button type="button" data-action="${action}">${escapeHtml(t(actionLabel))}</button>` : ''}<button type="button" data-diagnostics>${escapeHtml(t('diagnostics'))}</button></div></div>` : ''}`;
     view.el.querySelector('[data-action]')?.addEventListener('click', () => {
       if (action === 'pick') pickPath(tab.provider);
       if (action === 'login') api(`/api/agent/providers/${tab.provider}/login`, {});
       if (action === 'retry' && view.retry) send(view.retry.text, view.retry.images, tab);
+      if (action === 'model') { activate(tab.key); $('model-button').click(); }
+    });
+    view.el.querySelector('[data-diagnostics]')?.addEventListener('click', () => {
+      $('diagnostics-reason').textContent = t(errorKey, { agent });
+      $('diagnostics-report').textContent = JSON.stringify({ code: view.error, provider: tab.provider,
+        log: '%LOCALAPPDATA%\\pob-ai\\logs\\service.log', ...view.diagnostic }, null, 2);
+      $('diagnostics-note').textContent = t('diagnosticNote');
+      $('copy-diagnostics').textContent = t('copyDiagnostics');
+      openModal($('diagnostics-dialog'));
     });
   });
 }
+
+$('copy-diagnostics').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('diagnostics-reason').textContent + '\n\n' + $('diagnostics-report').textContent);
+    $('copy-diagnostics').textContent = t('diagnosticCopied');
+  } catch { $('diagnostics-note').textContent = t('diagnosticCopyFailed'); }
+});
 
 /** Reads the chat event stream into a view (POST /api/agent/chat and GET .../stream). */
 async function readStream(response, tab, view) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let ended = false;
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
@@ -602,11 +623,12 @@ async function readStream(response, tab, view) {
       }
       if (event.type === 'phase') view.phase = event.phase;
       if (event.type === 'text') view.texts.set(event.id, event.partial ? (view.texts.get(event.id) ?? '') + event.text : event.text);
-      if (event.type === 'error') view.error = event.code;
-      if (event.type === 'end') { view.interrupted = event.delivery === 'interrupted'; tab.sessionId = event.sessionId ?? tab.sessionId; }
+      if (event.type === 'error') { view.error = event.code; view.diagnostic = event.diagnostic; }
+      if (event.type === 'end') { ended = true; view.interrupted = event.delivery === 'interrupted'; tab.sessionId = event.sessionId ?? tab.sessionId; }
       renderAssistant(view);
     }
   }
+  if (!ended) throw new Error('SERVICE_DISCONNECTED');
 }
 
 function renderSend() {
@@ -656,10 +678,13 @@ async function send(text, images = state.attachments, target = activeTab()) {
   }
   try {
     const response = await fetch('/api/agent/chat', { method: 'POST', headers, body: JSON.stringify(body) });
-    if (!response.ok || !response.body) view.error = (await response.json().catch(() => ({}))).error?.code ?? 'AGENT_FAILED';
+    if (!response.ok || !response.body) {
+      const error = (await response.json().catch(() => ({}))).error;
+      view.error = error?.code ?? 'AGENT_FAILED'; view.diagnostic = error?.diagnostic;
+    }
     else await readStream(response, tab, view);
-  } catch {
-    view.error ??= 'AGENT_FAILED';
+  } catch (error) {
+    view.error ??= error instanceof SyntaxError ? 'AGENT_PROTOCOL' : 'SERVICE_DISCONNECTED';
   } finally {
     view.working = false;
     tab.running = false;
@@ -708,6 +733,7 @@ async function openChat(id) {
       view.texts.set('saved', m.text ?? '');
       view.working = false;
       view.error = m.error ?? null;
+      view.diagnostic = m.diagnostic;
       view.interrupted = m.delivery === 'interrupted';
       renderAssistant(view);
     }
@@ -721,6 +747,9 @@ async function follow(tab) {
   try {
     const response = await fetch(`/api/agent/sessions/${tab.sessionId}/stream`, { headers });
     if (response.ok && response.body) await readStream(response, tab, view);
+    else view.error = 'SERVICE_DISCONNECTED';
+  } catch (error) {
+    view.error ??= error instanceof SyntaxError ? 'AGENT_PROTOCOL' : 'SERVICE_DISCONNECTED';
   } finally {
     view.working = false;
     tab.running = false;

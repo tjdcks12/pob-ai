@@ -56,10 +56,16 @@ Path of Building은 PoE2 빌드를 가장 정확하게 계산하는 도구이지
 ## 설치
 
 **필요한 것:** Windows 10/11, 그리고 대화 기능을 쓰려면 로그인된
-[Claude Code](https://docs.claude.com/en/docs/claude-code)(또는 Codex).
+[Claude Code](https://docs.claude.com/en/docs/claude-code) 또는 Codex 0.50.0 이상.
 
 1. **[Releases](https://github.com/tjdcks12/pob-ai/releases)**에서 `pob-ai-<버전>-win-x64.zip`을 받아 아무 곳에나 압축을 풉니다. Node.js가 들어 있습니다.
 2. **`PoB AI.cmd`**를 더블클릭하면 PoB와 에이전트 패널이 열립니다.
+
+대화 실패 시 로그인 만료·구버전 CLI·네트워크·사용량 제한·모델·CLI 설정 문제에 맞는 원인과
+다음 조치를 표시합니다. **진단정보**에서 감지된 CLI 버전·종료 코드·민감정보를 가린 오류 내용을
+확인하고, **진단정보 복사**로 문의에 필요한 보고서를 복사할 수 있습니다.
+Codex가 오래된 경우 PowerShell에서 `npm install -g @openai/codex`를 실행한 뒤 다시 시도하세요.
+로그인이 만료됐다면 오류 메시지의 **로그인** 버튼을 이용하세요.
 
 PoB AI는 보통의 설치 위치에서 [Path of Building Community (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases)를
 찾습니다. 휴대용(포터블) PoB라면 한 번만 알려 주거나, PoB 설치를 맡기세요.
@@ -203,8 +209,8 @@ PoB 실행 파일은 첫 번째 인자로 진입 스크립트를 받습니다. P
 
 ## 현재 상태
 
-이 문서는 v0.2.0 기준입니다. 배포 ZIP은 [GitHub 릴리스](https://github.com/tjdcks12/pob-ai/releases/latest)에서 받을 수 있습니다.
-Windows 11, PoB PoE2 0.22.0과 0.23.1에서 호환성을 확인했습니다. 현재 **143개 테스트가 통과**하며,
+이 문서는 v0.2.1 기준입니다. 배포 ZIP은 [GitHub 릴리스](https://github.com/tjdcks12/pob-ai/releases/latest)에서 받을 수 있습니다.
+Windows 11, PoB PoE2 0.22.0과 0.23.1에서 호환성을 확인했습니다. 현재 **150개 테스트가 통과**하며,
 편집 명령, 에이전트 세션과 권한, 언어 선택, 공통 테마 저장, 팝업 표시, 업데이트 등을 검사합니다.
 
 실제 PoB와 WebView2 창에서 6개 테마, 전환 전후 계산값 유지, AI·설정 창 분리, 입력 초안 유지,

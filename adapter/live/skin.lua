@@ -172,6 +172,12 @@ local function pop(s, ...)
 	return ...
 end
 
+local function finishDraw(s, ok, ...)
+	pop(s)
+	if not ok then error((...), 0) end
+	return ...
+end
+
 local function wrap(original, setup)
 	return function(self, ...)
 		if not skin.on then return original(self, ...) end
@@ -190,7 +196,7 @@ local function wrap(original, setup)
 		active = s
 		DrawImage = filteredDrawImage
 		DrawImageQuad = s.mute and mutedDrawImageQuad or filteredDrawImageQuad
-		return pop(s, original(self, ...))
+		return finishDraw(s, pcall(original, self, ...))
 	end
 end
 
@@ -385,7 +391,8 @@ end
 -- Calculation cell popups are CalcBreakdownControl, not Tooltip. Their native background
 -- is translucent black and their frames green; keep all content/scrolling, repaint the shell.
 local function matchCalcBreakdown(s, x, y, w, h)
-	local thickness = s.self.borderThickness
+	-- Stable/older PoB uses a local 2px border; newer builds expose it on the control.
+	local thickness = s.self.borderThickness or 2
 	if s.n == 0 then
 		s.n = 1
 		s.px, s.py, s.pw, s.ph = x - thickness, y - thickness, w + thickness * 2, h + thickness * 2

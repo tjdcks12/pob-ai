@@ -108,6 +108,19 @@
     <div class="p-dialog-body"><ul id="history-list" class="history-list"></ul></div>
   </dialog>
 
+  <dialog id="diagnostics-dialog" class="p-dialog" aria-labelledby="diagnostics-heading">
+    <div class="p-dialog-head">
+      <h2 id="diagnostics-heading" data-i18n="diagnostics"></h2>
+      <button class="agent-icon" type="button" data-close data-title="close"><svg class="p-icon"><use href="icons.svg#i-x"/></svg></button>
+    </div>
+    <div class="p-dialog-body">
+      <p id="diagnostics-reason"></p>
+      <p id="diagnostics-note" class="set-desc" data-i18n="diagnosticNote"></p>
+      <pre id="diagnostics-report" tabindex="0"></pre>
+      <button id="copy-diagnostics" type="button" data-i18n="copyDiagnostics"></button>
+    </div>
+  </dialog>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>

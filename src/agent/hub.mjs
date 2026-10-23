@@ -4,16 +4,17 @@
 // A turn keeps running when the panel disconnects; only POST /api/agent/stop, deleting the chat
 // or closing the service ends it early (the whole process tree, so .cmd shims leave nothing behind).
 //
-// The panel only ever receives error codes; CLI stderr and error texts go to the service log.
+// Failures include a cause code and bounded, scrubbed CLI diagnostics for the panel and saved chat.
 //   AGENT_MISSING       no executable found, or the chosen file is gone
 //   AGENT_NOT_RUNNABLE  the executable could not be started or does not answer --version
+//   AGENT_OUTDATED      the Codex CLI predates the supported thread/item JSON protocol
 //   AGENT_SIGNED_OUT    the CLI ended without an answer and reported a sign-in problem
 //   AGENT_FAILED        the CLI ended without an answer for another reason
 //   AGENT_PATH_INVALID  a chosen path is not an existing absolute .exe, .cmd or .bat file
 //   BUSY                this chat is still answering (or a file dialog is already open)
 //   IMAGE_INVALID, IMAGE_TOO_MANY, IMAGE_TOO_LARGE, IMAGE_QUOTA, MODEL_INVALID, EFFORT_INVALID, BAD_REQUEST
 //
-// Endpoints (all behind the service token; errors are { ok: false, error: { code } }):
+// Endpoints (all behind the service token; errors are { ok: false, error: { code, diagnostic? } }):
 //   GET    /api/agent/providers
 //          -> { ok, providers: [{ id, label, command, source: 'custom'|'env'|'auto', available }] }
 //   GET    /api/agent/providers/:id/models[?refresh=1]
@@ -53,7 +54,7 @@
 //   { type: 'text', id, text, partial: true }  append `text` to the message `id` (Claude streams these)
 //   { type: 'text', id, text }                 the whole message `id`; replaces earlier pieces of it
 //          The answer is every message joined with a blank line, in the order the ids first appeared.
-//   { type: 'error', code }
+//   { type: 'error', code, diagnostic? }
 //   { type: 'end', sessionId, delivery?: 'interrupted' }
 import { randomUUID, createHash } from 'node:crypto';
 import fs from 'node:fs';
@@ -63,9 +64,11 @@ import { fileURLToPath } from 'node:url';
 import { findCommand } from '../commands/registry.mjs';
 import { readJson, statePath, writeJson } from '../state.mjs';
 import { agentWorkspace } from './instructions.mjs';
+import { agentDiagnostic, classifyFailure, redactDiagnosticText } from './diagnostics.mjs';
+export { classifyFailure } from './diagnostics.mjs';
 import {
   DEFAULT_EFFORT, PROVIDERS, clearPath, codexModels, detectProviders, killTree, listModels, openLogin,
-  pickPath, resolveProvider, setPath, spawnCli, validEffort, validModel,
+  pickPath, resolveProvider, setPath, spawnCli, validEffort, validModel, probeVersion, codexVersionSupported, MIN_CODEX_VERSION,
 } from './providers.mjs';
 
 const BIN_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../bin');
@@ -74,7 +77,7 @@ const IMAGES_DIR = id => statePath('agent', 'sessions', id, 'images');
 const POB_TOOLS = ['Bash(pob:*)', 'Bash(pob *)', 'PowerShell(pob:*)', 'PowerShell(pob *)'];
 const MAX_SESSIONS = 50;
 
-const coded = (code, status = 400) => Object.assign(new Error(code), { code, status });
+const coded = (code, status = 400, diagnostic) => Object.assign(new Error(code), { code, status, diagnostic });
 
 // ---- progress phases --------------------------------------------------------------------------
 
@@ -97,12 +100,6 @@ export function phaseFor(command) {
   if (name.startsWith('calc.')) return 'calculate';
   if (LOOKUPS.has(name)) return 'lookup';
   return 'inspect';
-}
-
-const SIGNED_OUT = /\/login|not logged in|log ?in|invalid api key|unauthori[sz]ed|\b401\b|authenticat/i;
-/** Turns what a CLI said before ending without an answer into one error code. */
-export function classifyFailure(texts) {
-  return texts.some(t => SIGNED_OUT.test(String(t ?? ''))) ? 'AGENT_SIGNED_OUT' : 'AGENT_FAILED';
 }
 
 // ---- CLI output ---------------------------------------------------------------------------------
@@ -183,13 +180,15 @@ export function buildTurn(turn, { catalog = [], readFile = fs.readFileSync } = {
     return { args, input };
   }
   // `exec resume` has no -s/--sandbox, so the sandbox is set with -c for both forms.
-  const args = turn.providerSessionId ? ['exec', 'resume', turn.providerSessionId] : ['exec'];
+  // Older supported CLIs accept shared exec options only before the resume subcommand.
+  const args = ['exec'];
   for (const image of images) args.push('-i', image.path); // each followed by a flag, so `-` stays the prompt
   args.push('--json', '--skip-git-repo-check');
   if (turn.fullAccess === true) args.push('--dangerously-bypass-approvals-and-sandbox');
   else args.push('-c', 'sandbox_mode="workspace-write"', '-c', 'sandbox_workspace_write.network_access=true');
   if (turn.model) args.push('-m', turn.model);
   if (effort) args.push('-c', `model_reasoning_effort="${effort}"`);
+  if (turn.providerSessionId) args.push('resume', turn.providerSessionId);
   args.push('-');
   if (note && !turn.providerSessionId) text = `${note}\n\n${text}`;
   return { args, input: text };
@@ -300,6 +299,19 @@ export class AgentHub {
   /** Streams one chat turn as server-sent events. */
   async chat(body, res) {
     const { message, images, provider, model, effort, fullAccess, catalog, ...rest } = this.#prepare(body);
+    const command = resolveProvider(provider);
+    let version = null;
+    const diagnostic = extra => agentDiagnostic({ provider, command: command.command, version, ...extra });
+    if (!command.available) throw coded('AGENT_MISSING', 400, diagnostic({}));
+    version = await probeVersion(command.command);
+    if (!version) throw coded('AGENT_NOT_RUNNABLE', 400, diagnostic({}));
+    if (provider === 'codex' && !codexVersionSupported(version)) {
+      this.log(`agent codex: CLI ${version} needs an update (requires ${MIN_CODEX_VERSION} or newer)`);
+      throw coded('AGENT_OUTDATED', 400, diagnostic({ minimumVersion: MIN_CODEX_VERSION }));
+    }
+    // Version probing awaits a process: another request may start or remove this chat meanwhile.
+    if (rest.session && !this.sessions.includes(rest.session)) throw coded('NOT_FOUND', 404);
+    if (rest.session && this.running.has(rest.session.id)) throw coded('BUSY', 409);
     let session = rest.session;
     const isNew = !session;
     if (isNew) {
@@ -326,12 +338,6 @@ export class AgentHub {
       for (const listener of turn.listeners) listener.end();
     };
 
-    const command = resolveProvider(provider);
-    if (!command.available) {
-      this.#rollback(session, isNew);
-      this.#emit(turn, { type: 'error', code: 'AGENT_MISSING' });
-      return finish();
-    }
     const { args, input } = buildTurn({
       provider, providerSessionId: session.providerSessionId, model, effort, fullAccess, locale: body.locale, text: message,
       images: attachments.map(image => ({ path: imageFile(session.id, image), mediaType: image.mediaType })),
@@ -341,9 +347,9 @@ export class AgentHub {
     try {
       child = spawnCli(command.command, args, { cwd: agentWorkspace(), env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     } catch (error) {
-      this.log(`agent ${provider}: could not start: ${error.message}`);
+      this.log(`agent ${provider}: could not start: ${redactDiagnosticText(error.message)}`);
       this.#rollback(session, isNew);
-      this.#emit(turn, { type: 'error', code: 'AGENT_NOT_RUNNABLE' });
+      this.#emit(turn, { type: 'error', code: 'AGENT_NOT_RUNNABLE', diagnostic: diagnostic({ details: [error.message] }) });
       return finish();
     }
     turn.child = child;
@@ -353,6 +359,7 @@ export class AgentHub {
     const parseState = {};
     const stderr = [];
     const failures = [];
+    const events = Object.create(null);
     let spawnError = null;
     let resultOk = null;
     child.on('error', error => { spawnError = error; });
@@ -361,7 +368,10 @@ export class AgentHub {
     readline.createInterface({ input: child.stderr }).on('line', line => { stderr.push(line); if (stderr.length > 40) stderr.shift(); });
     readline.createInterface({ input: child.stdout }).on('line', line => {
       let parsed;
-      try { parsed = JSON.parse(line); } catch { return; }
+      try { parsed = JSON.parse(line); } catch { events.nonJson = (events.nonJson ?? 0) + 1; return; }
+      if (!parsed || typeof parsed !== 'object') { events.unknown = (events.unknown ?? 0) + 1; return; }
+      const kind = parsed.type ?? (parsed.msg?.type ? `legacy:${parsed.msg.type}` : 'unknown');
+      if (/^[\w.:-]{1,64}$/.test(kind) && (kind in events || Object.keys(events).length < 20)) events[kind] = (events[kind] ?? 0) + 1;
       for (const event of parse(parsed, parseState)) {
         if (event.providerSessionId) session.providerSessionId = event.providerSessionId;
         if (event.type === 'tool') this.#phase(turn, phaseFor(event.command));
@@ -380,12 +390,16 @@ export class AgentHub {
     let error = null;
     if (turn.stopping) reply.delivery = 'interrupted';
     else if (spawnError) error = 'AGENT_NOT_RUNNABLE';
-    else if (!reply.text) error = classifyFailure([...failures, ...stderr]);
+    else if (!reply.text || resultOk === false || child.exitCode !== 0) error = classifyFailure([...failures, ...stderr], { exitCode: child.exitCode, eventCount: Object.keys(events).length });
     if (error || resultOk === false) {
-      this.log(`agent ${provider}: turn ended ${error ?? 'with an error'} (exit ${child.exitCode})${spawnError ? `: ${spawnError.message}` : ''}`);
-      for (const line of [...failures.filter(Boolean), ...stderr.slice(-5)]) this.log(`agent ${provider}: ${String(line).slice(0, 500)}`);
+      this.log(`agent ${provider}: turn ended ${error ?? 'with an error'} (exit ${child.exitCode})${spawnError ? `: ${redactDiagnosticText(spawnError.message)}` : ''}`);
+      for (const line of [...failures.filter(Boolean), ...stderr.slice(-5)]) this.log(`agent ${provider}: ${redactDiagnosticText(line).slice(0, 500)}`);
     }
-    if (error) { reply.error = error; this.#emit(turn, { type: 'error', code: error }); }
+    if (error) {
+      reply.error = error;
+      reply.diagnostic = diagnostic({ exitCode: child.exitCode, signal: child.signalCode, details: [...failures, ...stderr, spawnError?.message], events });
+      this.#emit(turn, { type: 'error', code: error, diagnostic: reply.diagnostic });
+    }
     session.messages.push(reply);
     session.updatedAt = reply.at;
     if (this.sessions.includes(session)) { // not deleted while it was answering
@@ -432,7 +446,7 @@ export class AgentHub {
 
   async handle(req, res, url, { send, readBody }) {
     const route = `${req.method} ${url.pathname}`;
-    const failed = (error, status = 200) => send(res, error.status ?? status, { ok: false, error: { code: error.code ?? 'ERROR' } });
+    const failed = (error, status = 200) => send(res, error.status ?? status, { ok: false, error: { code: error.code ?? 'ERROR', ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}) } });
     if (route === 'GET /api/agent/providers') return send(res, 200, { ok: true, providers: detectProviders({ refresh: true }) });
 
     const provider = url.pathname.match(/^\/api\/agent\/providers\/([a-z]+)\/(models|path|pick|login)$/);

@@ -60,10 +60,16 @@ command line, so every step is real PoB work you can see, undo and save.
 ## Install
 
 **Requirements:** Windows 10/11 and, for chat, [Claude Code](https://docs.claude.com/en/docs/claude-code)
-(or Codex) signed in.
+or Codex (0.50.0 or newer), signed in.
 
 1. Download `pob-ai-<version>-win-x64.zip` from **[Releases](https://github.com/tjdcks12/pob-ai/releases)** and unzip it anywhere. Node.js is included.
 2. Double-click **`PoB AI.cmd`**. It opens your PoB and the agent panel.
+
+Chat failures explain the cause and the next step: sign-in expiry, an outdated CLI, network or usage limits,
+an unavailable model, or CLI setup problems. **Diagnostics** shows the detected CLI version, exit code and
+scrubbed error details; **Copy diagnostics** makes a report you can share when asking for help.
+For an outdated Codex installation, run `npm install -g @openai/codex` in PowerShell, then retry.
+For an expired sign-in, use the **Sign in** button on the error message.
 
 PoB AI finds [Path of Building Community (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases)
 in the usual install locations. Point it at a portable copy once, or let it install PoB for you:
@@ -210,9 +216,9 @@ Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-This README describes v0.2.0. Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
+This README describes v0.2.1. Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
 Compatibility has been checked on Windows 11 with PoB PoE2 0.22.0 and 0.23.1. The current suite
-has **143 passing tests**, covering editor operations, agent sessions and permissions, language selection, shared
+has **150 passing tests**, covering editor operations, agent sessions, permissions and failure diagnostics, language selection, shared
 theme persistence, popup rendering and updates.
 
 Local PoB and WebView2 checks cover all six themes, unchanged calculation results across theme

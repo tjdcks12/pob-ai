@@ -4,11 +4,16 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { buildTurn, classifyFailure, effortFor, parseClaudeLine, parseCodexLine, phaseFor, prepareImages } from '../src/agent/hub.mjs';
-import { candidates, claudeCatalog, codexCatalog, loginCommandLine, resolveProvider, validEffort, validModel } from '../src/agent/providers.mjs';
+import { candidates, claudeCatalog, codexCatalog, loginCommandLine, resolveProvider, validEffort, validModel, codexVersionSupported } from '../src/agent/providers.mjs';
 
 const PNG = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000', 'hex');
 const pngUrl = `data:image/png;base64,${PNG.toString('base64')}`;
 const valueAfter = (args, flag) => args[args.indexOf(flag) + 1];
+
+test('Codex requires a CLI with the thread/item JSON protocol', () => {
+  for (const version of ['0.41.0', '0.49.9', null, 'invalid']) assert.equal(codexVersionSupported(version), false, String(version));
+  for (const version of ['0.50.0', '0.99.0', '1.0.0']) assert.equal(codexVersionSupported(version), true, version);
+});
 
 test('codex: new chat and resume both set the sandbox with -c, never -s', () => {
   for (const providerSessionId of [undefined, 'thread-1']) {
@@ -18,7 +23,8 @@ test('codex: new chat and resume both set the sandbox with -c, never -s', () => 
     assert.equal(args.at(-1), '-');
     assert.ok(args.includes('model_reasoning_effort="medium"'));
     if (providerSessionId) {
-      assert.deepEqual(args.slice(0, 3), ['exec', 'resume', 'thread-1']);
+      assert.deepEqual(args.slice(-3), ['resume', 'thread-1', '-']);
+      assert.ok(args.indexOf('--json') < args.indexOf('resume'), 'shared options precede resume on older CLIs');
       assert.equal(input, 'hi'); // the language note goes only into the first turn
     } else {
       assert.equal(args[0], 'exec');
@@ -116,7 +122,7 @@ test('classifyFailure: sign-in problems vs everything else', () => {
   assert.equal(classifyFailure(['', 'Error: 401 Unauthorized']), 'AGENT_SIGNED_OUT');
   assert.equal(classifyFailure(['Not logged in']), 'AGENT_SIGNED_OUT');
   assert.equal(classifyFailure(['failed to authenticate request']), 'AGENT_SIGNED_OUT');
-  assert.equal(classifyFailure(['stream disconnected before completion', undefined]), 'AGENT_FAILED');
+  assert.equal(classifyFailure(['stream disconnected before completion', undefined]), 'AGENT_NETWORK');
   assert.equal(classifyFailure([]), 'AGENT_FAILED');
 });
 

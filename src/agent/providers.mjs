@@ -22,6 +22,12 @@ const EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ul
 const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9\-_.:/[\]]{0,127}$/;
 /** poe2way desktop sends medium when the user picked no effort; quick build questions rarely need more. */
 export const DEFAULT_EFFORT = 'medium';
+// 0.50 has the thread.started/item.completed JSON protocol used by the panel.
+export const MIN_CODEX_VERSION = '0.50.0';
+export function codexVersionSupported(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(version ?? ''));
+  return Boolean(match && (Number(match[1]) > 0 || Number(match[2]) >= 50));
+}
 
 export const validModel = id => typeof id === 'string' && MODEL_ID.test(id);
 export const validEffort = (provider, effort) => EFFORTS.includes(effort)

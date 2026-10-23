@@ -1,6 +1,11 @@
 -- Exercise PoB's actual floating-sheet and calculation-breakdown painters, including nesting.
-local classes = {}
-newClass = function(name) classes[name] = {} return classes[name] end
+local classes, constructors = {}, {}
+newClass = function(name, ...)
+	classes[name] = {}
+	local args = { ... }
+	if type(args[#args]) == 'function' then constructors[name] = args[#args] end
+	return classes[name]
+end
 dofile(POB .. '/Classes/CalcSectionControl.lua')
 dofile(POB .. '/Classes/CalcBreakdownControl.lua')
 -- Floating sheets exist in updated beta builds, but not in the stable portable ZIP.
@@ -38,13 +43,21 @@ local activeTokens = tokens.dark
 POBAI_THEME = { tokens = function() return activeTokens end, lastColour = function() return unpack(colour) end,
 	textColour = function() return unpack(activeTokens.fg) end }
 local skin = dofile(ADAPTER .. '/live/skin.lua')
-local breakdown = setmetatable({
-	sourceData = { x = 310, y = 100, width = 90 }, contentWidth = 180, contentHeight = 52,
-	borderThickness = 2, borderColour = { .33, .66, .33 }, pinnedColour = { .25, 1, .25 },
-	controls = { scrollBar = { width = 18, offset = 0, SetContentDimension = function() end } },
-	sectionList = { { type = 'TEXT', offset = 2, textSize = 14, lines = { 'Maximum of:', '20% (Ancestral Call Uptime)', '= 20%' } } },
-	DrawControls = function() end,
-}, { __index = classes.CalcBreakdownControl })
+new = function(name)
+	if name ~= 'ScrollBarControl' then return { [name] = function(self) return self end } end
+	local scrollbar = { width = 18, offset = 0, SetContentDimension = function() end }
+	scrollbar.ScrollBarControl = function(self) return self end
+	return scrollbar
+end
+local breakdown = setmetatable({ controls = {}, Control = function() end, ControlHost = function() end }, { __index = classes.CalcBreakdownControl })
+local constructBreakdown = constructors.CalcBreakdownControl or classes.CalcBreakdownControl.CalcBreakdownControl
+constructBreakdown(breakdown, {})
+-- Keep the constructor's real optional fields; stable PoB has no borderThickness property.
+local nativeBorderThickness = breakdown.borderThickness
+breakdown.sourceData = { x = 310, y = 100, width = 90 }
+breakdown.contentWidth, breakdown.contentHeight = 180, 52
+breakdown.sectionList = { { type = 'TEXT', offset = 2, textSize = 14, lines = { 'Maximum of:', '20% (Ancestral Call Uptime)', '= 20%' } } }
+breakdown.DrawControls = function() end
 local tab = { input = {}, calcsEnv = { player = {} }, build = { outputRevision = 1, overlayPanes = {} },
 	controls = { breakdown = breakdown }, CheckFlag = function() return true end, SearchMatch = function() return false end,
 	SetDisplayStat = function(self, cell) self.displayData = cell breakdown.sourceData = cell end,
@@ -89,7 +102,18 @@ else
 end
 result.overlaySupportedAfter = type(classes.CalcSectionControl.DrawOverlay) == 'function'
 result.drawFunctionsRestored = DrawImage == rect and DrawImageQuad == quad
+if FAIL_DRAW then
+	local drawControls = breakdown.DrawControls
+	breakdown.DrawControls = function() error('simulated native draw failure') end
+	local ok, err = pcall(breakdown.Draw, breakdown, viewport)
+	result.drawFailed, result.drawError = not ok, err
+	result.restoredAfterFailure = DrawImage == rect and DrawImageQuad == quad
+	result.errorPopupOk = pcall(function() DrawImage(nil, 0, 0, 640, 480) end)
+	breakdown.DrawControls = drawControls
+	skin.reset()
+end
 tab.displayData = nil
 skin.set(nil)
 result.restored = snapshot()
+result.nativeFieldsUnchanged = breakdown.borderThickness == nativeBorderThickness
 return result

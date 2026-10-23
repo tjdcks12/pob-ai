@@ -136,6 +136,8 @@ code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
   background: var(--red-soft); color: var(--fg); font-size: 12px; }
 .agent-error span { flex: 1; min-width: 160px; }
 .agent-dock .agent-error button { min-height: 26px; padding: 2px 9px; font-size: 12px; }
+.agent-error-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+#diagnostics-report { white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.6 var(--mono); padding: 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-inner); }
 
 /* agent picker (agent.css:38-69) */
 .agent-picker { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
