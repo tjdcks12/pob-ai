@@ -66,6 +66,14 @@ Restart the PoB AI service (the PoB window and panel reconnect)
 
 Check for a newer PoB AI
 
+### `pob update automatic`
+
+Enable or disable background downloads of PoB AI updates
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--enabled` | boolean | Download verified updates automatically; restart remains a user action |
+
 ### `pob update apply`
 
 Download and install the newer PoB AI (used from the next start)

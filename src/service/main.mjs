@@ -23,7 +23,7 @@ if (running) {
   if (argv.has('--open')) await callService(running, 'open', {}).catch(error => log(`Could not open PoB: ${error.message}`));
   if (argv.has('--settings')) {
     await fetch(`http://127.0.0.1:${running.port}/api/settings/open`, { method: 'POST', headers: { authorization: `Bearer ${running.token}`, 'content-type': 'application/json' }, body: '{}' });
-  } else if (!argv.has('--no-browser')) openPanel(`http://127.0.0.1:${running.port}/?token=${running.token}`);
+  } else if (!argv.has('--no-browser') || argv.has('--reopen-panel')) await openPanel(`http://127.0.0.1:${running.port}/?token=${running.token}`, { replace: argv.has('--reopen-panel') });
   logFile.end();
 } else {
   await start();
@@ -44,7 +44,7 @@ async function start() {
   if (argv.has('--settings')) {
     await service.waitForPob(4000).catch(() => {});
     await service.openSettings();
-  } else if (!argv.has('--no-browser')) openPanel(service.url);
+  } else if (!argv.has('--no-browser') || argv.has('--reopen-panel')) await openPanel(service.url, { replace: argv.has('--reopen-panel') });
 
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { service.close(); process.exit(0); });
 }

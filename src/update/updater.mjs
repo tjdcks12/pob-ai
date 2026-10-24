@@ -14,7 +14,7 @@ import { readConfig, readJson, statePath, updateConfig, writeJson } from '../sta
 export const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PACKAGE = JSON.parse(fs.readFileSync(path.join(APP_ROOT, 'package.json'), 'utf8'));
 export const VERSION = PACKAGE.version;
-const DAY = 24 * 60 * 60 * 1000;
+export const UPDATE_CHECK_MS = 30 * 60 * 1000;
 
 /** Compares "1.2.3" style versions; returns <0, 0 or >0. */
 export function compareVersions(a, b) {
@@ -42,7 +42,8 @@ async function fetchManifest(fetchImpl) {
   const response = await fetchImpl(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw Object.assign(new Error(`The update server answered ${response.status}.`), { code: 'UPDATE_CHECK_FAILED' });
   const manifest = await response.json();
-  if (!manifest?.version || !manifest.url || !/^[0-9a-f]{64}$/i.test(manifest.sha256 ?? '')) {
+  if (!/^\d+\.\d+\.\d+$/.test(manifest?.version ?? '') || !manifest.url || !/^[0-9a-f]{64}$/i.test(manifest.sha256 ?? '')
+    || (manifest.size != null && (!Number.isSafeInteger(manifest.size) || manifest.size <= 0))) {
     throw Object.assign(new Error('The update manifest is incomplete.'), { code: 'UPDATE_CHECK_FAILED' });
   }
   return { ...manifest, url: new URL(manifest.url, url).href };
@@ -57,13 +58,14 @@ export async function checkForUpdate({ fetchImpl = fetch } = {}) {
     installed,
     latest: manifest.version,
     available: compareVersions(manifest.version, installed) > 0,
+    restartNeeded: compareVersions(installed, VERSION) > 0,
     notes: manifest.notes ?? null,
     size: manifest.size ?? null,
   };
 }
 
-/** True when the last check is older than a day (the service checks quietly on start). */
-export const updateCheckDue = () => Boolean(updateUrl()) && Date.now() - (readConfig().lastUpdateCheck ?? 0) > DAY;
+/** The service checks on startup and periodically while it remains open. */
+export const updateCheckDue = () => Boolean(updateUrl()) && Date.now() - (readConfig().lastUpdateCheck ?? 0) >= UPDATE_CHECK_MS;
 
 const tarExe = () => path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
 
@@ -86,33 +88,51 @@ export function packageRoot(dir, marker) {
 }
 
 /** Downloads `url` to `file`, checking the size and SHA-256 when given. */
-export async function download(url, file, { sha256, size, fetchImpl = fetch } = {}) {
+export async function download(url, file, { sha256, size, fetchImpl = fetch, onProgress = () => {} } = {}) {
   const response = await fetchImpl(url, { signal: AbortSignal.timeout(10 * 60 * 1000) });
   if (!response.ok) throw Object.assign(new Error(`Download failed (${response.status}): ${url}`), { code: 'DOWNLOAD_FAILED' });
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const partial = `${file}.download`;
   const hash = createHash('sha256');
   let bytes = 0;
-  await pipeline(Readable.fromWeb(response.body), async function* (chunks) {
-    for await (const chunk of chunks) { hash.update(chunk); bytes += chunk.length; yield chunk; }
-  }, fs.createWriteStream(partial));
-  const digest = hash.digest('hex');
-  const fail = message => { fs.rmSync(partial, { force: true }); throw Object.assign(new Error(message), { code: 'DOWNLOAD_CORRUPT' }); };
-  if (size && bytes !== size) fail(`The download has ${bytes} bytes, expected ${size}.`);
-  if (sha256 && digest.toLowerCase() !== sha256.toLowerCase()) fail('The download does not match its checksum.');
-  fs.renameSync(partial, file);
-  return { file, bytes, sha256: digest };
+  const total = size || Number(response.headers.get('content-length')) || null;
+  let lastProgress = 0;
+  try {
+    onProgress({ received: 0, total });
+    await pipeline(Readable.fromWeb(response.body), async function* (chunks) {
+      for await (const chunk of chunks) {
+        hash.update(chunk); bytes += chunk.length;
+        if (Date.now() - lastProgress >= 100) { lastProgress = Date.now(); onProgress({ received: bytes, total }); }
+        yield chunk;
+      }
+    }, fs.createWriteStream(partial));
+    const digest = hash.digest('hex');
+    const fail = message => { throw Object.assign(new Error(message), { code: 'DOWNLOAD_CORRUPT' }); };
+    if (size && bytes !== size) fail(`The download has ${bytes} bytes, expected ${size}.`);
+    if (sha256 && digest.toLowerCase() !== sha256.toLowerCase()) fail('The download does not match its checksum.');
+    fs.renameSync(partial, file);
+    onProgress({ received: bytes, total: total ?? bytes });
+    return { file, bytes, sha256: digest };
+  } catch (error) {
+    fs.rmSync(partial, { force: true });
+    throw error;
+  }
 }
 
 /** Downloads, verifies and unpacks the latest release; it is used from the next start. */
-export async function applyUpdate({ fetchImpl = fetch } = {}) {
+let updateJob;
+export function applyUpdate(options = {}) {
+  updateJob ??= installUpdate(options).finally(() => { updateJob = null; });
+  return updateJob;
+}
+async function installUpdate({ fetchImpl = fetch, onProgress } = {}) {
   const manifest = await fetchManifest(fetchImpl);
   const installed = installedUpdate()?.version ?? VERSION;
-  if (compareVersions(manifest.version, installed) <= 0) return { updated: false, current: VERSION, installed, latest: manifest.version };
+  if (compareVersions(manifest.version, installed) <= 0) return { updated: false, current: VERSION, installed, latest: manifest.version, restartNeeded: compareVersions(installed, VERSION) > 0 };
 
   const appDir = statePath('app');
   const zip = path.join(appDir, 'downloads', `pob-ai-${manifest.version}.zip`);
-  await download(manifest.url, zip, { sha256: manifest.sha256, size: manifest.size, fetchImpl });
+  await download(manifest.url, zip, { sha256: manifest.sha256, size: manifest.size, fetchImpl, onProgress });
   const temp = path.join(appDir, `${manifest.version}.partial`);
   fs.rmSync(temp, { recursive: true, force: true });
   await extractZip(zip, temp);

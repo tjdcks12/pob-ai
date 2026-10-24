@@ -64,7 +64,7 @@ Codex (0.50.0 or newer) or [Antigravity](https://antigravity.google/docs/getting
 Antigravity uses the official `agy` CLI, which is installed separately from its IDE. PoB AI detects it
 on PATH or in `%LOCALAPPDATA%\agy\bin`; a custom executable can be selected in Settings.
 
-1. Download `pob-ai-<version>-win-x64.zip` from **[Releases](https://github.com/tjdcks12/pob-ai/releases)** and unzip it anywhere. Node.js is included.
+1. Download the **[latest Windows ZIP](https://github.com/tjdcks12/pob-ai/releases/latest/download/pob-ai-latest-win-x64.zip)** and unzip it anywhere. Node.js is included.
 2. Double-click **`PoB AI.exe`**. It opens PoB and the agent panel without a console window. `PoB AI.cmd` remains a compatibility shortcut.
 
 If PoB is not installed, the agent panel still opens and shows **Install PoB** and **Connect existing PoB**.
@@ -194,9 +194,11 @@ translation wider than the English is squeezed into its space. Text without a tr
 
 - **PoB** updates itself as always. PoB AI attaches to whichever version is installed, and after
   PoB restarts for its own update, PoB AI is attached again automatically.
-- **PoB AI** checks for a new version once a day and offers it in **Settings**. Click **Update** or run
-  `pob update apply --restart`. The update is verified (SHA-256), unpacked into your data folder
-  and used from the next start. The PoB window stays open and reconnects.
+- **PoB AI** checks on startup and every 30 minutes, and downloads verified updates in the background.
+  When **Restart to update** appears, apply it whenever you are ready. Your PoB window stays open and
+  reconnects; the AI panel reopens with the new version. Downloading never interrupts a conversation.
+  In **Settings → Updates**, turn automatic downloads off or check manually. `pob update apply --restart`
+  also works. Downloads are checked with SHA-256 and kept in your data folder.
 
 Something off? `pob doctor` checks the PoB install, the adapter against your PoB version, the
 window connection, updates and agents, and says what to do. Logs are in `%LOCALAPPDATA%\pob-ai\logs`.
@@ -228,7 +230,7 @@ Everything runs on your PC. PoB AI goes online only:
 
 - to download a build you ask it to import, or to upload one you ask it to share;
 - for Korean item text, to fetch the official trade stat lists from Grinding Gear Games / Kakao (cached for a day);
-- to check its update feed once a day, and to download an update or PoB when you ask;
+- on startup and every 30 minutes to check for updates, to download updates when automatic downloads are enabled, or when you request an update or PoB installation;
 - through PoB itself, for what PoB does online (account import, trade, PoB's own update check).
 
 Chats go to the agent you chose, under its own terms.
