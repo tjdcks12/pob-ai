@@ -15,6 +15,13 @@
       "upstreamSha256": "670b3d8d749d0815ad8f7e62a59d51cb5e2053cb19403f3541a8aed7036a877f",
       "file": "claude.svg",
       "sha256": "670b3d8d749d0815ad8f7e62a59d51cb5e2053cb19403f3541a8aed7036a877f"
+    },
+    {
+      "provider": "antigravity",
+      "upstream": "icons/antigravity-color.svg",
+      "upstreamSha256": "652128cf55a28bb958563ee372d0bd00208d9e6fd446f523f77aafd811eef8ca",
+      "file": "antigravity.svg",
+      "sha256": "652128cf55a28bb958563ee372d0bd00208d9e6fd446f523f77aafd811eef8ca"
     }
   ]
 }

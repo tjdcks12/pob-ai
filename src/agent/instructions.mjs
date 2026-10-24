@@ -1,5 +1,4 @@
-// Working folder and standing instructions for the agent. Claude Code reads CLAUDE.md and
-// Codex reads AGENTS.md from their working folder, so both get the same guidance.
+// Working folder and standing instructions for the agents: CLAUDE.md, AGENTS.md and GEMINI.md.
 import fs from 'node:fs';
 import path from 'node:path';
 import { statePath } from '../state.mjs';
@@ -51,7 +50,7 @@ Highlight first, then explain in one or two sentences what the user sees.
 export function agentWorkspace() {
   const dir = statePath('agent', 'workspace');
   fs.mkdirSync(dir, { recursive: true });
-  for (const name of ['CLAUDE.md', 'AGENTS.md']) {
+  for (const name of ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md']) {
     const file = path.join(dir, name);
     if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== INSTRUCTIONS) fs.writeFileSync(file, INSTRUCTIONS);
   }

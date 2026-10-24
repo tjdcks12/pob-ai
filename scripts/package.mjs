@@ -42,6 +42,11 @@ const koffi = 'node_modules/koffi';
 for (const item of ['package.json', 'index.js', 'indirect.js', 'lib', 'LICENSE.txt', 'build/koffi/win32_x64']) {
   if (fs.existsSync(path.join(root, koffi, item))) copy(`${koffi}/${item}`);
 }
+// Native terminal only for Antigravity's Windows OAuth input. Include x64 prebuilds and licenses.
+for (const item of ['package.json', 'lib', 'LICENSE', 'prebuilds/win32-x64']) {
+  copy(`node_modules/node-pty/${item}`, `node_modules/node-pty/${item}`, rel => !/\.(?:pdb|map)$|\.test\.js$/.test(rel) && !rel.includes('/conpty/'));
+}
+copy('node_modules/node-addon-api/LICENSE.md', 'node_modules/node-addon-api/LICENSE.md');
 
 const release = { ...pkg };
 delete release.scripts;

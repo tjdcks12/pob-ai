@@ -5,7 +5,7 @@ files. Three pieces work together:
 
 ```mermaid
 flowchart LR
-  subgraph Agent[AI agent: Claude Code / Codex]
+  subgraph Agent[AI agent: Claude Code / Codex / Antigravity]
     A[pob CLI]
   end
   Panel[Agent panel<br/>ui/] -->|HTTP + SSE| Service
@@ -96,9 +96,15 @@ converted are reported back instead of being silently dropped.
 
 `src/agent/hub.mjs` runs the agent CLI the user is already signed in to, in non-interactive mode,
 once per chat turn, and resumes the same conversation on the next turn. The agent works in a
-folder whose `CLAUDE.md` / `AGENTS.md` explain the `pob` command line. PoB AI pre-approves only
+folder whose `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` explain the `pob` command line. PoB AI pre-approves only
 `pob …` commands for Claude Code and disables its file editing tools; the user's own Claude Code
 permission settings still apply.
+Antigravity uses `agy` with its native input/output NDJSON protocol, `--conversation` for resumption,
+and `agy models` for authentication checks and model discovery without a model request. Normal
+turns use Auto mode with the native sandbox; full access uses the CLI's explicit bypass flag.
+Its tool events map to the same progress phases, and image attachments are read by its file tool.
+Windows sign-in uses a hidden native terminal host because the CLI's OAuth code reader requires a
+terminal. The panel forwards a one-time code through stdin; codes are not saved in chats or logs.
 
 ## Distribution and updates
 

@@ -9,14 +9,14 @@ const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pobai-login-'));
 process.env.POB_AI_HOME = home;
 const { openLogin } = await import('../src/agent/providers.mjs');
 const { writeJson } = await import('../src/state.mjs');
-after(() => fs.rmSync(home, { recursive: true, force: true }));
+after(() => fs.promises.rm(home, { recursive: true, force: true, maxRetries: 20, retryDelay: 25 }));
 
 test('login executes npm cmd shims with spaces and passes each provider authentication command', { skip: process.platform !== 'win32' }, async () => {
   const dir = path.join(home, 'agent with spaces');
   fs.mkdirSync(dir);
   const fixture = path.join(dir, 'capture.mjs');
   fs.writeFileSync(fixture, 'import fs from "node:fs"; fs.writeFileSync(process.argv[2], JSON.stringify(process.argv.slice(3)));');
-  for (const [provider, args] of [['claude', ['auth', 'login']], ['codex', ['login']]]) {
+  for (const [provider, args] of [['claude', ['auth', 'login']], ['codex', ['login']], ['antigravity', ['--input-format', 'stream-json', '--output-format', 'stream-json']]]) {
     const marker = path.join(dir, `${provider}.json`);
     const command = path.join(dir, `${provider}.cmd`);
     fs.writeFileSync(command, `@echo off\r\n"${process.execPath}" "${fixture}" "${marker}" %*\r\n`);

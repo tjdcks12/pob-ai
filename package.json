@@ -1,6 +1,6 @@
 {
   "name": "pob-ai",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "AI agent and command line for Path of Building (PoE2). Drives your installed PoB without modifying it.",
   "license": "MIT",
   "type": "module",
@@ -19,6 +19,7 @@
     "docs": "node scripts/gen-commands.mjs"
   },
   "dependencies": {
-    "koffi": "^2.16.3"
+    "koffi": "^2.16.3",
+    "node-pty": "1.1.0"
   }
 }

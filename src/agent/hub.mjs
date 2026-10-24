@@ -1,4 +1,4 @@
-// Runs the user's installed agent CLI (Claude Code or Codex) in non-interactive mode for each
+// Runs the user's installed agent CLI in non-interactive mode for each
 // chat turn, streams its progress to the panel and keeps the conversation going with --resume.
 // Several chats (panel tabs) can answer at the same time; each chat runs one turn at a time.
 // A turn keeps running when the panel disconnects; only POST /api/agent/stop, deleting the chat
@@ -7,7 +7,7 @@
 // Failures include a cause code and bounded, scrubbed CLI diagnostics for the panel and saved chat.
 //   AGENT_MISSING       no executable found, or the chosen file is gone
 //   AGENT_NOT_RUNNABLE  the executable could not be started or does not answer --version
-//   AGENT_OUTDATED      the Codex CLI predates the supported thread/item JSON protocol
+//   AGENT_OUTDATED      the CLI predates its supported protocol or permission controls
 //   AGENT_SIGNED_OUT    the CLI ended without an answer and reported a sign-in problem
 //   AGENT_FAILED        the CLI ended without an answer for another reason
 //   AGENT_PATH_INVALID  a chosen path is not an existing absolute .exe, .cmd or .bat file
@@ -20,13 +20,14 @@
 //   GET    /api/agent/providers/:id/models[?refresh=1]
 //          -> { ok, models: [{ id, name, efforts: [..], defaultEffort|null }], defaultEffort: 'medium' }
 //          Codex: read from its models_cache.json. Claude: asked once per executable over the
-//          stream-json `initialize` control request (no sign-in or model call), then cached.
+//          stream-json `initialize` control request. Antigravity: `agy models`, then cached.
+//          None of these queries calls a model.
 //          An empty list means "use the CLI's own default model".
 //   POST   /api/agent/providers/:id/path   { path }   -> { ok, provider } | AGENT_PATH_INVALID, AGENT_NOT_RUNNABLE
 //   DELETE /api/agent/providers/:id/path               -> { ok, provider }  (back to env / automatic discovery)
 //   POST   /api/agent/providers/:id/pick   { title }  -> { ok, provider } | { ok: true, cancelled: true }
 //          Opens the native file dialog (title already translated by the panel), then saves like /path.
-//   POST   /api/agent/providers/:id/login             -> { ok }  Opens the CLI's own sign-in in a console window.
+//   POST   /api/agent/providers/:id/login             -> { ok }  Opens the CLI's own browser sign-in.
 //   GET    /api/agent/sessions
 //          -> { ok, sessions: [{ id, provider, title, createdAt, updatedAt, model, effort, turns, running }] }
 //          Least recently used first; at most 50 are kept (older chats and their images are removed).
@@ -69,6 +70,7 @@ export { classifyFailure } from './diagnostics.mjs';
 import {
   DEFAULT_EFFORT, PROVIDERS, clearPath, codexModels, detectProviders, killTree, listModels, openLogin, providerStatus, cancelLogin,
   pickPath, resolveProvider, setPath, spawnCli, validEffort, validModel, probeVersion, codexVersionSupported, MIN_CODEX_VERSION,
+  antigravityVersionSupported, MIN_ANTIGRAVITY_VERSION, cachedModels, probeAuthentication, submitLoginCode,
 } from './providers.mjs';
 
 const BIN_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../bin');
@@ -147,11 +149,37 @@ export function parseCodexLine(message) {
   return out;
 }
 
+/** Antigravity's NDJSON protocol uses event/step_update/result envelopes. */
+export function parseAntigravityLine(message, state = {}) {
+  const out = [];
+  if (message.event === 'init' && message.conversation_id) out.push({ type: 'session', providerSessionId: message.conversation_id });
+  const step = message.step_update;
+  if (message.event === 'step_update' && step) {
+    if (step.conversation_id) out.push({ type: 'session', providerSessionId: step.conversation_id });
+    if (step.step_type === 'agent_response' && typeof step.text_delta === 'string' && step.text_delta) {
+      out.push({ type: 'text', id: `step-${step.step_index}`, text: step.text_delta, partial: true });
+      state.textSeen = true;
+    }
+    if (step.step_type === 'tool') {
+      const tool = step.tool_info ?? {};
+      out.push({ type: 'tool', command: tool.parameters?.CommandLine ?? tool.parameters?.command ?? tool.name ?? step.tool_name });
+    }
+  }
+  if (message.event === 'result' && message.result) {
+    const result = message.result;
+    out.push({ type: 'result', ok: result.status === 'SUCCESS' && !result.denied_actions?.length,
+      text: result.status === 'SUCCESS' ? (result.denied_actions?.length ? 'Permission denied: ' + JSON.stringify(result.denied_actions) : state.textSeen ? undefined : result.response) : result.error,
+      providerSessionId: result.conversation_id });
+  }
+  return out;
+}
+
 // ---- launching a turn ---------------------------------------------------------------------------
 
 /** The effort sent to the CLI: the chosen one, else medium unless the chosen Codex model lacks it. */
 export function effortFor({ provider, model, effort }, catalog = []) {
   if (effort) return effort;
+  if (provider === 'antigravity') return catalog.find(row => row.id === model)?.defaultEffort ?? model?.match(/-(low|medium|high|xhigh|max)$/)?.[1] ?? (model ? DEFAULT_EFFORT : null);
   const info = provider === 'codex' && model ? catalog.find(m => m.id === model) : null;
   return info?.efforts.length && !info.efforts.includes(DEFAULT_EFFORT) ? null : DEFAULT_EFFORT;
 }
@@ -178,6 +206,19 @@ export function buildTurn(turn, { catalog = [], readFile = fs.readFileSync } = {
     if (text) content.push({ type: 'text', text });
     const input = `${JSON.stringify({ type: 'user', session_id: turn.providerSessionId ?? '', parent_tool_use_id: null, message: { role: 'user', content } })}\n`;
     return { args, input };
+  }
+  if (turn.provider === 'antigravity') {
+    const args = ['--input-format', 'stream-json', '--output-format', 'stream-json', '--disable-slash-commands'];
+    if (turn.fullAccess === true) args.push('--dangerously-skip-permissions');
+    else args.push('--mode', 'auto', '--sandbox');
+    if (turn.providerSessionId) args.push('--conversation', turn.providerSessionId);
+    // Native slugs embed an effort; a conflicting --effort is rejected. The family accepts both.
+    if (turn.model) args.push('--model', turn.model.replace(/-(low|medium|high|xhigh|max)$/, ''));
+    if (effort) args.push('--effort', effort);
+    for (const dir of new Set(images.map(image => path.dirname(image.path)))) args.push('--add-dir', dir);
+    if (note) text = `${note}\n\n${text}`;
+    if (images.length) text += `\n\nOpen the attached image files before answering:\n${images.map(image => '@' + JSON.stringify(image.path.replaceAll('\\', '/'))).join('\n')}`;
+    return { args, input: JSON.stringify({ event: 'user', message: { content: text } }) + '\n' };
   }
   // `exec resume` has no -s/--sandbox, so the sandbox is set with -c for both forms.
   // Older supported CLIs accept shared exec options only before the resume subcommand.
@@ -290,7 +331,7 @@ export class AgentHub {
     const fullAccess = body.fullAccess ?? (session?.fullAccess === true);
     if (model && !validModel(model)) throw coded('MODEL_INVALID');
     if (effort && !validEffort(provider, effort)) throw coded('EFFORT_INVALID');
-    const catalog = provider === 'codex' ? codexModels() : [];
+    const catalog = provider === 'codex' ? codexModels() : provider === 'antigravity' ? cachedModels(provider) : [];
     const info = model && catalog.find(m => m.id === model);
     if (info && effort && info.efforts.length && !info.efforts.includes(effort)) throw coded('EFFORT_INVALID');
     return { message, images, session, provider, model, effort, fullAccess, catalog };
@@ -308,6 +349,14 @@ export class AgentHub {
     if (provider === 'codex' && !codexVersionSupported(version)) {
       this.log(`agent codex: CLI ${version} needs an update (requires ${MIN_CODEX_VERSION} or newer)`);
       throw coded('AGENT_OUTDATED', 400, diagnostic({ minimumVersion: MIN_CODEX_VERSION }));
+    }
+    if (provider === 'antigravity' && !antigravityVersionSupported(version)) {
+      throw coded('AGENT_OUTDATED', 400, diagnostic({ minimumVersion: MIN_ANTIGRAVITY_VERSION }));
+    }
+    // An unauthenticated Antigravity chat waits for OAuth rather than ending with an error.
+    // Keep sign-in in the existing account flow, before creating a turn or saving attachments.
+    if (provider === 'antigravity' && await probeAuthentication(command) === 'signed_out') {
+      throw coded('AGENT_SIGNED_OUT', 400, diagnostic({}));
     }
     // Version probing awaits a process: another request may start or remove this chat meanwhile.
     if (rest.session && !this.sessions.includes(rest.session)) throw coded('NOT_FOUND', 404);
@@ -355,7 +404,7 @@ export class AgentHub {
     turn.child = child;
     session.messages.push(userMessage);
 
-    const parse = provider === 'claude' ? parseClaudeLine : parseCodexLine;
+    const parse = provider === 'claude' ? parseClaudeLine : provider === 'antigravity' ? parseAntigravityLine : parseCodexLine;
     const parseState = {};
     const stderr = [];
     const failures = [];
@@ -370,7 +419,7 @@ export class AgentHub {
       let parsed;
       try { parsed = JSON.parse(line); } catch { events.nonJson = (events.nonJson ?? 0) + 1; return; }
       if (!parsed || typeof parsed !== 'object') { events.unknown = (events.unknown ?? 0) + 1; return; }
-      const kind = parsed.type ?? (parsed.msg?.type ? `legacy:${parsed.msg.type}` : 'unknown');
+      const kind = parsed.type ?? parsed.event ?? (parsed.msg?.type ? `legacy:${parsed.msg.type}` : 'unknown');
       if (/^[\w.:-]{1,64}$/.test(kind) && (kind in events || Object.keys(events).length < 20)) events[kind] = (events[kind] ?? 0) + 1;
       for (const event of parse(parsed, parseState)) {
         if (event.providerSessionId) session.providerSessionId = event.providerSessionId;
@@ -390,7 +439,7 @@ export class AgentHub {
     let error = null;
     if (turn.stopping) reply.delivery = 'interrupted';
     else if (spawnError) error = 'AGENT_NOT_RUNNABLE';
-    else if (!reply.text || resultOk === false || child.exitCode !== 0) error = classifyFailure([...failures, ...stderr], { exitCode: child.exitCode, eventCount: Object.keys(events).length });
+    else if (!reply.text || resultOk === false || child.exitCode !== 0 || (provider === 'antigravity' && classifyFailure(stderr) === 'AGENT_PERMISSIONS')) error = classifyFailure([...failures, ...stderr], { exitCode: child.exitCode, eventCount: Object.keys(events).length });
     if (error || resultOk === false) {
       this.log(`agent ${provider}: turn ended ${error ?? 'with an error'} (exit ${child.exitCode})${spawnError ? `: ${redactDiagnosticText(spawnError.message)}` : ''}`);
       for (const line of [...failures.filter(Boolean), ...stderr.slice(-5)]) this.log(`agent ${provider}: ${redactDiagnosticText(line).slice(0, 500)}`);
@@ -450,11 +499,16 @@ export class AgentHub {
     if (route === 'GET /api/agent/providers') return send(res, 200, { ok: true,
       providers: await Promise.all(detectProviders({ refresh: true }).map(providerStatus)) });
 
-    const provider = url.pathname.match(/^\/api\/agent\/providers\/([a-z]+)\/(models|path|pick|login)$/);
+    const provider = url.pathname.match(/^\/api\/agent\/providers\/([a-z]+)\/(models|path|pick|login|login\/code)$/);
     if (provider) {
       const [, id, action] = provider;
       if (!PROVIDERS[id]) return send(res, 404, { ok: false, error: { code: 'NOT_FOUND' } });
       try {
+        if (action === 'login/code' && req.method === 'POST') {
+          const body = await readBody(req);
+          await submitLoginCode(id, body.code);
+          return send(res, 200, { ok: true });
+        }
         if (action === 'models' && req.method === 'GET') {
           const models = await listModels(id, { refresh: url.searchParams.get('refresh') === '1', cwd: agentWorkspace(), log: line => this.log(line) });
           return send(res, 200, { ok: true, models, defaultEffort: DEFAULT_EFFORT });

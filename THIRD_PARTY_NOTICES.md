@@ -48,7 +48,15 @@ Node.js foreign function interface used to load PoB's `lua51.dll`.
 MIT License, Copyright (c) Niels Martignène. https://koffi.dev
 The release zip contains only its Windows x64 binary (`node_modules/koffi`, with its LICENSE.txt).
 
-## Node.js
+## node-pty and node-addon-api
+
+Antigravity sign-in uses node-pty 1.1.0's Windows x64 native terminal so authorization codes can be
+entered in the panel without a visible console. node-pty (Microsoft Corporation and contributors)
+and node-addon-api (Node.js contributors) are MIT licensed. Full licenses ship in
+`node_modules/node-pty/LICENSE` and `node_modules/node-addon-api/LICENSE.md`.
+https://github.com/microsoft/node-pty · https://github.com/nodejs/node-addon-api
+
+## Node.js runtime
 
 The Windows release bundles the Node.js runtime in `runtime/node/` so nothing has to be installed.
 Node.js is MIT licensed and includes third-party components under their own licenses; the full
@@ -76,7 +84,7 @@ Copyright (c) Cole Bemis 2013-2022 as part of Feather (MIT). https://lucide.dev
 
 ## Agent provider marks
 
-`ui/agents/claude.svg` and `ui/agents/codex.svg` come from @lobehub/icons-static-svg 1.95.1 (MIT),
+`ui/agents/claude.svg`, `codex.svg` and `antigravity.svg` come from @lobehub/icons-static-svg 1.95.1 (MIT),
 unmodified (`ui/agents/source.json`). The marks are trademarks of their owners and only identify the
 supported command line agents.
 

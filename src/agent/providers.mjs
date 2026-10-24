@@ -1,18 +1,21 @@
 // Detects the AI coding agents the user already has installed and signed in to.
-// Path order: a path the user chose (config.json agentPaths), then POB_AI_CLAUDE / POB_AI_CODEX,
+// Path order: a path the user chose (config.json agentPaths), then POB_AI_<PROVIDER>,
 // then automatic discovery, which also finds the copies bundled with the Claude and Codex desktop apps.
 // Model lists follow poe2way desktop: Codex reads its own models_cache.json, Claude is asked over
-// its stream-json control protocol (initialize), which needs no sign-in and makes no model request.
+// its stream-json control protocol (initialize), and Antigravity exposes `agy models`.
+// These queries make no model request.
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
+import { fileURLToPath } from 'node:url';
 import { readConfig, updateConfig } from '../state.mjs';
 
 export const PROVIDERS = {
   claude: { label: 'Claude Code', envKey: 'POB_AI_CLAUDE', login: ['auth', 'login'] },
   codex: { label: 'Codex', envKey: 'POB_AI_CODEX', login: ['login'] },
+  antigravity: { label: 'Antigravity', envKey: 'POB_AI_ANTIGRAVITY', login: ['--input-format', 'stream-json', '--output-format', 'stream-json'] },
 };
 
 const EXECUTABLE = /\.(exe|cmd|bat)$/i;
@@ -24,6 +27,11 @@ const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9\-_.:/[\]]{0,127}$/;
 export const DEFAULT_EFFORT = 'medium';
 // 0.50 has the thread.started/item.completed JSON protocol used by the panel.
 export const MIN_CODEX_VERSION = '0.50.0';
+export const MIN_ANTIGRAVITY_VERSION = '1.4.4';
+export function antigravityVersionSupported(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(version ?? ''));
+  return Boolean(match && (Number(match[1]) > 1 || (Number(match[1]) === 1 && (Number(match[2]) > 4 || (Number(match[2]) === 4 && Number(match[3]) >= 4)))));
+}
 export function codexVersionSupported(version) {
   const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(version ?? ''));
   return Boolean(match && (Number(match[1]) > 0 || Number(match[2]) >= 50));
@@ -31,7 +39,8 @@ export function codexVersionSupported(version) {
 
 export const validModel = id => typeof id === 'string' && MODEL_ID.test(id);
 export const validEffort = (provider, effort) => EFFORTS.includes(effort)
-  && !(provider === 'claude' && ['none', 'minimal', 'ultra'].includes(effort));
+  && !(provider === 'claude' && ['none', 'minimal', 'ultra'].includes(effort))
+  && !(provider === 'antigravity' && !['low', 'medium', 'high', 'xhigh', 'max'].includes(effort));
 
 const isFile = file => { try { return fs.statSync(file).isFile(); } catch { return false; } };
 const mtime = file => { try { return fs.statSync(file).mtimeMs; } catch { return 0; } };
@@ -53,13 +62,15 @@ export function candidates(id, env = process.env) {
   const appData = env.APPDATA || path.join(home, 'AppData', 'Roaming');
   const local = env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
   const dirs = [];
-  if (id === 'claude') dirs.push(path.join(home, '.local', 'bin'));
+  if (id === 'claude' || id === 'antigravity') dirs.push(path.join(home, '.local', 'bin'));
+  if (id === 'antigravity') dirs.push(path.join(local, 'agy', 'bin'));
   dirs.push(...String(env.PATH ?? env.Path ?? '').split(path.delimiter).filter(Boolean)); // what where.exe searches
   for (const key of ['NPM_CONFIG_PREFIX', 'npm_config_prefix', 'PNPM_HOME']) if (env[key]) dirs.push(env[key]);
   dirs.push(path.join(appData, 'npm'), path.join(local, 'pnpm'), path.join(home, 'scoop', 'shims'), path.join(local, 'Microsoft', 'WinGet', 'Links'));
   const found = [];
   const add = file => { if (path.isAbsolute(file) && isFile(file) && !found.some(f => f.toLowerCase() === file.toLowerCase())) found.push(file); };
-  for (const dir of dirs) for (const ext of ['.exe', '.cmd', '.bat']) add(path.join(dir, id + ext));
+  // `agy` is the official CLI name. The similarly named IDE launcher is not an agent CLI.
+  for (const dir of dirs) for (const ext of ['.exe', '.cmd', '.bat']) add(path.join(dir, (id === 'antigravity' ? 'agy' : id) + ext));
   const bundled = [];
   if (id === 'codex') bundled.push(...versioned(path.join(local, 'OpenAI', 'Codex', 'bin'), 'codex.exe', false));
   if (id === 'claude') {
@@ -122,7 +133,7 @@ export function probeAuthentication(provider, { timeoutMs = 6000 } = {}) {
     const finish = state => { if (done) return; done = true; clearTimeout(timer); killTree(child); resolve(state); };
     const timer = setTimeout(() => finish('unknown'), timeoutMs);
     try {
-      child = spawnCli(provider.command, provider.id === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'],
+      child = spawnCli(provider.command, provider.id === 'claude' ? ['auth', 'status', '--json'] : provider.id === 'antigravity' ? ['models'] : ['login', 'status'],
         { windowsHide: true, cwd: os.homedir(), stdio: ['ignore', 'pipe', 'pipe'] });
     } catch { finish('unknown'); return; }
     const collect = data => { output += data; if (output.length > 16384) finish('unknown'); };
@@ -136,6 +147,9 @@ export function probeAuthentication(provider, { timeoutMs = 6000 } = {}) {
           if (status.loggedIn === true && code === 0) return finish('signed_in');
           if (status.loggedIn === false && code === 1) return finish('signed_out');
         } catch { /* unsupported CLI or configuration error */ }
+      } else if (provider.id === 'antigravity') {
+        if (code === 0 && antigravityCatalog(output).length) return finish('signed_in');
+        if (code !== 0 && /please sign in|authentication required|not logged in/i.test(output)) return finish('signed_out');
       } else {
         if (code === 0 && /logged in using/i.test(output)) return finish('signed_in');
         if (code === 1 && /not logged in/i.test(output)) return finish('signed_out');
@@ -150,9 +164,10 @@ export function probeAuthentication(provider, { timeoutMs = 6000 } = {}) {
 
 export async function providerStatus(provider) {
   const auth = await probeAuthentication(provider);
-  const login = logins.get(provider.id);
+  let login = logins.get(provider.id);
+  if (provider.id === 'antigravity' && auth === 'signed_in' && login?.child) { cancelLogin(provider.id); login = null; }
   if (auth === 'signed_in' && !login?.child) logins.delete(provider.id);
-  return { ...provider, auth, signingIn: Boolean(login?.child), loginFailed: auth !== 'signed_in' && login?.failed === true };
+  return { ...provider, auth, signingIn: Boolean(login?.child), awaitingCode: Boolean(login?.child && login.awaitingCode), verifyingLogin: Boolean(login?.child && login.submitted), loginFailed: auth !== 'signed_in' && login?.failed === true };
 }
 
 export function cancelLogin(id) {
@@ -231,15 +246,58 @@ export function pickPath(id, title) {
 export function loginCommandLine(id, file) {
   return `"${[file, ...PROVIDERS[id].login].map(quoteForCmd).join(' ')}"`;
 }
+/** Only the CLI's Google OAuth URL is opened; credentials and callback URLs never reach the panel. */
+export function antigravityLoginUrl(text) {
+  for (const candidate of String(text).match(/https:\/\/[^\s<>"']+/g) ?? []) {
+    try {
+      const url = new URL(candidate);
+      if (candidate.length <= 8192 && url.origin === 'https://accounts.google.com' && !url.username && !url.password
+        && ['/o/oauth2/auth', '/o/oauth2/v2/auth'].includes(url.pathname) && url.searchParams.get('response_type') === 'code') return url.href;
+    } catch { /* incomplete stderr line */ }
+  }
+  return null;
+}
+/** A one-time code goes only to the waiting CLI's stdin, never to its arguments or saved state. */
+export async function submitLoginCode(id, code) {
+  const login = logins.get(id);
+  if (id !== 'antigravity' || !login?.child || !login.awaitingCode || login.submitted
+    || login.child.exitCode !== null || login.child.stdin.destroyed || login.child.stdin.writableEnded) throw fail('AGENT_LOGIN_EXPIRED');
+  code = typeof code === 'string' ? code.trim() : '';
+  if (!/^[\x21-\x7e]{16,4096}$/.test(code)) throw fail('AGENT_LOGIN_CODE_INVALID');
+  login.submitted = true;
+  login.awaitingCode = false;
+  await new Promise((resolve, reject) => login.child.stdin.write(code + '\n', error => error ? reject(fail('AGENT_LOGIN_EXPIRED')) : resolve()));
+}
 export async function openLogin(id) {
   if (!PROVIDERS[id]) throw fail('NOT_FOUND');
   const provider = resolveProvider(id);
   if (!provider.available) throw fail('AGENT_MISSING');
   if (logins.get(id)?.child) return;
-  // Both CLI login commands open the browser themselves. Keep their console hidden.
-  const child = spawnCli(provider.command, PROVIDERS[id].login, { windowsHide: true, cwd: os.homedir(), stdio: 'ignore' });
-  const login = { child };
+  // Keep CLI consoles hidden; Antigravity prints its browser URL instead of opening it.
+  const options = { windowsHide: true, cwd: os.homedir(), stdio: id === 'antigravity' ? ['pipe', 'pipe', 'pipe'] : 'ignore' };
+  const child = id === 'antigravity'
+    ? spawn(process.execPath, [fileURLToPath(new URL('./login-terminal.mjs', import.meta.url)), provider.command, ...PROVIDERS[id].login], options)
+    : spawnCli(provider.command, PROVIDERS[id].login, options);
+  const login = { child, awaitingCode: false, submitted: false };
   logins.set(id, login);
+  if (id === 'antigravity') {
+    let opened = false, promptTail = '';
+    child.stdin.on('error', () => {});
+    // Keep stdin open until authentication finishes, then providerStatus cleans up the host.
+    for (const stream of [child.stdout, child.stderr]) {
+      stream.on('data', chunk => {
+        promptTail = (promptTail + chunk).slice(-8192);
+        if (!login.submitted && /paste the authorization code|enter (?:the )?(?:authorization|authentication) code/i.test(promptTail)) login.awaitingCode = true;
+      });
+      readline.createInterface({ input: stream }).on('line', line => {
+        const url = !opened && antigravityLoginUrl(line);
+        if (url) {
+          opened = true;
+          execFile('rundll32.exe', ['url.dll,FileProtocolHandler', url], { windowsHide: true }, () => {});
+        }
+      });
+    }
+  }
   const finish = failed => { clearTimeout(login.timer); if (logins.get(id) === login) logins.set(id, { failed }); };
   login.timer = setTimeout(() => { killTree(child); finish(true); }, 5 * 60 * 1000);
   login.timer.unref();
@@ -270,6 +328,43 @@ export function claudeCatalog(rows) {
   return (Array.isArray(rows) ? rows : []).slice(0, 100)
     .filter(row => validModel(row?.value))
     .map(row => option(row.value, row.displayName, (row.supportedEffortLevels ?? []).filter(e => validEffort('claude', e))));
+}
+
+/** `agy models` prints account-available slugs and labels. Never hard-code a model list. */
+export function antigravityCatalog(output) {
+  const rows = String(output).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').split(/\r?\n/);
+  const models = [];
+  for (const row of rows) {
+    const match = /^\s*([a-z0-9][\w.:-]*-[\w.:-]+)(?:\t+| {2,})(.+?)\s*$/.exec(row);
+    if (!match || !validModel(match[1]) || models.some(model => model.id === match[1])) continue;
+    const suffix = match[1].match(/-(low|medium|high|xhigh|max)$/)?.[1] ?? null;
+    models.push(option(match[1], match[2], [], suffix));
+    if (models.length >= 100) break;
+  }
+  const families = new Map();
+  for (const model of models) {
+    const family = model.id.replace(/-(low|medium|high|xhigh|max)$/, '');
+    const group = families.get(family) ?? [];
+    group.push(model); families.set(family, group);
+  }
+  return [...families.values()].map(group => {
+    const representative = group.find(model => model.defaultEffort === DEFAULT_EFFORT) ?? group[0];
+    const efforts = ['low', 'medium', 'high', 'xhigh', 'max'].filter(effort => group.some(model => model.defaultEffort === effort));
+    return option(representative.id, representative.name.replace(/\s*\((?:low|medium|high|xhigh|max)\)\s*$/i, ''), efforts.length ? efforts : ['low', 'medium', 'high'], representative.defaultEffort);
+  });
+}
+
+export function queryAntigravityModels(command, { cwd, timeoutMs = 15000 } = {}) {
+  return new Promise(resolve => {
+    let output = '', done = false, child;
+    const finish = models => { if (done) return; done = true; clearTimeout(timer); killTree(child); resolve(models); };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    try { child = spawnCli(command, ['models'], { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }); }
+    catch { finish(null); return; }
+    child.stdout.on('data', data => { output += data; if (output.length > 128 * 1024) finish(null); });
+    child.once('error', () => finish(null));
+    child.once('close', code => finish(code === 0 ? antigravityCatalog(output) : null));
+  });
 }
 
 export function codexModels(env = process.env) {
@@ -307,7 +402,11 @@ export function queryClaudeModels(command, { cwd, timeoutMs = 30000, log = () =>
 }
 
 const modelCache = new Map(); // provider id -> { command, models }
-/** Models for the panel's picker. Codex: its local cache file; Claude: asked once per executable. */
+export function cachedModels(id) {
+  const cached = modelCache.get(id);
+  return cached?.command === resolveProvider(id).command ? cached.models : [];
+}
+/** Models for the panel's picker. Codex: its cache; other agents: a read-only CLI query. */
 export async function listModels(id, { refresh = false, cwd, log } = {}) {
   if (!PROVIDERS[id]) throw fail('NOT_FOUND');
   const provider = resolveProvider(id);
@@ -315,7 +414,7 @@ export async function listModels(id, { refresh = false, cwd, log } = {}) {
   if (id === 'codex') return codexModels();
   const cached = modelCache.get(id);
   if (!refresh && cached?.command === provider.command) return cached.models;
-  const models = await queryClaudeModels(provider.command, { cwd, log });
+  const models = await (id === 'antigravity' ? queryAntigravityModels : queryClaudeModels)(provider.command, { cwd, log });
   if (!models) return [];
   modelCache.set(id, { command: provider.command, models });
   return models;

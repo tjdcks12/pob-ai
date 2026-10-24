@@ -31,16 +31,17 @@ test('provider status checks CLI authentication again when the login session cha
   fs.writeFileSync(fixture, `
     import fs from 'node:fs';
     const [provider, mode, ...args] = process.argv.slice(2);
-    const expected = provider === 'claude' ? ['auth','status','--json'] : ['login','status'];
+    const expected = provider === 'claude' ? ['auth','status','--json'] : provider === 'antigravity' ? ['models'] : ['login','status'];
     if (JSON.stringify(args) !== JSON.stringify(expected)) process.exit(2);
     const state = JSON.parse(fs.readFileSync(mode, 'utf8'));
     if (state === 'unknown') { console.error('Invalid CLI configuration'); process.exit(1); }
     if (provider === 'claude') console.log(JSON.stringify({ loggedIn: state === 'signed_in', email: 'private@example.com', accessToken: 'must-not-leak' }));
+    else if (provider === 'antigravity') { if(state === 'signed_in') console.log('gemini-fixture-medium  Gemini fixture'); else console.error('Please sign in'); }
     else console.error(state === 'signed_in' ? 'Logged in using ChatGPT' : 'Not logged in');
     process.exit(state === 'signed_in' ? 0 : 1);
   `);
   const agentPaths = {};
-  for (const id of ['claude', 'codex']) {
+  for (const id of ['claude', 'codex', 'antigravity']) {
     agentPaths[id] = path.join(dir, `${id}.cmd`);
     fs.writeFileSync(agentPaths[id], `@echo off\r\n"${process.execPath}" "${fixture}" "${id}" "${mode}" %*\r\n`);
   }

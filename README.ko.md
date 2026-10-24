@@ -45,7 +45,7 @@ Path of Building은 PoE2 빌드를 가장 정확하게 계산하는 도구이지
   테마에 맞춘 툴팁을 사용하며 기존 분류색을 유지합니다.
 - **AI와 설정을 따로.** PoB AI 상단바는 항상 표시됩니다. **AI** 버튼은 에이전트 패널을 열거나 앞으로 가져옵니다.
   **톱니 버튼**은 화면·언어·PoB·에이전트 구성을 위한 별도 설정 모달을 엽니다.
-- **이미 쓰는 에이전트를 그대로.** Claude Code나 Codex를 기존 로그인으로 실행합니다. 카드에서 고르고, 여러
+- **이미 쓰는 에이전트를 그대로.** Claude Code·Codex·Antigravity를 기존 로그인으로 실행합니다. 카드에서 고르고, 여러
   탭에서 동시에 대화하고, 모델과 추론 강도를 정하고, 스크린샷을 첨부할 수 있습니다. API 키가 필요 없습니다.
 
 <p align="center">
@@ -56,7 +56,10 @@ Path of Building은 PoE2 빌드를 가장 정확하게 계산하는 도구이지
 ## 설치
 
 **필요한 것:** Windows 10/11, 그리고 대화 기능을 쓰려면 로그인된
-[Claude Code](https://docs.claude.com/en/docs/claude-code) 또는 Codex 0.50.0 이상.
+[Claude Code](https://docs.claude.com/en/docs/claude-code), Codex 0.50.0 이상 또는
+[Antigravity](https://antigravity.google/docs/getting-started/?tab=cli) 1.4.4 이상 CLI.
+Antigravity는 IDE와 별도로 설치하는 공식 `agy` CLI를 사용합니다. PATH 또는
+`%LOCALAPPDATA%\agy\bin`에서 자동 감지하며, 설정에서 실행 파일을 직접 선택할 수도 있습니다.
 
 1. **[Releases](https://github.com/tjdcks12/pob-ai/releases)**에서 `pob-ai-<버전>-win-x64.zip`을 받아 아무 곳에나 압축을 풉니다. Node.js가 들어 있습니다.
 2. **`PoB AI.exe`**를 더블클릭하면 콘솔 창 없이 PoB와 에이전트 패널이 열립니다. `PoB AI.cmd`는 호환용으로 유지합니다.
@@ -69,6 +72,7 @@ PoB가 없어도 에이전트 패널은 열리며, 첫 화면에 **PoB 설치**�
 다음 조치를 표시합니다. **진단정보**에서 감지된 CLI 버전·종료 코드·민감정보를 가린 오류 내용을
 확인하고, **진단정보 복사**로 문의에 필요한 보고서를 복사할 수 있습니다.
 Codex가 오래된 경우 PowerShell에서 `npm install -g @openai/codex`를 실행한 뒤 다시 시도하세요.
+Antigravity는 `agy update`로 업데이트합니다.
 로그인이 만료됐다면 오류 메시지의 **로그인** 버튼을 이용하세요.
 
 PoB AI는 보통의 설치 위치에서 [Path of Building Community (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases)를
@@ -97,16 +101,21 @@ node bin/pob.mjs help
 
 ## 이렇게 물어보세요
 
-에이전트 선택 화면의 **Claude로 로그인** 또는 **ChatGPT로 로그인**으로 설치된 CLI의 공식 인증을
+에이전트 선택 화면의 **Claude로 로그인**, **ChatGPT로 로그인** 또는 **Google로 로그인**으로 설치된 CLI의 공식 인증을
 시작합니다. 이 버튼은 CLI가 미로그인 상태라고 확인했을 때만 표시하며, 로그인된 에이전트에는 표시하지 않습니다. 브라우저에서 로그인하며 진행 안내와 취소는 패널 안에서 처리하고 터미널은 띄우지 않습니다. **계정 만들기**는 해당 서비스의 공식 사이트를 열고, CLI가 없으면 설치 안내를 제공합니다.
+Antigravity의 브라우저에 인증 코드가 표시되면 패널의 **인증 코드** 입력란에 붙여넣고 **로그인 완료**를
+누르세요. 코드는 대기 중인 CLI에만 전달하며 대화 기록이나 로그에 저장하지 않습니다.
 설치 후 패널로 돌아오면 다시 감지합니다.
 
-대화 탭 옆의 **+**로 Claude Code나 Codex 대화를 추가합니다. 탭마다 입력 초안과 첨부 이미지를
+대화 탭 옆의 **+**로 Claude Code·Codex·Antigravity 대화를 추가합니다. 탭마다 입력 초안과 첨부 이미지를
 유지합니다. 입력창 옆에서 모델과 추론 강도를 고르고, **대화 기록**에서 이전 대화를 이어갈 수 있습니다.
 
 새 대화를 만들 때 **전체 권한 허용**을 체크하면 해당 대화에서 파일 수정과 명령 실행을 추가 승인 없이
 허용합니다. 새 대화마다 기본값은 꺼짐입니다. 시작 후에는 입력창의 모델·추론 강도 메뉴에서 변경할 수 있으며,
-다음 메시지부터 적용됩니다. Claude Code와 Codex 모두 지원합니다.
+다음 메시지부터 적용됩니다. 세 에이전트 모두 지원합니다. 전체 권한이 꺼져 있으면 Antigravity의
+Auto 모드와 자체 샌드박스를 사용합니다. Auto 모드를 지원하지 않는 계정에서 필요한 명령이
+거절되면 기존 권한 메뉴로 안내하며, 전체 권한을 자동으로 켜지 않습니다. 모델과 추론 강도 목록은
+`agy models`에서 읽고, 첨부 이미지는 Antigravity의 파일 읽기 도구로 전달합니다.
 
 > 내 빌드에서 가장 먼저 개선할 점 3가지를 알려줘.
 
@@ -190,7 +199,7 @@ PoB의 비트맵 글꼴에는 ASCII 글자만 있어서, PoB AI가 Pretendard(�
 ```mermaid
 flowchart LR
   you([사용자]) --> panel[에이전트 패널]
-  panel --> agent[Claude Code / Codex]
+  panel --> agent[Claude Code / Codex / Antigravity]
   agent -->|pob …| service[PoB AI 서비스]
   service -->|실시간| pob[내 PoB 창]
   service -->|백그라운드| engine[창 없는 PoB]
@@ -218,13 +227,16 @@ PoB 실행 파일은 첫 번째 인자로 진입 스크립트를 받습니다. P
 
 ## 현재 상태
 
-이 문서는 v0.2.3 기준입니다. 배포 ZIP은 [GitHub 릴리스](https://github.com/tjdcks12/pob-ai/releases/latest)에서 받을 수 있습니다.
-Windows 11, PoB PoE2 0.22.0과 0.23.1에서 호환성을 확인했습니다. 현재 **157개 테스트가 통과**하며,
+이 문서는 Antigravity 연동과 인증 코드 로그인 흐름을 포함한 v0.2.4 기준입니다.
+배포 ZIP은 [GitHub 릴리스](https://github.com/tjdcks12/pob-ai/releases/latest)에서 받을 수 있습니다.
+Windows 11, PoB PoE2 0.22.0과 0.23.1에서 호환성을 확인했습니다. 현재 **165개 테스트가 통과**하며,
 편집 명령, 에이전트 세션과 권한, 언어 선택, 공통 테마 저장, 팝업 표시, 업데이트 등을 검사합니다.
 
 실제 PoB와 WebView2 창에서 6개 테마, 전환 전후 계산값 유지, AI·설정 창 분리, 입력 초안 유지,
 작은 창 배치를 확인했습니다. 실제 PoE 계정 캐릭터 가져오기, Windows 10, 다중 모니터,
 Windows 화면 배율은 추가 수동 확인이 필요합니다.
+Antigravity 1.4.7은 로컬 응답 서버를 통해 실제 이미지·명령 도구, 모델·추론 강도 선택과 대화 이어가기를
+검사했습니다. 실제 Google OAuth 완료와 유료 모델 응답은 아직 확인하지 않았습니다.
 
 ## 개발
 

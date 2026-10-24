@@ -4,10 +4,11 @@ import { VERSION } from '../update/updater.mjs';
 /** Classifies CLI failures without exposing its output as an answer. */
 export function classifyFailure(texts, { exitCode, eventCount = 0 } = {}) {
   const text = texts.filter(Boolean).join('\n');
-  if (/\/login|not logged in|log ?in|invalid api key|unauthori[sz]ed|\b401\b|authenticat|OAuth.*expired/i.test(text)) return 'AGENT_SIGNED_OUT';
+  if (/\/login|not logged in|log ?in|please sign in|sign.in required|invalid api key|unauthori[sz]ed|\b401\b|authenticat|OAuth.*expired/i.test(text)) return 'AGENT_SIGNED_OUT';
   if (/\b429\b|rate[ _-]?limit|usage[ _-]?limit|quota|insufficient_quota/i.test(text)) return 'AGENT_RATE_LIMITED';
-  if (/model.{0,80}(not found|not available|does not exist|unsupported|not supported)|unsupported model|invalid model/i.test(text)) return 'AGENT_MODEL_UNAVAILABLE';
+  if (/model.{0,80}(not found|not available|does not exist|unsupported|not supported)|unsupported model|invalid model|invalid effort|unsupported effort/i.test(text)) return 'AGENT_MODEL_UNAVAILABLE';
   if (/sandbox.{0,100}(fail|error|setup|not initialized|unavailable)|CreateProcessWithToken|bwrap:/i.test(text)) return 'AGENT_SANDBOX';
+  if (/permission.{0,100}(denied|required)|soft[- ]denied|approval.{0,50}required|tool.{0,60}not allowed/i.test(text)) return 'AGENT_PERMISSIONS';
   if (/TOML|config.{0,80}(invalid|parse|error)|unexpected argument|unknown (argument|option)/i.test(text)) return 'AGENT_CONFIG';
   if (/ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|fetch failed|network error|stream disconnected|connection.{0,40}(failed|reset|refused|closed)|certificate|TLS handshake/i.test(text)) return 'AGENT_NETWORK';
   if (exitCode === 0) return eventCount ? 'AGENT_PROTOCOL' : 'AGENT_NO_RESPONSE';
@@ -19,7 +20,7 @@ export function redactDiagnosticText(value, home = process.env.USERPROFILE || os
   let text = String(value ?? '')
     .replace(/^(\s*(?:set-)?cookie\s*:\s*).*$/gim, '$1[redacted]')
     .replace(/\bBearer\s+[^\s"'<>]+/gi, 'Bearer [redacted]')
-    .replace(/([?&](?:token|api_key|access_token|refresh_token)=)[^&#\s]+/gi, '$1[redacted]')
+    .replace(/([?&](?:token|api_key|access_token|refresh_token|state|code|code_challenge|code_verifier)=)[^&#\s]+/gi, '$1[redacted]')
     .replace(/\b(?:sk-[A-Za-z0-9_-]{8,}|ghp_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+)\b/g, '[redacted]')
     .replace(/(["']?\b(?:access[_ -]?token|refresh[_ -]?token|session[_ -]?token|client[_ -]?secret|api[_ -]?key|authorization|cookie|password|token|secret)["']?\s*[=:]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;}]+)/gi, '$1[redacted]')
     .replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[redacted]@');
@@ -38,6 +39,7 @@ export function agentDiagnostic({ provider, command, version, minimumVersion, ex
     appVersion: VERSION,
     provider, ...(version ? { version } : {}), ...(minimumVersion ? { minimumVersion } : {}),
     ...(provider === 'codex' && minimumVersion ? { updateCommand: 'npm install -g @openai/codex' } : {}),
+    ...(provider === 'antigravity' && minimumVersion ? { updateCommand: 'agy update' } : {}),
     ...(command ? { executable: redactDiagnosticText(command) } : {}),
     ...(exitCode != null ? { exitCode } : {}), ...(signal ? { signal } : {}),
     log: '%LOCALAPPDATA%\\pob-ai\\logs\\service.log',

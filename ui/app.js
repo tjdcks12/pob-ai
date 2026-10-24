@@ -326,12 +326,32 @@ const mark = id => `<span class="agent-provider-mark"><img src="agents/${encodeU
 const PROVIDER_SETUP = {
   claude: { login: 'loginClaude', note: 'claudeAccountNote', account: 'https://claude.ai/', guide: 'https://code.claude.com/docs/en/quickstart' },
   codex: { login: 'loginChatgpt', note: 'codexAccountNote', account: 'https://chatgpt.com/', guide: 'https://learn.chatgpt.com/docs/cli' },
+  antigravity: { login: 'loginGoogle', note: 'antigravityAccountNote', account: 'https://accounts.google.com/signup', guide: 'https://antigravity.google/docs/getting-started/?tab=cli' },
 };
 
+function loginCodeHtml(provider) {
+  return `<form class="agent-login-code" data-login-code-form="${provider.id}" novalidate>
+    <p>${escapeHtml(t('agentLoginCodeNote'))}</p>
+    <label>${escapeHtml(t('agentLoginCodeLabel'))}<input type="password" data-login-code="${provider.id}" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" maxlength="4096"></label>
+    <div class="agent-account-actions"><button type="submit" data-login-code-submit class="agent-primary">${escapeHtml(t('agentLoginCodeSubmit'))}</button></div>
+    <p data-login-code-error role="status" hidden></p></form>`;
+}
+// Keep an in-progress paste across auth polling/focus refreshes, only in the current DOM.
+function preserveLoginCode(root) {
+  const input = root.querySelector('[data-login-code]');
+  const value = input?.value, provider = input?.dataset.loginCode, focused = document.activeElement === input;
+  const start = input?.selectionStart, end = input?.selectionEnd;
+  return () => {
+    const replacement = root.querySelector('[data-login-code]');
+    if (!input || replacement?.dataset.loginCode !== provider) return;
+    replacement.value = value;
+    if (focused) { replacement.focus({ preventScroll: true }); replacement.setSelectionRange(start, end); }
+  };
+}
 function providerAccountHtml(provider) {
   const info = PROVIDER_SETUP[provider.id];
   if (!info) return '';
-  if (provider.signingIn) return `<p class="agent-auth-progress" role="status">${escapeHtml(t('agentLoginWaiting'))}</p><div class="agent-account-actions"><button type="button" data-login-cancel="${provider.id}">${escapeHtml(t('cancel'))}</button></div>`;
+  if (provider.signingIn) return `${provider.awaitingCode ? loginCodeHtml(provider) : `<p class="agent-auth-progress" role="status">${escapeHtml(t(provider.verifyingLogin ? 'agentLoginVerifying' : 'agentLoginWaiting'))}</p>`}<div class="agent-account-actions"><button type="button" data-login-cancel="${provider.id}">${escapeHtml(t('cancel'))}</button></div>`;
   if (provider.available && provider.auth !== 'signed_out') {
     return provider.auth === 'unknown' ? `<div class="agent-account-actions"><button type="button" data-auth-refresh>${escapeHtml(t('retry'))}</button><a class="agent-link-button" href="${info.guide}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('agentInstallGuide', { agent: provider.label }))}${icon('external-link')}</a></div>` : '';
   }
@@ -357,6 +377,20 @@ async function signInProvider(id) {
   renderAgents();
 }
 function wireAccountButtons(root) {
+  root.querySelectorAll('[data-login-code-form]').forEach(form => form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const input = form.querySelector('[data-login-code]'), button = form.querySelector('[data-login-code-submit]');
+    const code = input.value;
+    input.value = ''; // Do not retain submitted codes in the DOM, history or browser storage.
+    input.disabled = button.disabled = true;
+    const reply = await api(`/api/agent/providers/${form.dataset.loginCodeForm}/login/code`, { code });
+    if (reply.ok || reply.error?.code === 'AGENT_LOGIN_EXPIRED') { await loadProviders({ checking: false }); return; }
+    input.disabled = button.disabled = false;
+    const error = form.querySelector('[data-login-code-error]');
+    error.textContent = t(reply.error?.code === 'AGENT_LOGIN_CODE_INVALID' ? 'agentLoginCodeInvalid' : 'agentLoginFailed');
+    error.hidden = false;
+    input.focus();
+  }));
   root.querySelectorAll('[data-login]').forEach(button => button.addEventListener('click', () => signInProvider(button.dataset.login)));
   root.querySelectorAll('[data-auth-refresh]').forEach(button => button.addEventListener('click', () => loadProviders()));
   root.querySelectorAll('[data-login-cancel]').forEach(button => button.addEventListener('click', async () => {
@@ -367,6 +401,7 @@ function wireAccountButtons(root) {
 
 async function loadProviders({ checking = true } = {}) {
   const generation = state.providerRequest = (state.providerRequest ?? 0) + 1;
+  const previousAuth = new Map(state.providers.map(provider => [provider.id, provider.auth]));
   clearTimeout(state.loginPoll);
   if (checking) {
     for (const provider of state.providers) if (provider.available) provider.auth = 'checking';
@@ -377,7 +412,8 @@ async function loadProviders({ checking = true } = {}) {
   if (!reply.ok) return;
   const changed = checking || !state.loadedProviders || JSON.stringify(state.providers) !== JSON.stringify(reply.providers);
   for (const provider of reply.providers ?? []) {
-    if (providerById(provider.id)?.command !== provider.command) delete state.models[provider.id];
+    if (providerById(provider.id)?.command !== provider.command
+      || (provider.auth === 'signed_in' && previousAuth.get(provider.id) !== 'signed_in')) delete state.models[provider.id];
   }
   state.providers = reply.providers ?? [];
   const available = state.providers.filter(p => p.available);
@@ -465,10 +501,12 @@ function renderAgents() {
       const root = $(id);
       if (popover && root.hidden) continue;
       const focused = root.contains(document.activeElement) ? document.activeElement : null;
-      const key = focused && ['provider', 'full-access', 'start', 'resume', 'login', 'login-cancel', 'auth-refresh', 'settings'].find(name => focused.hasAttribute('data-' + name));
+      const restoreCode = preserveLoginCode(root);
+      const key = focused && ['provider', 'full-access', 'start', 'resume', 'login', 'login-cancel', 'login-code', 'login-code-submit', 'auth-refresh', 'settings'].find(name => focused.hasAttribute('data-' + name));
       const selector = key ? `[data-${key}${key === 'provider' ? `="${focused.dataset.provider}"` : ''}]` : null;
       root.innerHTML = pickerHtml(popover);
       wirePicker(root, popover);
+      restoreCode();
       if (focused) {
         const replacement = selector && root.querySelector(selector);
         (replacement && !replacement.disabled ? replacement : root.querySelector('[aria-checked=true]'))?.focus({ preventScroll: true });
@@ -477,6 +515,7 @@ function renderAgents() {
     renderPobSetup();
     return;
   }
+  const restoreCode = preserveLoginCode($('agent-rows'));
   $('agent-rows').innerHTML = state.providers.map(p => {
     const where = p.command ? `${t({ custom: 'pathCustom', env: 'pathEnv', auto: 'pathAuto' }[p.source] ?? 'pathAuto')} · ${p.command}` : t('agentNeedsPath');
     return `<div class="agent-row">${mark(p.id)}<div><div class="set-title">${escapeHtml(p.label)}</div>
@@ -492,6 +531,7 @@ function renderAgents() {
     loadProviders();
   }));
   wireAccountButtons($('agent-rows'));
+  restoreCode();
 }
 
 // ---------- popovers ----------
@@ -564,8 +604,10 @@ async function renderModelLabel() {
   const catalog = await models(provider);
   const current = currentChoice();
   if (current.provider !== provider || current.model !== model || current.effort !== effort) return;
-  const name = catalog.models.find(m => m.id === model)?.name ?? (model || t('modelDefault'));
-  $('model-label').textContent = `${name} · ${effortName(effort ?? catalog.defaultEffort ?? 'medium')}`;
+  const selected = catalog.models.find(m => m.id === model);
+  const name = selected?.name ?? (model || t('modelDefault'));
+  const effectiveEffort = effort ?? (provider === 'antigravity' ? selected?.defaultEffort : catalog.defaultEffort ?? 'medium');
+  $('model-label').textContent = effectiveEffort ? `${name} · ${effortName(effectiveEffort)}` : name;
   $('model-button').title = `${t('model')} · ${t('effort')}`;
 }
 $('model-button').addEventListener('click', async () => {
@@ -577,18 +619,27 @@ $('model-button').addEventListener('click', async () => {
   const catalog = await models(provider);
   if (request !== state.popoverRequest || tabKey !== state.active || currentChoice().provider !== provider) return;
   const selected = catalog.models.find(m => m.id === model);
-  const efforts = selected?.efforts?.length ? selected.efforts : ['low', 'medium', 'high'];
+  const nativeDefault = provider === 'antigravity' && !model;
+  // With no selected Antigravity model, preserve its own default and only offer shared levels.
+  const efforts = nativeDefault ? (catalog.models[0]?.efforts ?? []).filter(e => catalog.models.every(m => m.efforts.includes(e)))
+    : selected?.efforts?.length ? selected.efforts : ['low', 'medium', 'high'];
   const popover = $('model-popover');
   popover.innerHTML = `<label>${escapeHtml(t('model'))}<select id="model-select"><option value="">${escapeHtml(t('modelDefault'))}</option>
       ${catalog.models.map(m => `<option value="${escapeHtml(m.id)}" ${m.id === model ? 'selected' : ''}>${escapeHtml(m.name)}</option>`).join('')}</select></label>
-    <label>${escapeHtml(t('effort'))}<select id="effort-select">${efforts.map(e => `<option value="${escapeHtml(e)}" ${(effort ?? selected?.defaultEffort ?? catalog.defaultEffort) === e ? 'selected' : ''}>${escapeHtml(effortName(e))}</option>`).join('')}</select></label>
+    <label>${escapeHtml(t('effort'))}<select id="effort-select">${nativeDefault ? `<option value="" ${!effort ? 'selected' : ''}>${escapeHtml(t('modelDefault'))}</option>` : ''}${efforts.map(e => `<option value="${escapeHtml(e)}" ${(effort ?? (nativeDefault ? null : selected?.defaultEffort ?? catalog.defaultEffort)) === e ? 'selected' : ''}>${escapeHtml(effortName(e))}</option>`).join('')}</select></label>
     <p>${escapeHtml(t('modelNote'))}</p>
     ${permissionsHtml('conversation-permissions', activeTab() ?? state.idle, activeTab()?.running)}`;
   popover.hidden = false;
   $('popover-backdrop').hidden = false;
   $('model-button').setAttribute('aria-expanded', 'true');
   const apply = () => setChoice($('model-select').value || null, $('effort-select').value || null);
-  $('model-select').addEventListener('change', () => { apply(); closePopovers(); $('model-button').click(); });
+  $('model-select').addEventListener('change', () => {
+    const nextModel = $('model-select').value || null, next = catalog.models.find(row => row.id === nextModel);
+    const previousEffort = $('effort-select').value;
+    const nextEffort = provider === 'antigravity' && !nextModel ? null
+      : next?.efforts?.length && !next.efforts.includes(previousEffort) ? next.defaultEffort ?? next.efforts[0] : previousEffort;
+    setChoice(nextModel, nextEffort || null); closePopovers(); $('model-button').click();
+  });
   $('effort-select').addEventListener('change', apply);
   wirePermissions(popover, activeTab() ?? state.idle);
 });
@@ -779,31 +830,35 @@ const ERRORS = {
   AGENT_MISSING: ['errMissing', 'pick'], AGENT_NOT_RUNNABLE: ['errNotRunnable', 'pick'], AGENT_SIGNED_OUT: ['errSignedOut', 'login'],
   AGENT_OUTDATED: ['errOutdated', 'update'],
   AGENT_RATE_LIMITED: ['errRateLimit'], AGENT_NETWORK: ['errNetwork', 'retry'], AGENT_MODEL_UNAVAILABLE: ['errModelUnavailable', 'model'],
+  AGENT_PERMISSIONS: ['errPermissions', 'permissions'],
   SERVICE_DISCONNECTED: ['errServiceDisconnected'],
   AGENT_SANDBOX: ['errSandbox'], AGENT_CONFIG: ['errConfig'], AGENT_NO_RESPONSE: ['errNoResponse'], AGENT_PROTOCOL: ['errProtocol'],
   AGENT_FAILED: ['errFailed', 'retry'], BUSY: ['errBusy'], AGENT_PATH_INVALID: ['errPathInvalid', 'pick'],
   IMAGE_TOO_MANY: ['imageTooMany'], IMAGE_TOO_LARGE: ['imageTooLarge'], IMAGE_INVALID: ['imageInvalid'], IMAGE_QUOTA: ['imageTooLarge'],
 };
 function renderAssistant(view) {
+  const restoreCode = preserveLoginCode(view.el);
   const { tab } = view;
   const agent = providerName(tab.provider);
   const text = [...view.texts.values()].join('\n\n');
   let [errorKey, action] = view.error ? ERRORS[view.error] ?? ['error'] : [];
   const provider = providerById(tab.provider);
-  if (view.error === 'AGENT_SIGNED_OUT' && provider?.signingIn) { errorKey = 'agentLoginWaiting'; action = 'cancelLogin'; }
+  if (view.error === 'AGENT_SIGNED_OUT' && provider?.signingIn) { errorKey = provider.verifyingLogin ? 'agentLoginVerifying' : 'agentLoginWaiting'; action = 'cancelLogin'; }
   else if (view.error === 'AGENT_SIGNED_OUT' && view.signInAttempted && provider?.auth === 'signed_in' && !provider.loginFailed) { errorKey = 'agentSignedIn'; action = view.retry ? 'retry' : null; }
-  const actionLabel = { pick: 'choosePath', login: 'signIn', retry: 'retry', model: 'model', cancelLogin: 'cancel' }[action];
-  const diagnostics = view.error && !['AGENT_SIGNED_OUT', 'AGENT_MISSING', 'AGENT_RATE_LIMITED', 'AGENT_NETWORK', 'AGENT_MODEL_UNAVAILABLE', 'IMAGE_TOO_MANY', 'IMAGE_TOO_LARGE', 'IMAGE_INVALID', 'BUSY'].includes(view.error);
+  const actionLabel = { pick: 'choosePath', login: 'signIn', retry: 'retry', model: 'model', permissions: 'agentPermissions', cancelLogin: 'cancel' }[action];
+  const diagnostics = view.error && !['AGENT_SIGNED_OUT', 'AGENT_MISSING', 'AGENT_RATE_LIMITED', 'AGENT_NETWORK', 'AGENT_MODEL_UNAVAILABLE', 'AGENT_PERMISSIONS', 'IMAGE_TOO_MANY', 'IMAGE_TOO_LARGE', 'IMAGE_INVALID', 'BUSY'].includes(view.error);
   keepScroll(() => {
     view.el.innerHTML = `<div class="agent-message-who">${mark(tab.provider)}${escapeHtml(agent)}${view.interrupted ? `<span class="tag">${escapeHtml(t('interrupted'))}</span>` : ''}</div>
       <div class="agent-message-body">${markdown(text)}</div>
       ${view.working ? `<div class="agent-chat-progress"><span class="spinner"></span>${escapeHtml(t(PHASES[view.phase] ?? 'thinking'))}</div>` : ''}
-      ${view.error ? `<div class="agent-error" role="status"><span>${escapeHtml(t(errorKey, { agent }))}</span><div class="agent-error-actions">${actionLabel ? `<button type="button" data-action="${action}">${escapeHtml(t(actionLabel))}</button>` : ''}${action === 'update' ? `<a class="agent-link-button" href="${PROVIDER_SETUP[tab.provider].guide}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('agentInstallGuide', { agent: providerName(tab.provider) }))}</a>` : ''}${diagnostics ? `<button type="button" class="agent-quiet" data-diagnostics>${escapeHtml(t('diagnostics'))}</button>` : ''}</div></div>` : ''}`;
+      ${view.error ? `<div class="agent-error" role="status"><span>${escapeHtml(t(errorKey, { agent }))}</span>${view.error === 'AGENT_SIGNED_OUT' && provider?.awaitingCode ? loginCodeHtml(provider) : ''}<div class="agent-error-actions">${actionLabel ? `<button type="button" data-action="${action}">${escapeHtml(t(actionLabel))}</button>` : ''}${action === 'update' ? `<a class="agent-link-button" href="${PROVIDER_SETUP[tab.provider].guide}" target="_blank" rel="noopener noreferrer">${escapeHtml(t('agentInstallGuide', { agent: providerName(tab.provider) }))}</a>` : ''}${diagnostics ? `<button type="button" class="agent-quiet" data-diagnostics>${escapeHtml(t('diagnostics'))}</button>` : ''}</div></div>` : ''}`;
+    wireAccountButtons(view.el);
+    restoreCode();
     view.el.querySelector('[data-action]')?.addEventListener('click', () => {
       if (action === 'pick') pickPath(tab.provider);
       if (action === 'login') signInProvider(tab.provider);
       if (action === 'retry' && view.retry) send(view.retry.text, view.retry.images, tab);
-      if (action === 'model') { activate(tab.key); $('model-button').click(); }
+      if (action === 'model' || action === 'permissions') { activate(tab.key); $('model-button').click(); }
       if (action === 'cancelLogin') { request('DELETE', `/api/agent/providers/${tab.provider}/login`).then(() => loadProviders()); }
     });
     view.el.querySelector('[data-diagnostics]')?.addEventListener('click', () => {

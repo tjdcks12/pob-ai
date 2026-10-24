@@ -48,7 +48,7 @@ command line, so every step is real PoB work you can see, undo and save.
   responsive calculation tables and themed tooltips while keeping PoB's category colours.
 - **AI and settings, separately.** The PoB AI title bar is always enabled. Its **AI** button opens or brings the agent panel
   forward. The **gear** opens a separate settings modal for appearance, languages, PoB and agent setup.
-- **Uses the agent you already have.** Claude Code or Codex runs with your existing sign-in: pick it
+- **Uses the agent you already have.** Claude Code, Codex or Antigravity runs with your existing sign-in: pick it
   from the cards, chat in several tabs at once, choose the model and reasoning effort, attach
   screenshots. No API keys.
 
@@ -59,8 +59,10 @@ command line, so every step is real PoB work you can see, undo and save.
 
 ## Install
 
-**Requirements:** Windows 10/11 and, for chat, [Claude Code](https://docs.claude.com/en/docs/claude-code)
-or Codex (0.50.0 or newer), signed in.
+**Requirements:** Windows 10/11 and, for chat, a signed-in CLI: [Claude Code](https://docs.claude.com/en/docs/claude-code),
+Codex (0.50.0 or newer) or [Antigravity](https://antigravity.google/docs/getting-started/?tab=cli) (1.4.4 or newer).
+Antigravity uses the official `agy` CLI, which is installed separately from its IDE. PoB AI detects it
+on PATH or in `%LOCALAPPDATA%\agy\bin`; a custom executable can be selected in Settings.
 
 1. Download `pob-ai-<version>-win-x64.zip` from **[Releases](https://github.com/tjdcks12/pob-ai/releases)** and unzip it anywhere. Node.js is included.
 2. Double-click **`PoB AI.exe`**. It opens PoB and the agent panel without a console window. `PoB AI.cmd` remains a compatibility shortcut.
@@ -73,6 +75,7 @@ Chat failures explain the cause and the next step: sign-in expiry, an outdated C
 an unavailable model, or CLI setup problems. **Diagnostics** shows the detected CLI version, exit code and
 scrubbed error details; **Copy diagnostics** makes a report you can share when asking for help.
 For an outdated Codex installation, run `npm install -g @openai/codex` in PowerShell, then retry.
+For Antigravity, run `agy update`.
 For an expired sign-in, use the **Sign in** button on the error message.
 
 PoB AI finds [Path of Building Community (PoE2)](https://github.com/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases)
@@ -101,18 +104,24 @@ node bin/pob.mjs help
 
 ## Talk to it
 
-Use **+** beside the chat tabs to start another conversation with Claude Code or Codex. Each tab
+Use **+** beside the chat tabs to start another conversation with Claude Code, Codex or Antigravity. Each tab
 keeps its own draft and attachments. Choose the model and reasoning effort beside the composer,
 or open **History** to resume a previous conversation.
 
-The agent picker provides **Sign in with Claude** or **Sign in with ChatGPT** using the installed
+The agent picker provides **Sign in with Claude**, **Sign in with ChatGPT** or **Sign in with Google** using the installed
 CLI's browser authentication flow, only when the CLI reports that it is signed out. Signed-in agents show no login or account prompt. Sign-in progress and cancellation stay in the panel; no terminal is opened. **Create account** opens the provider's official website, and a setup-guide
-button is shown when the CLI is missing. After installation, return to the panel to detect it again.
+button is shown when the CLI is missing. If Antigravity shows an authorization code in the browser,
+paste it into the panel's **Authorization code** field and choose **Complete sign-in**. Codes are
+forwarded only to the waiting CLI and are not saved in chat history or logs.
+After installation, return to the panel to detect it again.
 
 Choose **Allow full access** when starting a new conversation to let that chat change files and
 run commands without approval prompts. It is off for every new conversation. To change it later,
 open the model/reasoning menu beside the composer; changes apply from the next message.
-Claude Code and Codex both support this option.
+All three agents support this option. With full access off, Antigravity uses its Auto mode and native
+sandbox. Accounts that cannot use Auto mode may deny a required command; the panel then offers
+the existing permissions menu. It never enables full access automatically. Antigravity's model list
+and supported reasoning levels come from `agy models`; attached images are read with its native file tool.
 
 > Review my build and suggest the top 3 improvements.
 
@@ -196,7 +205,7 @@ window connection, updates and agents, and says what to do. Logs are in `%LOCALA
 ```mermaid
 flowchart LR
   you([You]) --> panel[Agent panel]
-  panel --> agent[Claude Code / Codex]
+  panel --> agent[Claude Code / Codex / Antigravity]
   agent -->|pob …| service[PoB AI service]
   service -->|live| pob[Your PoB window]
   service -->|background| engine[Headless PoB]
@@ -225,14 +234,18 @@ Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-This README describes v0.2.3. Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
+This README describes v0.2.4, including Antigravity and its authorization-code sign-in flow.
+Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
 Compatibility has been checked on Windows 11 with PoB PoE2 0.22.0 and 0.23.1. The current suite
-has **157 passing tests**, covering editor operations, agent sessions, login, permissions and failure diagnostics, language selection, shared
+has **165 passing tests**, covering editor operations, agent sessions, login, permissions and failure diagnostics, language selection, shared
 theme persistence, popup rendering and updates.
 
 Local PoB and WebView2 checks cover all six themes, unchanged calculation results across theme
 switches, separate AI/settings windows, chat drafts, and compact layouts. Real PoE account import,
 Windows 10, multiple monitors and Windows display scaling still need manual verification.
+Antigravity 1.4.7 was also checked against a local response server for its native image/tool protocol,
+model/effort selection and conversation resumption. A real Google OAuth completion and paid model
+responses have not been tested.
 
 ## Development
 
