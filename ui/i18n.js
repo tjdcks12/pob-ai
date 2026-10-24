@@ -9,6 +9,7 @@ export const LOCALES = {
 
 export const STRINGS = {
   en: {
+    sectionUpdates: 'Updates', autoDownloadUpdates: 'Download updates automatically', autoDownloadUpdatesDesc: 'Prepare new versions in the background. Restart when you are ready to apply them.', checkForUpdates: 'Check for updates', checkingUpdates: 'Checking for updates…', updateDownloading: 'Downloading update… {progress}', updateReady: 'PoB AI {version} is ready to install.', restartToUpdate: 'Restart to update', upToDate: 'You have the latest version.', updateCheckFailed: 'Could not check for updates. Try again.',
     dockPanel: 'Attach panel to PoB', undockPanel: 'Detach panel from PoB', dockWaiting: 'Waiting for PoB to attach. Click to turn off.',
     agentLoginCodeLabel: 'Authorization code', agentLoginCodeNote: 'Paste the code shown in your browser to finish signing in.', agentLoginCodeSubmit: 'Complete sign-in', agentLoginCodeInvalid: 'Check the code and paste it again.', agentLoginVerifying: 'Completing sign-in…',
     connectPob: "Connect PoB",
@@ -77,6 +78,7 @@ export const STRINGS = {
     errPathInvalid: 'Choose the .exe, .cmd or .bat file of {agent}.',
   },
   ko: {
+    sectionUpdates: '업데이트', autoDownloadUpdates: '업데이트 자동 다운로드', autoDownloadUpdatesDesc: '새 버전을 백그라운드에서 미리 받고, 원할 때 다시 시작해 적용합니다.', checkForUpdates: '업데이트 확인', checkingUpdates: '업데이트 확인 중…', updateDownloading: '업데이트 다운로드 중… {progress}', updateReady: 'PoB AI {version} 업데이트 준비 완료', restartToUpdate: '다시 시작해 적용', upToDate: '최신 버전입니다.', updateCheckFailed: '업데이트를 확인하지 못했습니다. 다시 시도해 주세요.',
     dockPanel: 'PoB 창에 패널 붙이기', undockPanel: 'PoB 창에서 패널 분리하기', dockWaiting: 'PoB 창을 기다리는 중입니다. 클릭하면 붙이기를 해제합니다.',
     agentLoginCodeLabel: '인증 코드', agentLoginCodeNote: '브라우저에 표시된 코드를 붙여넣어 로그인을 완료하세요.', agentLoginCodeSubmit: '로그인 완료', agentLoginCodeInvalid: '인증 코드를 확인하고 다시 붙여넣어 주세요.', agentLoginVerifying: '로그인을 완료하고 있습니다…',
     connectPob: "PoB 연결",
@@ -145,6 +147,7 @@ export const STRINGS = {
     errPathInvalid: '{agent}의 .exe, .cmd, .bat 파일을 고르세요.',
   },
   ja: {
+    sectionUpdates: 'アップデート', autoDownloadUpdates: '更新を自動ダウンロード', autoDownloadUpdatesDesc: '新しいバージョンをバックグラウンドで準備します。都合のよいときに再起動して適用できます。', checkForUpdates: '更新を確認', checkingUpdates: '更新を確認中…', updateDownloading: '更新をダウンロード中… {progress}', updateReady: 'PoB AI {version} の準備ができました。', restartToUpdate: '再起動して更新', upToDate: '最新バージョンです。', updateCheckFailed: '更新を確認できませんでした。再試行してください。',
     dockPanel: 'パネルをPoBに固定', undockPanel: 'パネルをPoBから切り離す', dockWaiting: 'PoBへの接続を待っています。クリックで固定を解除します。',
     agentLoginCodeLabel: '認証コード', agentLoginCodeNote: 'ブラウザーに表示されたコードを貼り付けてログインを完了してください。', agentLoginCodeSubmit: 'ログインを完了', agentLoginCodeInvalid: 'コードを確認して、もう一度貼り付けてください。', agentLoginVerifying: 'ログインを完了しています…',
     connectPob: "PoBを接続",
@@ -213,6 +216,7 @@ export const STRINGS = {
     errPathInvalid: '{agent} の .exe・.cmd・.bat ファイルを選んでください。',
   },
   'zh-Hant': {
+    sectionUpdates: '更新', autoDownloadUpdates: '自動下載更新', autoDownloadUpdatesDesc: '在背景準備新版本，方便時重新啟動即可套用。', checkForUpdates: '檢查更新', checkingUpdates: '正在檢查更新…', updateDownloading: '正在下載更新… {progress}', updateReady: 'PoB AI {version} 已準備就緒。', restartToUpdate: '重新啟動以更新', upToDate: '目前為最新版本。', updateCheckFailed: '無法檢查更新，請重試。',
     dockPanel: '將面板附加至PoB', undockPanel: '將面板與PoB分離', dockWaiting: '正在等待PoB以附加面板。點擊即可關閉。',
     agentLoginCodeLabel: '驗證碼', agentLoginCodeNote: '貼上瀏覽器中顯示的驗證碼以完成登入。', agentLoginCodeSubmit: '完成登入', agentLoginCodeInvalid: '請確認驗證碼後重新貼上。', agentLoginVerifying: '正在完成登入…',
     connectPob: "連接 PoB",
@@ -281,6 +285,7 @@ export const STRINGS = {
     errPathInvalid: '請選擇 {agent} 的 .exe、.cmd 或 .bat 檔案。',
   },
   ru: {
+    sectionUpdates: 'Обновления', autoDownloadUpdates: 'Загружать обновления автоматически', autoDownloadUpdatesDesc: 'Новые версии загружаются в фоне. Перезапустите приложение, когда будете готовы установить их.', checkForUpdates: 'Проверить обновления', checkingUpdates: 'Проверка обновлений…', updateDownloading: 'Загрузка обновления… {progress}', updateReady: 'PoB AI {version} готов к установке.', restartToUpdate: 'Перезапустить и обновить', upToDate: 'Установлена последняя версия.', updateCheckFailed: 'Не удалось проверить обновления. Повторите попытку.',
     dockPanel: 'Прикрепить панель к PoB', undockPanel: 'Открепить панель от PoB', dockWaiting: 'Ожидание PoB для прикрепления панели. Нажмите, чтобы отключить.',
     agentLoginCodeLabel: 'Код авторизации', agentLoginCodeNote: 'Вставьте код из браузера, чтобы завершить вход.', agentLoginCodeSubmit: 'Завершить вход', agentLoginCodeInvalid: 'Проверьте код и вставьте его ещё раз.', agentLoginVerifying: 'Завершение входа…',
     connectPob: "Подключить PoB",
@@ -349,6 +354,7 @@ export const STRINGS = {
     errPathInvalid: 'Выберите файл .exe, .cmd или .bat для {agent}.',
   },
   de: {
+    sectionUpdates: 'Updates', autoDownloadUpdates: 'Updates automatisch herunterladen', autoDownloadUpdatesDesc: 'Neue Versionen werden im Hintergrund vorbereitet. Starte die App neu, wenn du sie anwenden möchtest.', checkForUpdates: 'Nach Updates suchen', checkingUpdates: 'Suche nach Updates…', updateDownloading: 'Update wird heruntergeladen… {progress}', updateReady: 'PoB AI {version} ist bereit zur Installation.', restartToUpdate: 'Zum Aktualisieren neu starten', upToDate: 'Du hast die aktuelle Version.', updateCheckFailed: 'Updates konnten nicht geprüft werden. Versuche es erneut.',
     dockPanel: 'Panel an PoB anheften', undockPanel: 'Panel von PoB lösen', dockWaiting: 'Warte auf PoB zum Anheften. Zum Ausschalten klicken.',
     agentLoginCodeLabel: 'Bestätigungscode', agentLoginCodeNote: 'Füge den im Browser angezeigten Code ein, um die Anmeldung abzuschließen.', agentLoginCodeSubmit: 'Anmeldung abschließen', agentLoginCodeInvalid: 'Prüfe den Code und füge ihn erneut ein.', agentLoginVerifying: 'Anmeldung wird abgeschlossen…',
     connectPob: "PoB verbinden",
@@ -417,6 +423,7 @@ export const STRINGS = {
     errPathInvalid: 'Wähle die .exe-, .cmd- oder .bat-Datei von {agent}.',
   },
   fr: {
+    sectionUpdates: 'Mises à jour', autoDownloadUpdates: 'Télécharger automatiquement les mises à jour', autoDownloadUpdatesDesc: 'Les nouvelles versions sont préparées en arrière-plan. Redémarrez quand vous souhaitez les appliquer.', checkForUpdates: 'Rechercher des mises à jour', checkingUpdates: 'Recherche de mises à jour…', updateDownloading: 'Téléchargement de la mise à jour… {progress}', updateReady: 'PoB AI {version} est prêt à être installé.', restartToUpdate: 'Redémarrer pour mettre à jour', upToDate: 'Vous utilisez la dernière version.', updateCheckFailed: 'Impossible de rechercher les mises à jour. Réessayez.',
     dockPanel: 'Attacher le panneau à PoB', undockPanel: 'Détacher le panneau de PoB', dockWaiting: 'En attente de PoB pour attacher le panneau. Cliquez pour désactiver.',
     agentLoginCodeLabel: 'Code de validation', agentLoginCodeNote: 'Collez le code affiché dans le navigateur pour terminer la connexion.', agentLoginCodeSubmit: 'Terminer la connexion', agentLoginCodeInvalid: 'Vérifiez le code et collez-le à nouveau.', agentLoginVerifying: 'Finalisation de la connexion…',
     connectPob: "Connecter PoB",
@@ -485,6 +492,7 @@ export const STRINGS = {
     errPathInvalid: 'Choisissez le fichier .exe, .cmd ou .bat de {agent}.',
   },
   es: {
+    sectionUpdates: 'Actualizaciones', autoDownloadUpdates: 'Descargar actualizaciones automáticamente', autoDownloadUpdatesDesc: 'Las nuevas versiones se preparan en segundo plano. Reinicia cuando quieras aplicarlas.', checkForUpdates: 'Buscar actualizaciones', checkingUpdates: 'Buscando actualizaciones…', updateDownloading: 'Descargando actualización… {progress}', updateReady: 'PoB AI {version} está listo para instalar.', restartToUpdate: 'Reiniciar para actualizar', upToDate: 'Tienes la última versión.', updateCheckFailed: 'No se pudieron buscar actualizaciones. Inténtalo de nuevo.',
     dockPanel: 'Acoplar panel a PoB', undockPanel: 'Separar panel de PoB', dockWaiting: 'Esperando a PoB para acoplar el panel. Haz clic para desactivar.',
     agentLoginCodeLabel: 'Código de autorización', agentLoginCodeNote: 'Pega el código que aparece en el navegador para completar el inicio de sesión.', agentLoginCodeSubmit: 'Completar inicio de sesión', agentLoginCodeInvalid: 'Comprueba el código y vuelve a pegarlo.', agentLoginVerifying: 'Completando el inicio de sesión…',
     connectPob: "Conectar PoB",
@@ -553,6 +561,7 @@ export const STRINGS = {
     errPathInvalid: 'Elige el archivo .exe, .cmd o .bat de {agent}.',
   },
   'pt-BR': {
+    sectionUpdates: 'Atualizações', autoDownloadUpdates: 'Baixar atualizações automaticamente', autoDownloadUpdatesDesc: 'As novas versões são preparadas em segundo plano. Reinicie quando quiser aplicá-las.', checkForUpdates: 'Verificar atualizações', checkingUpdates: 'Verificando atualizações…', updateDownloading: 'Baixando atualização… {progress}', updateReady: 'O PoB AI {version} está pronto para instalar.', restartToUpdate: 'Reiniciar para atualizar', upToDate: 'Você está na versão mais recente.', updateCheckFailed: 'Não foi possível verificar atualizações. Tente novamente.',
     dockPanel: 'Acoplar painel ao PoB', undockPanel: 'Desacoplar painel do PoB', dockWaiting: 'Aguardando o PoB para acoplar o painel. Clique para desativar.',
     agentLoginCodeLabel: 'Código de autorização', agentLoginCodeNote: 'Cole o código exibido no navegador para concluir o login.', agentLoginCodeSubmit: 'Concluir login', agentLoginCodeInvalid: 'Confira o código e cole novamente.', agentLoginVerifying: 'Concluindo o login…',
     connectPob: "Conectar PoB",
@@ -621,6 +630,7 @@ export const STRINGS = {
     errPathInvalid: 'Escolha o arquivo .exe, .cmd ou .bat do {agent}.',
   },
   th: {
+    sectionUpdates: 'การอัปเดต', autoDownloadUpdates: 'ดาวน์โหลดอัปเดตอัตโนมัติ', autoDownloadUpdatesDesc: 'เตรียมเวอร์ชันใหม่ในเบื้องหลัง แล้วเริ่มแอปใหม่เมื่อพร้อมติดตั้ง', checkForUpdates: 'ตรวจสอบอัปเดต', checkingUpdates: 'กำลังตรวจสอบอัปเดต…', updateDownloading: 'กำลังดาวน์โหลดอัปเดต… {progress}', updateReady: 'PoB AI {version} พร้อมติดตั้งแล้ว', restartToUpdate: 'เริ่มใหม่เพื่ออัปเดต', upToDate: 'คุณใช้เวอร์ชันล่าสุดแล้ว', updateCheckFailed: 'ตรวจสอบอัปเดตไม่ได้ โปรดลองอีกครั้ง',
     dockPanel: 'แนบแผงกับ PoB', undockPanel: 'แยกแผงออกจาก PoB', dockWaiting: 'กำลังรอ PoB เพื่อแนบแผง คลิกเพื่อปิดการแนบ',
     agentLoginCodeLabel: 'รหัสยืนยัน', agentLoginCodeNote: 'วางรหัสที่แสดงในเบราว์เซอร์เพื่อเข้าสู่ระบบให้เสร็จสมบูรณ์', agentLoginCodeSubmit: 'เข้าสู่ระบบให้เสร็จสมบูรณ์', agentLoginCodeInvalid: 'ตรวจสอบรหัสแล้ววางอีกครั้ง', agentLoginVerifying: 'กำลังเข้าสู่ระบบ…',
     connectPob: "เชื่อมต่อ PoB",

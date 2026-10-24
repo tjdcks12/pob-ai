@@ -32,7 +32,8 @@ export async function openSettings(url, { ownerPid = 0, focus } = {}) {
   return openPanel(target.href, { ownerPid });
 }
 
-export async function openPanel(url, { ownerPid = 0 } = {}) {
+export async function openPanel(url, { ownerPid = 0, replace = false } = {}) {
+  if (replace && process.platform === 'win32') await closePreviousPanels();
   if (process.platform === 'win32' && !fs.existsSync(host) && fs.existsSync(path.join(root, 'scripts/build-panel.mjs'))) {
     try {
       building ??= run(process.execPath, [path.join(root, 'scripts/build-panel.mjs')], { windowsHide: true });
@@ -47,4 +48,45 @@ export async function openPanel(url, { ownerPid = 0 } = {}) {
   child.on('error', error => { log(error); browserPanel(url); });
   child.unref();
   return { host: 'webview2', pid: child.pid };
+}
+
+// An update must replace the old native shell as well as reload the HTTP service.
+// Match this exact WebView profile; other PoB AI installations keep their windows.
+async function closePreviousPanels() {
+  const script = `
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class PoBAIPanelRestart {
+  private delegate bool EnumProc(IntPtr hwnd, IntPtr data);
+  [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr data);
+  [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int count);
+  [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wp, IntPtr lp);
+  public static void Close(uint pid) {
+    EnumWindows((hwnd, data) => {
+      uint windowPid; GetWindowThreadProcessId(hwnd, out windowPid);
+      if (windowPid == pid) {
+        var title = new StringBuilder(256); GetWindowText(hwnd, title, title.Capacity);
+        if (title.ToString() == "PoB AI" || title.ToString() == "PoB AI Settings") PostMessage(hwnd, 0x10, IntPtr.Zero, IntPtr.Zero);
+      }
+      return true;
+    }, IntPtr.Zero);
+  }
+}
+'@
+    $profile = [IO.Path]::GetFullPath($env:POB_AI_PANEL_PROFILE)
+    $pattern = '(?:^|\\s)"?' + [regex]::Escape($profile) + '"?(?:\\s|$)'
+    Get-CimInstance Win32_Process -Filter "Name='pob-ai-panel.exe'" | ForEach-Object {
+      if ($_.CommandLine -match $pattern) {
+        try {
+          $panel = [Diagnostics.Process]::GetProcessById($_.ProcessId)
+          [PoBAIPanelRestart]::Close([uint32]$_.ProcessId)
+          if (-not $panel.WaitForExit(5000)) { throw 'The previous PoB AI panel is still closing.' }
+        } catch [ArgumentException] { }
+      }
+    }
+  `;
+  await run('powershell.exe', ['-NoProfile', '-Command', script], { windowsHide: true, env: { ...process.env, POB_AI_PANEL_PROFILE: statePath('panel-webview') } });
 }

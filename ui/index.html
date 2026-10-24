@@ -24,7 +24,7 @@
     </div>
   </header>
 
-  <div id="update-banner" class="banner" hidden><span id="update-text"></span><button id="update-now" type="button" class="agent-primary" data-i18n="updateNow"></button></div>
+  <div id="update-banner" class="banner" role="status" hidden><span id="update-text"></span><button id="update-now" type="button" class="agent-primary" data-i18n="updateNow"></button></div>
   <div id="connection-banner" class="connection-banner" role="status" hidden><span data-i18n="connectionLost"></span><button id="reconnect" type="button" data-i18n="reconnect"></button></div>
 
   <div class="agent-sessions">
@@ -103,6 +103,14 @@
         <div class="set-row stacked"><span class="set-title" data-i18n="syncFile"></span><span id="sync-file" class="set-desc sync-file"></span><p id="sync-status" class="set-desc" role="status"></p>
           <div class="set-actions sync-actions"><button id="sync-list" type="button" data-i18n="syncList"></button><button id="sync-now" type="button" data-i18n="syncNow"></button></div>
         </div>
+      </section>
+      <section class="set-section">
+        <h3 class="set-head" data-i18n="sectionUpdates"></h3>
+        <div class="set-row">
+          <div><label class="set-title" for="auto-download-updates" data-i18n="autoDownloadUpdates"></label><p class="set-desc" data-i18n="autoDownloadUpdatesDesc"></p></div>
+          <input id="auto-download-updates" type="checkbox" class="switch" role="switch" checked>
+        </div>
+        <div class="set-row"><p id="update-check-status" class="set-desc" role="status"></p><button id="check-updates" type="button" data-i18n="checkForUpdates"></button></div>
       </section>
       <section class="set-section">
         <h3 class="set-head" data-i18n="sectionAgents"></h3>

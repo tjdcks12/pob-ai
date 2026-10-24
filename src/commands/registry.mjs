@@ -20,6 +20,8 @@ export const COMMANDS = [
   { name: 'version', summary: 'PoB AI, Node.js and PoB versions', local: LOCAL.version },
   { name: 'doctor', summary: 'Check the PoB install, the adapter, the window connection, updates and agents', local: LOCAL.doctor },
   { name: 'update.check', summary: 'Check for a newer PoB AI', local: LOCAL.updateCheck },
+  { name: 'update.automatic', summary: 'Enable or disable background downloads of PoB AI updates', local: LOCAL.updateAutomatic,
+    args: [bool('enabled', 'Download verified updates automatically; restart remains a user action')] },
   { name: 'update.apply', summary: 'Download and install the newer PoB AI (used from the next start)', local: LOCAL.updateApply,
     args: [bool('restart', 'Restart PoB AI right away (the PoB window stays open and reconnects)')] },
   { name: 'restart', summary: 'Restart the PoB AI service (the PoB window and panel reconnect)', local: LOCAL.restart },

@@ -19,6 +19,22 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --omit=dev
+      - name: Download PoB for adapter tests
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $release = gh api repos/PathOfBuildingCommunity/PathOfBuilding-PoE2/releases/latest | ConvertFrom-Json
+          $asset = $release.assets | Where-Object { $_.name -match 'portable.*\.zip$' } | Select-Object -First 1
+          if (-not $asset) { throw 'The latest PoB release has no portable ZIP.' }
+          Invoke-WebRequest $asset.browser_download_url -OutFile pob.zip
+          Expand-Archive pob.zip -DestinationPath pob
+          $exe = Get-ChildItem pob -Recurse -Filter 'Path of Building-PoE2.exe' | Select-Object -First 1
+          "POB_PATH=$($exe.DirectoryName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Verify native panel and tests
+        run: |
+          npm run build:panel
+          npm test
       - name: Official Node.js build to bundle (node.exe and its LICENSE)
         shell: pwsh
         run: |
@@ -35,4 +51,4 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" dist/*.zip dist/latest.json --title "PoB AI ${{ github.ref_name }}" --generate-notes
+        run: gh release create "${{ github.ref_name }}" dist/*.zip dist/latest.json --title "PoB AI ${{ github.ref_name }}" --notes-file "docs/releases/${{ github.ref_name }}.md"

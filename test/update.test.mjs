@@ -12,7 +12,7 @@ import { listenHttp } from '../src/service/http-port.mjs';
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pobai-update-'));
 process.env.POB_AI_HOME = home;
 delete process.env.POB_PATH;
-const { applyUpdate, checkForUpdate, compareVersions, installedUpdate, VERSION } = await import('../src/update/updater.mjs');
+const { applyUpdate, checkForUpdate, compareVersions, download, installedUpdate, VERSION } = await import('../src/update/updater.mjs');
 const { installPob } = await import('../src/pob/install.mjs');
 const { locatePob } = await import('../src/pob/locate.mjs');
 
@@ -75,6 +75,23 @@ test('a download that does not match its checksum is rejected', async () => {
   process.env.POB_AI_UPDATE_URL = `${base}/bad.json`;
   await assert.rejects(applyUpdate(), { code: 'DOWNLOAD_CORRUPT' });
   assert.equal(installedUpdate(), null);
+});
+
+test('an interrupted download removes its partial file and can be retried', async () => {
+  const file = path.join(home, 'interrupted.zip');
+  const fetchImpl = async () => new Response(new ReadableStream({ start(controller) {
+    controller.enqueue(new Uint8Array([1, 2, 3]));
+    setTimeout(() => controller.error(new Error('connection lost')), 5);
+  } }));
+  await assert.rejects(download('https://example.invalid/app.zip', file, { fetchImpl }), /connection lost/);
+  assert.equal(fs.existsSync(file + '.download'), false);
+  assert.equal(fs.existsSync(file), false);
+});
+
+test('invalid version paths are rejected before any download or extraction', async () => {
+  process.env.POB_AI_UPDATE_URL = `${base}/latest.json`;
+  const fetchImpl = async () => new Response(JSON.stringify({ version: '../escape', url: 'app.zip', sha256: '1'.repeat(64) }));
+  await assert.rejects(applyUpdate({ fetchImpl }), { code: 'UPDATE_CHECK_FAILED' });
 });
 
 test('a newer release is found, verified and unpacked into the data folder', async () => {

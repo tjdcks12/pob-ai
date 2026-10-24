@@ -3,6 +3,7 @@ import { refreshWindowChrome, setPobWindow } from './window.js';
 import { THEMES, THEME_NAMES, resolveTheme } from './themes.js';
 import { normalizeLocalePreference } from './locale.js';
 import { characterSyncSettings } from './character-sync.js';
+import { updatePresentation } from './updates.js';
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -43,7 +44,7 @@ const run = (command, args = {}) => api('/api/run', { command, args, lang: local
 const characterSync = settingsView ? characterSyncSettings({ api, t, locale }) : null;
 
 const state = {
-  live: false, pobMissing: false, installingPob: false, update: null, providers: [], provider: store.get('pobai.provider', ''), models: {},
+  live: false, pobMissing: false, installingPob: false, update: null, autoDownloadUpdates: true, appVersion: '', providers: [], provider: store.get('pobai.provider', ''), models: {},
   tabs: [], active: null, attachments: [], idle: { draft: '', attachments: [], fullAccess: false }, picker: { fullAccess: false },
 };
 
@@ -221,6 +222,8 @@ function listenEvents() {
   source.addEventListener('language', e => { setLocale(JSON.parse(e.data).preference); applyI18n(); });
   source.addEventListener('pob-install', () => loadStatus());
   source.addEventListener('character-sync', e => characterSync?.update(JSON.parse(e.data)));
+  source.addEventListener('update', e => showUpdate(JSON.parse(e.data)));
+  source.addEventListener('update-preferences', e => { state.autoDownloadUpdates = JSON.parse(e.data).autoDownloadUpdates; renderUpdateSettings(); });
   source.addEventListener('pob', e => {
     const live = JSON.parse(e.data);
     setPobWindow(live);
@@ -231,7 +234,6 @@ function listenEvents() {
     if (settingsView) characterSync.load();
   });
   if (settingsView) return;
-  source.addEventListener('update', e => showUpdate(JSON.parse(e.data)));
   source.addEventListener('focus-panel', () => {
     if (document.hasFocus()) $('input').focus({ preventScroll: true });
   });
@@ -274,15 +276,52 @@ function showNotice(text, { container, retry, settings } = {}) {
 
 // ---------- PoB window settings & PoB AI updates ----------
 function showUpdate(update) {
-  state.update = update?.available ? update : null;
-  $('update-banner').hidden = !state.update;
-  if (state.update) $('update-text').textContent = t('updateAvailable', { version: state.update.latest });
+  state.update = update ?? null;
+  const view = updatePresentation(state.update);
+  $('update-banner').hidden = !view.visible;
+  $('update-text').textContent = t(view.text, view.vars);
+  $('update-now').textContent = t(view.action);
+  $('update-now').disabled = view.busy;
+  renderUpdateSettings();
+}
+function renderUpdateSettings() {
+  if (!settingsView) return;
+  const view = updatePresentation(state.update);
+  $('auto-download-updates').checked = state.autoDownloadUpdates;
+  $('check-updates').disabled = view.busy;
+  $('update-check-status').textContent = (state.appVersion ? `v${state.appVersion} · ` : '') + t(view.text, view.vars);
+}
+if (settingsView) {
+  $('auto-download-updates').addEventListener('change', async e => {
+    const input = e.target;
+    input.disabled = true;
+    try {
+      const reply = await run('update.automatic', { enabled: input.checked });
+      if (!reply.ok) throw new Error();
+      state.autoDownloadUpdates = reply.result.autoDownloadUpdates;
+    } catch { showNotice(t('settingFailed'), { container: input.closest('.set-section') }); }
+    finally { input.disabled = false; renderUpdateSettings(); }
+  });
+  $('check-updates').addEventListener('click', async () => {
+    $('check-updates').disabled = true;
+    $('update-check-status').textContent = t('checkingUpdates');
+    const reply = await run('update.check').catch(() => null);
+    if (reply?.ok) showUpdate(reply.result);
+    else showUpdate({ ...state.update, phase: state.update?.restartNeeded ? 'ready' : 'checkError' });
+  });
 }
 $('update-now').addEventListener('click', async () => {
   $('update-now').disabled = true;
   $('update-text').textContent = t('updating');
   const reply = await run('update.apply', { restart: true });
   if (!reply.ok) { $('update-now').disabled = false; $('update-text').textContent = t('updateFailed'); $('update-now').textContent = t('retry'); }
+  else if (!window.chrome?.webview && reply.result?.restarting) {
+    for (let attempt = 0; attempt < 60; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const status = await api('/api/status').catch(() => null);
+      if (status?.version === reply.result.version) { location.reload(); break; }
+    }
+  }
 });
 async function usePob(args, busyLabel) {
   for (const id of ['pob-path-apply', 'pob-install']) $(id).disabled = true;
@@ -313,6 +352,8 @@ async function loadStatus() {
   const reply = await api('/api/status').catch(() => null);
   if (!reply?.ok) return;
   setPobWindow(reply.live);
+  state.appVersion = reply.version ?? '';
+  state.autoDownloadUpdates = reply.settings?.autoDownloadUpdates !== false;
   state.live = Boolean(reply.live?.connected);
   if (state.live) { state.openingPob = false; clearTimeout(state.openingTimer); }
   state.pobMissing = !state.live && !reply.pob?.dir;

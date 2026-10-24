@@ -23,6 +23,7 @@ const dist = path.join(root, 'dist');
 const stage = path.join(dist, 'stage');
 const top = path.join(stage, 'PoB AI');
 const zipName = `pob-ai-${version}-win-x64.zip`;
+const latestZipName = 'pob-ai-latest-win-x64.zip';
 execFileSync(process.execPath, [path.join(root, 'scripts/build-panel.mjs')], { stdio: 'inherit', windowsHide: true });
 
 fs.rmSync(stage, { recursive: true, force: true });
@@ -50,7 +51,7 @@ copy('node_modules/node-addon-api/LICENSE.md', 'node_modules/node-addon-api/LICE
 
 const release = { ...pkg };
 delete release.scripts;
-if (option('update-url')) release.pobAi = { ...release.pobAi, updateUrl: option('update-url') };
+release.pobAi = { ...release.pobAi, updateUrl: option('update-url') ?? 'https://github.com/tjdcks12/pob-ai/releases/latest/download/latest.json' };
 fs.writeFileSync(path.join(top, 'package.json'), `${JSON.stringify(release, null, 2)}\n`);
 
 const nodeDir = option('node-dir') ?? path.dirname(process.execPath);
@@ -68,6 +69,7 @@ const zip = path.join(dist, zipName);
 fs.rmSync(zip, { force: true });
 const tar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
 execFileSync(tar, ['-a', '-c', '-f', zip, '-C', stage, 'PoB AI']);
+fs.copyFileSync(zip, path.join(dist, latestZipName));
 fs.rmSync(stage, { recursive: true, force: true });
 
 const bytes = fs.readFileSync(zip);

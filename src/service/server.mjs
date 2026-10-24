@@ -15,7 +15,8 @@ import { closePob, listPobProcesses } from '../pob/processes.mjs';
 import { Runtime } from '../runtime.mjs';
 import { readConfig, readJson, statePath, writeJson } from '../state.mjs';
 import { SERVICE_FILE } from './client.mjs';
-import { checkForUpdate, updateCheckDue } from '../update/updater.mjs';
+import { VERSION } from '../update/updater.mjs';
+import { createAutomaticUpdater } from '../update/automatic.mjs';
 import { handleMcp } from './mcp.mjs';
 import { openPanel, openSettings } from './panel.mjs';
 import { systemLocale, windowLocale } from '../i18n/system-locale.mjs';
@@ -204,9 +205,9 @@ export async function createService({ port, log = line => process.stderr.write(`
     if (route === 'GET /api/status') {
       let install = null;
       try { install = runtime.install(); } catch (error) { install = { error: error.message }; }
-      const { pobLanguage = 'system', pobTheme = 'pob' } = readConfig();
+      const { pobLanguage = 'system', pobTheme = 'pob', autoDownloadUpdates = true } = readConfig();
       const pid = await service.pobOwnerPid();
-      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info, pid }, agents: agents.providers(), settings: { pobLanguage, pobLanguageResolved: windowLocale(pobLanguage), systemLocale: systemLocale(), pobTheme: resolveTheme(pobTheme) }, update: service.update ?? null });
+      return send(res, 200, { ok: true, version: VERSION, pob: install, live: { connected: bridge.connected, ...bridge.info, pid }, agents: agents.providers(), settings: { pobLanguage, pobLanguageResolved: windowLocale(pobLanguage), systemLocale: systemLocale(), pobTheme: resolveTheme(pobTheme), autoDownloadUpdates: autoDownloadUpdates !== false }, update: service.update ?? null });
     }
     if (route === 'GET /api/commands') {
       return send(res, 200, { ok: true, commands: COMMANDS.map(({ local, ...c }) => c) });
@@ -255,16 +256,10 @@ export async function createService({ port, log = line => process.stderr.write(`
   service.url = `http://127.0.0.1:${service.port}/?token=${token}`;
   writeJson(SERVICE_FILE(), { port: service.port, token, pid: process.pid, startedAt: new Date().toISOString() });
   fs.mkdirSync(statePath('logs'), { recursive: true });
-  // A quiet daily check; the panel offers the update, nothing is downloaded without a click.
-  if (updateCheckDue()) {
-    checkForUpdate().then(update => {
-      service.update = update;
-      if (update.available) { log(`PoB AI ${update.latest} is available.`); broadcast('update', update); }
-    }).catch(error => log(`update check: ${error.message}`));
-  }
   service.close = () => {
     service.closed = true;
     characterSync.close();
+    service.updates?.close();
     atlas.close();
     agents.close();
     runtime.close();
@@ -273,5 +268,6 @@ export async function createService({ port, log = line => process.stderr.write(`
     for (const res of events) res.end();
     // service.json stays: the next start reuses its address, and clients check it is alive.
   };
+  service.updates = createAutomaticUpdater({ log, onChange: update => { service.update = update; broadcast('update', update); } });
   return service;
 }

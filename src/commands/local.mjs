@@ -191,13 +191,24 @@ export const LOCAL = {
     return { target: 'app', result: await runDoctor({ runtime }) };
   },
 
-  async updateCheck() {
-    return { target: 'app', result: await checkForUpdate() };
+  async updateCheck(_args, runtime) {
+    return { target: 'app', result: runtime?.service?.updates ? await runtime.service.updates.check(true) : await checkForUpdate() };
+  },
+
+  async updateAutomatic(args, runtime) {
+    if (typeof args.enabled !== 'boolean') throw Object.assign(new Error('enabled must be true or false.'), { code: 'BAD_ARGS' });
+    updateConfig({ autoDownloadUpdates: args.enabled });
+    runtime?.service?.broadcast('update-preferences', { autoDownloadUpdates: args.enabled });
+    if (args.enabled) runtime?.service?.updates?.check(true).catch(error => runtime.log?.(`update check: ${error.message}`));
+    return { target: 'app', result: { autoDownloadUpdates: args.enabled } };
   },
 
   async updateApply(args, runtime) {
-    const result = await applyUpdate();
-    if (result.updated && args.restart && runtime.service) return LOCAL.restart({}, runtime).then(r => ({ ...r, result: { ...result, ...r.result } }));
+    const pending = installedUpdate();
+    const result = pending && (!runtime.service?.update?.available || runtime.service.update.phase === 'ready')
+      ? { updated: false, current: VERSION, installed: pending.version, restartNeeded: true }
+      : await (runtime.service?.updates ? runtime.service.updates.download() : applyUpdate());
+    if (result.restartNeeded && args.restart && runtime.service) return LOCAL.restart({}, runtime).then(r => ({ ...r, result: { ...result, ...r.result } }));
     return { target: 'app', result };
   },
 
@@ -209,11 +220,10 @@ export const LOCAL = {
     if (!fs.existsSync(launcher)) throw Object.assign(new Error('This copy has no launcher.mjs; start PoB AI again by hand.'), { code: 'NO_LAUNCHER' });
     setTimeout(() => {
       service.close();
-      const line = `/d /c start "PoB AI" /min "${process.execPath}" "${launcher}" --open --no-browser`;
-      spawn('cmd.exe', [line], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
+      spawn(process.execPath, [launcher, '--open', '--reopen-panel', '--quiet'], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
       setTimeout(() => process.exit(0), 300);
     }, 300);
-    return { target: 'app', result: { restarting: true } };
+    return { target: 'app', result: { restarting: true, version: installedUpdate()?.version ?? VERSION } };
   },
 
   async importBuild(args, runtime) {
