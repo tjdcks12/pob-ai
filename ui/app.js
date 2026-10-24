@@ -1,5 +1,5 @@
 import { LOCALES, locale, localePreference, systemLocale, setLocale, t } from './i18n.js';
-import { refreshWindowChrome } from './window.js';
+import { refreshWindowChrome, setPobWindow } from './window.js';
 import { THEMES, THEME_NAMES, resolveTheme } from './themes.js';
 import { normalizeLocalePreference } from './locale.js';
 
@@ -218,7 +218,10 @@ function listenEvents() {
   source.addEventListener('language', e => { setLocale(JSON.parse(e.data).preference); applyI18n(); });
   source.addEventListener('pob-install', () => loadStatus());
   source.addEventListener('pob', e => {
-    state.live = JSON.parse(e.data).connected;
+    const live = JSON.parse(e.data);
+    setPobWindow(live);
+    if (live.connected && !live.pid) loadStatus();
+    state.live = live.connected;
     if (state.live) { state.pobMissing = false; state.openingPob = false; clearTimeout(state.openingTimer); }
     renderStatus(); renderPobSetup();
   });
@@ -304,6 +307,7 @@ if (settingsView) {
 async function loadStatus() {
   const reply = await api('/api/status').catch(() => null);
   if (!reply?.ok) return;
+  setPobWindow(reply.live);
   state.live = Boolean(reply.live?.connected);
   if (state.live) { state.openingPob = false; clearTimeout(state.openingTimer); }
   state.pobMissing = !state.live && !reply.pob?.dir;

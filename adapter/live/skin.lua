@@ -27,7 +27,7 @@ local rawDrawImage, rawDrawImageQuad, rawSetDrawColor = RAW.DrawImage, RAW.DrawI
 local m_floor, m_min, m_max = math.floor, math.min, math.max
 
 local T          -- token set of the current theme ({ bg = {r, g, b}, ... })
-local hoverFill  -- button hover colour: surface-hover a step towards the text colour
+local buttonBorder, hoverFill, pressedFill
 local circle     -- image handle for the rounded corners
 
 -- Painting --------------------------------------------------------------------------------
@@ -205,15 +205,23 @@ end
 local SMALL, PANEL = 3, 4
 local SETUP = {}
 
--- ButtonControl:Draw :41-105. No border; the fill says the state.
+-- ButtonControl:Draw :41-105. Actions need a visible outline and fill even at rest;
+-- using the section's surface here makes import/auth buttons look like plain labels.
 local function paintButton(s, _, b, fr)
-	local fill
+	local fill, border
 	local l = level(b) or 0.5
-	if near(l, 0.33) or near(fr, 0.5) then fill = T['surface-inner']                -- disabled, pressed
-	elseif near(l, 1) then fill = s.self:GetProperty('locked') and T['primary-soft'] or hoverFill
-	else fill = T.surface end
-	paint(b.x, b.y, b.w, b.h, SMALL, fill)
-	if s.self:GetProperty('locked') then
+	local locked = s.self:GetProperty('locked')
+	if near(l, 0.33) then
+		fill, border = T['surface-inner'], T.line
+	elseif near(fr, 0.5) then
+		fill, border = pressedFill, T.primary
+	elseif near(l, 1) then
+		fill, border = locked and T['primary-soft'] or hoverFill, T.primary
+	else
+		fill, border = T['surface-hover'], s.self.hasFocus and T.primary or buttonBorder
+	end
+	paint(b.x, b.y, b.w, b.h, SMALL, fill, border)
+	if locked then
 		paint(b.x + 6, b.y + b.h - 2, b.w - 12, 2, 1, T.primary)
 	end
 end
@@ -520,7 +528,9 @@ function skin.set(tokenSet)
 		return
 	end
 	T = tokenSet
-	hoverFill = mix(T['surface-hover'], T.fg, 0.06)
+	buttonBorder = mix(T.line, T['fg-4'], 0.45)
+	hoverFill = mix(T['primary-soft'], T.primary, 0.12)
+	pressedFill = mix(T['primary-soft'], T.primary, 0.25)
 	if not circle then
 		circle = NewImageHandle()
 		circle:Load(POBAI_ADAPTER .. '/live/assets/circle64.png', 'CLAMP', 'MIPMAP')

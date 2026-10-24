@@ -39,6 +39,7 @@ execFileSync(compiler, [
   '/reference:System.Windows.Forms.dll', '/reference:System.Web.Extensions.dll', '/reference:' + core, '/reference:' + forms,
   path.join(root, 'desktop/Panel.cs'),
   path.join(root, 'desktop/PanelInstance.cs'),
+  path.join(root, 'desktop/PanelDock.cs'),
 ], { windowsHide: true, stdio: 'inherit' });
 console.log('Built desktop/bin/pob-ai-panel.exe');
 execFileSync(compiler, [

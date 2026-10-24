@@ -54,6 +54,27 @@ test('every palette reaches PoB paint, controls and caption while light palettes
   }
 });
 
+test('action buttons remain visibly bounded at rest, with distinct hover, press, disabled and focus states', { skip }, async () => {
+  const result = await run('buttons');
+  for (const mode of THEMES.filter(id => id !== 'pob')) {
+    const states = result[mode];
+    const shapes = state => states[state].filter(call => call.kind === 'rect');
+    const normal = shapes('normal');
+    assert.notDeepEqual(normal[0].colour.slice(0, 3), states.surface, mode + ': button boundary must differ from the containing panel');
+    assert.ok(normal.some(call => call.colour.slice(0, 3).join() !== normal[0].colour.slice(0, 3).join()), mode + ': button needs both a border and an inset fill');
+    assert.notDeepEqual(shapes('hover'), normal, mode + ': hover feedback');
+    assert.notDeepEqual(shapes('pressed'), shapes('hover'), mode + ': pressed feedback');
+    assert.notDeepEqual(shapes('disabled'), normal, mode + ': disabled feedback');
+    assert.deepEqual(shapes('focused')[0].colour.slice(0, 3), states.primary, mode + ': keyboard focus border');
+    const label = states.normal.find(call => call.kind === 'text');
+    const nativeLabel = result.original.find(call => call.kind === 'text');
+    assert.deepEqual([label.x, label.y, label.size, label.text], [nativeLabel.x, nativeLabel.y, nativeLabel.size, nativeLabel.text], 'native layout and action label stay intact');
+  }
+  assert.equal(result.clicks, 1, 'only an enabled click released inside the button activates it');
+  assert.deepEqual(result.restored, result.original, 'the original PoB theme retains its exact drawing');
+  assert.equal(result.drawFunctionsRestored, true);
+});
+
 test('the original template restores native geometry and drawing exactly', { skip }, async () => {
   const r = await run();
   assert.deepEqual(r.restored, r.original);

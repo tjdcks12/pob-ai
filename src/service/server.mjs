@@ -46,6 +46,16 @@ export async function createService({ port, log = line => process.stderr.write(`
   if (bridge.port !== saved.port || bridge.token !== saved.token) writeJson(statePath('bridge.json'), { port: bridge.port, token: bridge.token });
   const runtime = new Runtime({ bridge, log });
   const service = { token, bridge, runtime, broadcast, log, pobProcess: null };
+  service.pobOwnerPid = async () => {
+    if (!bridge.connected) return 0;
+    if (bridge.info?.pid) return bridge.info.pid;
+    if (service.pobProcess?.exitCode === null && !service.pobProcess.signalCode) return service.pobProcess.pid;
+    // Compatibility with an already-open PoB using an older shim, after a service update.
+    const info = bridge.info;
+    let windows = [];
+    try { windows = (await listPobProcesses(runtime.install())).filter(p => p.shim); } catch { /* installation may have moved while the legacy window stays open */ }
+    return bridge.connected && bridge.info === info && windows.length === 1 ? windows[0].pid : 0;
+  };
   service.openSettings = async (focus, ownerPid = service.pobProcess?.exitCode === null ? service.pobProcess.pid : 0) => {
     // An existing PoB can reconnect after a service restart without being our child process.
     if (!ownerPid && bridge.connected) {
@@ -184,7 +194,8 @@ export async function createService({ port, log = line => process.stderr.write(`
       let install = null;
       try { install = runtime.install(); } catch (error) { install = { error: error.message }; }
       const { pobLanguage = 'system', pobTheme = 'pob' } = readConfig();
-      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info }, agents: agents.providers(), settings: { pobLanguage, pobLanguageResolved: windowLocale(pobLanguage), systemLocale: systemLocale(), pobTheme: resolveTheme(pobTheme) }, update: service.update ?? null });
+      const pid = await service.pobOwnerPid();
+      return send(res, 200, { ok: true, pob: install, live: { connected: bridge.connected, ...bridge.info, pid }, agents: agents.providers(), settings: { pobLanguage, pobLanguageResolved: windowLocale(pobLanguage), systemLocale: systemLocale(), pobTheme: resolveTheme(pobTheme) }, update: service.update ?? null });
     }
     if (route === 'GET /api/commands') {
       return send(res, 200, { ok: true, commands: COMMANDS.map(({ local, ...c }) => c) });

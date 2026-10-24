@@ -49,6 +49,7 @@ export class BridgeServer extends EventEmitter {
         this.socket?.destroy();
         this.socket = socket;
         this.info = { version: message.version, connectedAt: new Date().toISOString() };
+        if (Number.isSafeInteger(message.pid) && message.pid > 0 && message.pid <= 0x7fffffff) this.info.pid = message.pid;
         this.log(`PoB window connected (PoB ${message.version})`);
         this.emit('connected', this.info);
         return;

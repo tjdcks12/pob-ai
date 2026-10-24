@@ -2,6 +2,9 @@
 -- local TCP connection, runs them between frames and draws the agent's highlights.
 local socket = require('socket')
 local json = require('dkjson')
+local ffi = require('ffi')
+ffi.cdef [[uint32_t GetCurrentProcessId(void);]]
+local windowPid = tonumber(ffi.load('kernel32').GetCurrentProcessId())
 dofile(POBAI_ADAPTER .. '/core/dispatch.lua')
 POBAI_RAW = {
 	SetDrawColor = SetDrawColor, DrawString = DrawString, DrawStringWidth = DrawStringWidth,
@@ -37,7 +40,7 @@ local function connect()
 	tcp:settimeout(0)
 	client, buffer = tcp, ''
 	local manifest = pobai_read_file('manifest.xml') or ''
-	send({ type = 'hello', token = token, version = manifest:match('<Version[^>]-number="([^"]+)"') })
+	send({ type = 'hello', token = token, pid = windowPid, version = manifest:match('<Version[^>]-number="([^"]+)"') })
 end
 
 -- One request at a time, at most one started per frame: PoB recalculates and lays out its

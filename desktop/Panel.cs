@@ -24,6 +24,8 @@ internal sealed class AgentWindow : Form
     private readonly uint activateMessage;
     private readonly bool settingsView;
     private readonly IntPtr ownerHandle;
+    private PanelDock dock;
+    private bool dockPreference;
     private bool ready;
     private const int Frame = 4;
 
@@ -57,13 +59,7 @@ internal sealed class AgentWindow : Form
         int ownerPid;
         if (settings && args.Length > 4 && int.TryParse(args[4], out ownerPid))
         {
-            try
-            {
-                var process = Process.GetProcessById(ownerPid);
-                if (process.ProcessName == "Path of Building-PoE2") owner = process.MainWindowHandle;
-            }
-            catch (ArgumentException) { }
-            catch (InvalidOperationException) { }
+            owner = PobHandle(ownerPid);
         }
         Directory.CreateDirectory(profile);
         string identity;
@@ -122,6 +118,24 @@ internal sealed class AgentWindow : Form
         web.AllowExternalDrop = false;
         Controls.Add(web);
         ReadPlacement();
+        if (!settings)
+        {
+            dock = new PanelDock(this, SendState);
+            dock.SetEnabled(dockPreference);
+        }
+    }
+
+    private static IntPtr PobHandle(int pid)
+    {
+        if (pid <= 0) return IntPtr.Zero;
+        try
+        {
+            using (var process = Process.GetProcessById(pid))
+                return process.ProcessName == "Path of Building-PoE2" ? process.MainWindowHandle : IntPtr.Zero;
+        }
+        catch (ArgumentException) { return IntPtr.Zero; }
+        catch (InvalidOperationException) { return IntPtr.Zero; }
+        catch (System.ComponentModel.Win32Exception) { return IntPtr.Zero; }
     }
 
     protected override CreateParams CreateParams
@@ -203,6 +217,13 @@ internal sealed class AgentWindow : Form
 
     private void ApplyMessage(string message)
     {
+        int pid;
+        if (dock != null && message != null && message.StartsWith("pob:") && int.TryParse(message.Substring(4), out pid))
+        {
+            dock.SetTarget(PobHandle(pid));
+            SendState();
+            return;
+        }
         int rgb;
         if (message != null && message.StartsWith("theme:#") && message.Length == 13
             && int.TryParse(message.Substring(7), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out rgb))
@@ -213,12 +234,16 @@ internal sealed class AgentWindow : Form
         }
         switch (message)
         {
+            case "window:dock":
+                if (dock != null) { dock.SetEnabled(!dock.Enabled); SavePlacement(); }
+                break;
             case "service:reconnect":
                 string launcher = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\PoB AI.exe"));
                 if (File.Exists(launcher)) Process.Start(new ProcessStartInfo(launcher, "--panel-only") { UseShellExecute = false });
                 break;
             case "window:minimize": WindowState = FormWindowState.Minimized; break;
             case "window:maximize":
+                if (dock != null && dock.Enabled) { dock.SetEnabled(false); SavePlacement(); }
                 MaximizedBounds = Screen.FromHandle(Handle).WorkingArea;
                 WindowState = WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
                 break;
@@ -237,7 +262,10 @@ internal sealed class AgentWindow : Form
     private void SendState()
     {
         if (ready && !IsDisposed)
-            web.CoreWebView2.PostWebMessageAsJson(json.Serialize(new { kind = "window-state", maximized = WindowState == FormWindowState.Maximized }));
+            web.CoreWebView2.PostWebMessageAsJson(json.Serialize(new {
+                kind = "window-state", maximized = WindowState == FormWindowState.Maximized,
+                docked = dock != null && dock.Enabled, attached = dock != null && dock.Attached
+            }));
     }
 
     protected override void OnResize(EventArgs e)
@@ -249,6 +277,7 @@ internal sealed class AgentWindow : Form
     protected override void OnActivated(EventArgs e)
     {
         base.OnActivated(e);
+        if (dock != null) dock.ActivateOwner();
         if (ready && !IsDisposed) web.CoreWebView2.PostWebMessageAsJson(json.Serialize(new { kind = "window-activated" }));
     }
 
@@ -256,6 +285,7 @@ internal sealed class AgentWindow : Form
     {
         if (m.Msg == activateMessage && activateMessage != 0)
         {
+            if (dock != null) dock.ActivateOwner();
             if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
             Show();
             SetForegroundWindow(Handle);
@@ -279,6 +309,7 @@ internal sealed class AgentWindow : Form
         try
         {
             var saved = json.Deserialize<Placement>(File.ReadAllText(Path.Combine(profile, settingsView ? "settings-window.json" : "window.json")));
+            dockPreference = saved.Docked;
             var rect = new Rectangle(saved.X, saved.Y, Math.Max(settingsView ? 430 : 370, saved.Width), Math.Max(500, saved.Height));
             foreach (var screen in Screen.AllScreens)
                 if (Rectangle.Intersect(screen.WorkingArea, rect).Width >= 100 && Rectangle.Intersect(screen.WorkingArea, rect).Height >= 100)
@@ -289,17 +320,23 @@ internal sealed class AgentWindow : Form
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {
-        var bounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+        SavePlacement();
+        if (dock != null) dock.Dispose();
+        web.Dispose();
+        base.OnFormClosed(e);
+    }
+
+    private void SavePlacement()
+    {
+        var bounds = dock != null ? dock.FloatingBounds : WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
         try
         {
             File.WriteAllText(Path.Combine(profile, settingsView ? "settings-window.json" : "window.json"), json.Serialize(new Placement {
-                X = bounds.X, Y = bounds.Y, Width = bounds.Width, Height = bounds.Height
+                X = bounds.X, Y = bounds.Y, Width = bounds.Width, Height = bounds.Height, Docked = dock != null && dock.Enabled
             }));
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
-        web.Dispose();
-        base.OnFormClosed(e);
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -314,15 +351,26 @@ internal sealed class AgentWindow : Form
         if (IsDisposed) return;
         if (verification != null)
         {
+            bool dockInitial = dock != null && dock.Enabled, dockToggled = false, dockRestored = false;
+            if (dock != null)
+            {
+                await web.CoreWebView2.ExecuteScriptAsync("document.getElementById('window-dock').click()");
+                await Task.Delay(150);
+                dockToggled = dock.Enabled != dockInitial;
+                await web.CoreWebView2.ExecuteScriptAsync("document.getElementById('window-dock').click()");
+                await Task.Delay(150);
+                dockRestored = dock.Enabled == dockInitial;
+            }
             if (!settingsView) ApplyMessage("window:maximize");
             bool maximized = WindowState == FormWindowState.Maximized;
             if (!settingsView) ApplyMessage("window:maximize");
             if (!settingsView) ApplyMessage("window:minimize");
             bool minimized = WindowState == FormWindowState.Minimized;
             WindowState = FormWindowState.Normal;
+            if (dock != null) dock.SetEnabled(dockInitial);
             await Task.Delay(250);
             string dom = await web.CoreWebView2.ExecuteScriptAsync(
-                "JSON.stringify({host:document.documentElement.dataset.host,view:document.documentElement.dataset.view,theme:document.documentElement.dataset.theme,background:getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),logo:document.querySelector('.agent-brand img').getAttribute('src'),controls:[...document.querySelectorAll('.window-controls button')].filter(b=>b.getBoundingClientRect().width>0).length,settings:!!document.getElementById('settings-dialog'),chatVisible:document.getElementById('chat').getBoundingClientRect().height>0,drag:getComputedStyle(document.querySelector('.agent-brand')).getPropertyValue('app-region'),overflow:document.documentElement.scrollWidth>innerWidth})");
+                "JSON.stringify({host:document.documentElement.dataset.host,view:document.documentElement.dataset.view,theme:document.documentElement.dataset.theme,background:getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),logo:document.querySelector('.agent-brand img').getAttribute('src'),controls:[...document.querySelectorAll('.window-controls button')].filter(b=>b.getBoundingClientRect().width>0).length,dockChecked:document.getElementById('window-dock').getAttribute('aria-checked'),dockVisible:document.getElementById('window-dock').getBoundingClientRect().width>0,settings:!!document.getElementById('settings-dialog'),chatVisible:document.getElementById('chat').getBoundingClientRect().height>0,drag:getComputedStyle(document.querySelector('.agent-brand')).getPropertyValue('app-region'),overflow:document.documentElement.scrollWidth>innerWidth})");
             var originalSize = ClientSize;
             ClientSize = new Size(settingsView ? 430 : 370, 620);
             await Task.Delay(150);
@@ -331,6 +379,7 @@ internal sealed class AgentWindow : Form
             await Task.Delay(150);
             File.WriteAllText(verification, json.Serialize(new {
                 maximized, minimized, dom, title = Text, compactOverflow = compact, settingsView, frameColor = ColorTranslator.ToHtml(BackColor),
+                dockInitial, dockToggled, dockRestored,
                 ownerDisabled = ownerHandle != IntPtr.Zero && !IsWindowEnabled(ownerHandle),
                 nativeCaptionHidden = (GetWindowStyle(Handle, -16) & 0x00c00000) == 0,
                 clientWidth = ClientSize.Width, clientHeight = ClientSize.Height, outerWidth = Width, outerHeight = Height
@@ -341,7 +390,7 @@ internal sealed class AgentWindow : Form
         if (verification != null) BeginInvoke(new Action(Close));
     }
 
-    private sealed class Placement { public int X, Y, Width, Height; }
+    private sealed class Placement { public int X, Y, Width, Height; public bool Docked; }
     private sealed class WindowOwner : IWin32Window
     {
         public IntPtr Handle { get; private set; }

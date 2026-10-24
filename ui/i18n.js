@@ -8,6 +8,7 @@ export const LOCALES = {
 
 export const STRINGS = {
   en: {
+    dockPanel: 'Attach panel to PoB', undockPanel: 'Detach panel from PoB', dockWaiting: 'Waiting for PoB to attach. Click to turn off.',
     agentLoginCodeLabel: 'Authorization code', agentLoginCodeNote: 'Paste the code shown in your browser to finish signing in.', agentLoginCodeSubmit: 'Complete sign-in', agentLoginCodeInvalid: 'Check the code and paste it again.', agentLoginVerifying: 'Completing sign-in…',
     connectPob: "Connect PoB",
     connectionLost: "PoB AI is disconnected. Reconnect to continue.", reconnect: "Reconnect", settingFailed: "Could not apply the change. Select it again.", settingsOpenFailed: "Could not open settings. Try again.", pobOpenFailed: "Could not open PoB. Check its folder in settings and try again.", pobInstallFailed: "Could not install PoB. Try again or connect an existing PoB folder.", updateFailed: "Could not complete the update. Try again.",
@@ -75,6 +76,7 @@ export const STRINGS = {
     errPathInvalid: 'Choose the .exe, .cmd or .bat file of {agent}.',
   },
   ko: {
+    dockPanel: 'PoB 창에 패널 붙이기', undockPanel: 'PoB 창에서 패널 분리하기', dockWaiting: 'PoB 창을 기다리는 중입니다. 클릭하면 붙이기를 해제합니다.',
     agentLoginCodeLabel: '인증 코드', agentLoginCodeNote: '브라우저에 표시된 코드를 붙여넣어 로그인을 완료하세요.', agentLoginCodeSubmit: '로그인 완료', agentLoginCodeInvalid: '인증 코드를 확인하고 다시 붙여넣어 주세요.', agentLoginVerifying: '로그인을 완료하고 있습니다…',
     connectPob: "PoB 연결",
     connectionLost: "PoB AI 연결이 끊겼습니다. 다시 연결해 주세요.", reconnect: "다시 연결", settingFailed: "변경을 적용하지 못했습니다. 다시 선택해 주세요.", settingsOpenFailed: "설정창을 열지 못했습니다. 다시 시도해 주세요.", pobOpenFailed: "PoB를 열지 못했습니다. 설정에서 설치 폴더를 확인하고 다시 실행해 주세요.", pobInstallFailed: "PoB를 설치하지 못했습니다. 다시 시도하거나 기존 PoB 폴더를 연결해 주세요.", updateFailed: "업데이트를 완료하지 못했습니다. 다시 시도해 주세요.",
@@ -142,6 +144,7 @@ export const STRINGS = {
     errPathInvalid: '{agent}의 .exe, .cmd, .bat 파일을 고르세요.',
   },
   ja: {
+    dockPanel: 'パネルをPoBに固定', undockPanel: 'パネルをPoBから切り離す', dockWaiting: 'PoBへの接続を待っています。クリックで固定を解除します。',
     agentLoginCodeLabel: '認証コード', agentLoginCodeNote: 'ブラウザーに表示されたコードを貼り付けてログインを完了してください。', agentLoginCodeSubmit: 'ログインを完了', agentLoginCodeInvalid: 'コードを確認して、もう一度貼り付けてください。', agentLoginVerifying: 'ログインを完了しています…',
     connectPob: "PoBを接続",
     connectionLost: "PoB AIとの接続が切れました。再接続してください。", reconnect: "再接続", settingFailed: "変更を適用できませんでした。もう一度選択してください。", settingsOpenFailed: "設定を開けませんでした。再試行してください。", pobOpenFailed: "PoBを開けませんでした。設定でインストール先を確認して再実行してください。", pobInstallFailed: "PoBをインストールできませんでした。再試行するか、既存のPoBフォルダーを接続してください。", updateFailed: "更新を完了できませんでした。再試行してください。",
@@ -209,6 +212,7 @@ export const STRINGS = {
     errPathInvalid: '{agent} の .exe・.cmd・.bat ファイルを選んでください。',
   },
   'zh-Hant': {
+    dockPanel: '將面板附加至PoB', undockPanel: '將面板與PoB分離', dockWaiting: '正在等待PoB以附加面板。點擊即可關閉。',
     agentLoginCodeLabel: '驗證碼', agentLoginCodeNote: '貼上瀏覽器中顯示的驗證碼以完成登入。', agentLoginCodeSubmit: '完成登入', agentLoginCodeInvalid: '請確認驗證碼後重新貼上。', agentLoginVerifying: '正在完成登入…',
     connectPob: "連接 PoB",
     connectionLost: "PoB AI 已中斷連線，請重新連線。", reconnect: "重新連線", settingFailed: "無法套用變更，請重新選擇。", settingsOpenFailed: "無法開啟設定，請重試。", pobOpenFailed: "無法開啟 PoB。請在設定中確認安裝資料夾後重試。", pobInstallFailed: "無法安裝 PoB。請重試或連接現有的 PoB 資料夾。", updateFailed: "無法完成更新，請重試。",
@@ -276,6 +280,7 @@ export const STRINGS = {
     errPathInvalid: '請選擇 {agent} 的 .exe、.cmd 或 .bat 檔案。',
   },
   ru: {
+    dockPanel: 'Прикрепить панель к PoB', undockPanel: 'Открепить панель от PoB', dockWaiting: 'Ожидание PoB для прикрепления панели. Нажмите, чтобы отключить.',
     agentLoginCodeLabel: 'Код авторизации', agentLoginCodeNote: 'Вставьте код из браузера, чтобы завершить вход.', agentLoginCodeSubmit: 'Завершить вход', agentLoginCodeInvalid: 'Проверьте код и вставьте его ещё раз.', agentLoginVerifying: 'Завершение входа…',
     connectPob: "Подключить PoB",
     connectionLost: "Связь с PoB AI потеряна. Подключитесь снова.", reconnect: "Подключиться", settingFailed: "Не удалось применить изменение. Выберите ещё раз.", settingsOpenFailed: "Не удалось открыть настройки. Повторите попытку.", pobOpenFailed: "Не удалось открыть PoB. Проверьте папку установки в настройках и попробуйте снова.", pobInstallFailed: "Не удалось установить PoB. Повторите попытку или подключите существующую папку PoB.", updateFailed: "Не удалось завершить обновление. Повторите попытку.",
@@ -343,6 +348,7 @@ export const STRINGS = {
     errPathInvalid: 'Выберите файл .exe, .cmd или .bat для {agent}.',
   },
   de: {
+    dockPanel: 'Panel an PoB anheften', undockPanel: 'Panel von PoB lösen', dockWaiting: 'Warte auf PoB zum Anheften. Zum Ausschalten klicken.',
     agentLoginCodeLabel: 'Bestätigungscode', agentLoginCodeNote: 'Füge den im Browser angezeigten Code ein, um die Anmeldung abzuschließen.', agentLoginCodeSubmit: 'Anmeldung abschließen', agentLoginCodeInvalid: 'Prüfe den Code und füge ihn erneut ein.', agentLoginVerifying: 'Anmeldung wird abgeschlossen…',
     connectPob: "PoB verbinden",
     connectionLost: "Die Verbindung zu PoB AI wurde getrennt. Verbinde dich erneut.", reconnect: "Neu verbinden", settingFailed: "Änderung nicht übernommen. Wähle sie erneut aus.", settingsOpenFailed: "Einstellungen konnten nicht geöffnet werden. Versuche es erneut.", pobOpenFailed: "PoB konnte nicht geöffnet werden. Prüfe den Installationsordner in den Einstellungen.", pobInstallFailed: "PoB konnte nicht installiert werden. Versuche es erneut oder verbinde einen vorhandenen PoB-Ordner.", updateFailed: "Update nicht abgeschlossen. Versuche es erneut.",
@@ -410,6 +416,7 @@ export const STRINGS = {
     errPathInvalid: 'Wähle die .exe-, .cmd- oder .bat-Datei von {agent}.',
   },
   fr: {
+    dockPanel: 'Attacher le panneau à PoB', undockPanel: 'Détacher le panneau de PoB', dockWaiting: 'En attente de PoB pour attacher le panneau. Cliquez pour désactiver.',
     agentLoginCodeLabel: 'Code de validation', agentLoginCodeNote: 'Collez le code affiché dans le navigateur pour terminer la connexion.', agentLoginCodeSubmit: 'Terminer la connexion', agentLoginCodeInvalid: 'Vérifiez le code et collez-le à nouveau.', agentLoginVerifying: 'Finalisation de la connexion…',
     connectPob: "Connecter PoB",
     connectionLost: "PoB AI est déconnecté. Reconnectez-vous pour continuer.", reconnect: "Reconnecter", settingFailed: "La modification n’a pas été appliquée. Sélectionnez-la à nouveau.", settingsOpenFailed: "Impossible d’ouvrir les paramètres. Réessayez.", pobOpenFailed: "Impossible d’ouvrir PoB. Vérifiez son dossier dans les paramètres et réessayez.", pobInstallFailed: "Impossible d’installer PoB. Réessayez ou connectez un dossier PoB existant.", updateFailed: "La mise à jour n’a pas abouti. Réessayez.",
@@ -477,6 +484,7 @@ export const STRINGS = {
     errPathInvalid: 'Choisissez le fichier .exe, .cmd ou .bat de {agent}.',
   },
   es: {
+    dockPanel: 'Acoplar panel a PoB', undockPanel: 'Separar panel de PoB', dockWaiting: 'Esperando a PoB para acoplar el panel. Haz clic para desactivar.',
     agentLoginCodeLabel: 'Código de autorización', agentLoginCodeNote: 'Pega el código que aparece en el navegador para completar el inicio de sesión.', agentLoginCodeSubmit: 'Completar inicio de sesión', agentLoginCodeInvalid: 'Comprueba el código y vuelve a pegarlo.', agentLoginVerifying: 'Completando el inicio de sesión…',
     connectPob: "Conectar PoB",
     connectionLost: "PoB AI está desconectado. Vuelve a conectar para continuar.", reconnect: "Reconectar", settingFailed: "No se pudo aplicar el cambio. Selecciónalo de nuevo.", settingsOpenFailed: "No se pudo abrir la configuración. Inténtalo de nuevo.", pobOpenFailed: "No se pudo abrir PoB. Revisa su carpeta en la configuración e inténtalo de nuevo.", pobInstallFailed: "No se pudo instalar PoB. Inténtalo de nuevo o conecta una carpeta de PoB existente.", updateFailed: "No se pudo completar la actualización. Inténtalo de nuevo.",
@@ -544,6 +552,7 @@ export const STRINGS = {
     errPathInvalid: 'Elige el archivo .exe, .cmd o .bat de {agent}.',
   },
   'pt-BR': {
+    dockPanel: 'Acoplar painel ao PoB', undockPanel: 'Desacoplar painel do PoB', dockWaiting: 'Aguardando o PoB para acoplar o painel. Clique para desativar.',
     agentLoginCodeLabel: 'Código de autorização', agentLoginCodeNote: 'Cole o código exibido no navegador para concluir o login.', agentLoginCodeSubmit: 'Concluir login', agentLoginCodeInvalid: 'Confira o código e cole novamente.', agentLoginVerifying: 'Concluindo o login…',
     connectPob: "Conectar PoB",
     connectionLost: "PoB AI foi desconectado. Conecte novamente para continuar.", reconnect: "Reconectar", settingFailed: "Não foi possível aplicar a alteração. Selecione-a novamente.", settingsOpenFailed: "Não foi possível abrir as configurações. Tente novamente.", pobOpenFailed: "Não foi possível abrir o PoB. Confira a pasta de instalação nas configurações e tente novamente.", pobInstallFailed: "Não foi possível instalar o PoB. Tente novamente ou conecte uma pasta existente do PoB.", updateFailed: "Não foi possível concluir a atualização. Tente novamente.",
@@ -611,6 +620,7 @@ export const STRINGS = {
     errPathInvalid: 'Escolha o arquivo .exe, .cmd ou .bat do {agent}.',
   },
   th: {
+    dockPanel: 'แนบแผงกับ PoB', undockPanel: 'แยกแผงออกจาก PoB', dockWaiting: 'กำลังรอ PoB เพื่อแนบแผง คลิกเพื่อปิดการแนบ',
     agentLoginCodeLabel: 'รหัสยืนยัน', agentLoginCodeNote: 'วางรหัสที่แสดงในเบราว์เซอร์เพื่อเข้าสู่ระบบให้เสร็จสมบูรณ์', agentLoginCodeSubmit: 'เข้าสู่ระบบให้เสร็จสมบูรณ์', agentLoginCodeInvalid: 'ตรวจสอบรหัสแล้ววางอีกครั้ง', agentLoginVerifying: 'กำลังเข้าสู่ระบบ…',
     connectPob: "เชื่อมต่อ PoB",
     connectionLost: "PoB AI ถูกตัดการเชื่อมต่อ โปรดเชื่อมต่ออีกครั้ง", reconnect: "เชื่อมต่ออีกครั้ง", settingFailed: "ใช้การเปลี่ยนแปลงไม่ได้ โปรดเลือกอีกครั้ง", settingsOpenFailed: "เปิดการตั้งค่าไม่ได้ โปรดลองอีกครั้ง", pobOpenFailed: "เปิด PoB ไม่ได้ โปรดตรวจสอบโฟลเดอร์ติดตั้งในการตั้งค่าแล้วลองอีกครั้ง", pobInstallFailed: "ติดตั้ง PoB ไม่ได้ โปรดลองอีกครั้งหรือเชื่อมต่อโฟลเดอร์ PoB ที่มีอยู่", updateFailed: "อัปเดตไม่สำเร็จ โปรดลองอีกครั้ง",
