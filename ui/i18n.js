@@ -1,6 +1,7 @@
 // Panel strings in the ten supported languages. Game terms come from PoB itself.
 // {agent}, {version} are filled in by the panel.
 import { matchLocale, resolveLocale, normalizeLocalePreference } from './locale.js';
+import { CHARACTER_SYNC_STRINGS } from './character-sync-i18n.js';
 export const LOCALES = {
   en: 'English', ko: '한국어', ja: '日本語', 'zh-Hant': '繁體中文', ru: 'Русский',
   de: 'Deutsch', fr: 'Français', es: 'Español', 'pt-BR': 'Português (Brasil)', th: 'ไทย',
@@ -688,6 +689,8 @@ export const STRINGS = {
     errPathInvalid: 'เลือกไฟล์ .exe, .cmd หรือ .bat ของ {agent}',
   },
 };
+
+for (const [locale, strings] of Object.entries(CHARACTER_SYNC_STRINGS)) Object.assign(STRINGS[locale], strings);
 
 export function detectLocale() {
   return resolveLocale(readPreference(), systemLocale());

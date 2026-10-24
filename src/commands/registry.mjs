@@ -236,6 +236,11 @@ export const COMMANDS = [
 
   // ---- Path of Exile account ----
   { name: 'account.status', summary: 'Whether PoB is signed in to your Path of Exile account', live: true },
+  { name: 'account.sync_context', summary: 'Saved PoB file and account characters available for optional automatic refresh', live: true, timeoutMs: 90000,
+    args: [bool('reload', 'Refresh the account character list')] },
+  { name: 'account.refresh', summary: 'Refresh one character into the same saved PoB file, preserving calculation settings and main skill', live: true, mutates: true, timeoutMs: 150000,
+    args: [str('character', 'Exact account character name', { required: true }), str('file', 'Exact open PoB file', { required: true }),
+      str('characterId', 'Bound character ID'), str('previousHash', 'Previous character snapshot'), str('previousFileHash', 'Previous saved file snapshot')] },
   { name: 'account.login', summary: 'Sign PoB in to Path of Exile (opens your browser to approve)', live: true, timeoutMs: 200000,
     args: [int('timeout', 'Seconds to wait for the approval', { default: 180 })] },
   { name: 'account.characters', summary: 'Characters on your account', live: true, timeoutMs: 90000,

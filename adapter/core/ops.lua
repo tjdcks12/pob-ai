@@ -3,7 +3,7 @@
 local util = dofile(POBAI_ADAPTER .. '/core/util.lua')
 POBAI_UTIL = util
 local ops = {}
-for _, module in ipairs({ 'build', 'tree', 'skills', 'items', 'config', 'calc', 'notes', 'party', 'options', 'account', 'ui' }) do
+for _, module in ipairs({ 'build', 'tree', 'skills', 'items', 'config', 'calc', 'notes', 'party', 'options', 'account', 'character-sync', 'ui' }) do
 	local path = POBAI_ADAPTER .. '/ops/' .. module .. '.lua'
 	if pobai_read_file(path) then dofile(path)(ops, util) end
 end

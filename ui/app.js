@@ -2,6 +2,7 @@ import { LOCALES, locale, localePreference, systemLocale, setLocale, t } from '.
 import { refreshWindowChrome, setPobWindow } from './window.js';
 import { THEMES, THEME_NAMES, resolveTheme } from './themes.js';
 import { normalizeLocalePreference } from './locale.js';
+import { characterSyncSettings } from './character-sync.js';
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -39,6 +40,7 @@ const request = async (method, path, body) => {
 };
 const api = (path, body) => request(body === undefined ? 'GET' : 'POST', path, body);
 const run = (command, args = {}) => api('/api/run', { command, args, lang: locale() });
+const characterSync = settingsView ? characterSyncSettings({ api, t, locale }) : null;
 
 const state = {
   live: false, pobMissing: false, installingPob: false, update: null, providers: [], provider: store.get('pobai.provider', ''), models: {},
@@ -84,6 +86,7 @@ function applyI18n() {
   document.querySelectorAll('[data-suggest]').forEach(el => { el.textContent = t(el.dataset.suggest); });
   document.querySelectorAll('[data-poe2way]').forEach(el => { el.href = `https://www.poe2way.com/${locale()}`; });
   renderThemeCards();
+  characterSync?.render();
   refreshWindowChrome();
   renderStatus();
   renderPobSetup();
@@ -217,6 +220,7 @@ function listenEvents() {
   source.addEventListener('theme', e => { setTheme(JSON.parse(e.data).theme); renderThemeCards(); });
   source.addEventListener('language', e => { setLocale(JSON.parse(e.data).preference); applyI18n(); });
   source.addEventListener('pob-install', () => loadStatus());
+  source.addEventListener('character-sync', e => characterSync?.update(JSON.parse(e.data)));
   source.addEventListener('pob', e => {
     const live = JSON.parse(e.data);
     setPobWindow(live);
@@ -224,6 +228,7 @@ function listenEvents() {
     state.live = live.connected;
     if (state.live) { state.pobMissing = false; state.openingPob = false; clearTimeout(state.openingTimer); }
     renderStatus(); renderPobSetup();
+    if (settingsView) characterSync.load();
   });
   if (settingsView) return;
   source.addEventListener('update', e => showUpdate(JSON.parse(e.data)));
@@ -319,6 +324,7 @@ async function loadStatus() {
   if (localePreference() !== language) { setLocale(language); applyI18n(); }
   if (!settingsView) { showUpdate(reply.update); return; }
   if (!state.pobPathDirty) $('pob-path').value = reply.pob?.dir ?? '';
+  await characterSync.load();
   renderLocaleOptions();
   showUpdate(reply.update);
 }

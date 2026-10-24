@@ -94,6 +94,16 @@
           <div class="set-actions"><button id="pob-install" type="button" class="agent-quiet"><svg class="p-icon"><use href="icons.svg#i-folder-open"/></svg><span data-i18n="installPob"></span></button></div>
         </div>
       </section>
+      <section class="set-section" aria-labelledby="sync-heading">
+        <h3 id="sync-heading" class="set-head" data-i18n="syncTitle"></h3>
+        <p class="set-desc" data-i18n="syncDesc"></p>
+        <div class="set-row"><label class="set-title" for="sync-enabled" data-i18n="syncEnable"></label><input id="sync-enabled" class="switch" type="checkbox" role="switch"></div>
+        <div class="set-row"><label class="set-title" for="sync-character" data-i18n="syncCharacter"></label><div class="set-control"><select id="sync-character"></select></div></div>
+        <div class="set-row"><label class="set-title" for="sync-interval" data-i18n="syncInterval"></label><div class="set-control"><select id="sync-interval"><option value="60">1 min</option><option value="120">2 min</option><option value="300">5 min</option><option value="600">10 min</option></select></div></div>
+        <div class="set-row stacked"><span class="set-title" data-i18n="syncFile"></span><span id="sync-file" class="set-desc sync-file"></span><p id="sync-status" class="set-desc" role="status"></p>
+          <div class="set-actions sync-actions"><button id="sync-list" type="button" data-i18n="syncList"></button><button id="sync-now" type="button" data-i18n="syncNow"></button></div>
+        </div>
+      </section>
       <section class="set-section">
         <h3 class="set-head" data-i18n="sectionAgents"></h3>
         <div id="agent-rows"></div>

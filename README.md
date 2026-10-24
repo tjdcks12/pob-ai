@@ -27,13 +27,17 @@ English · [한국어](README.ko.md)
 
 ## Why
 
+In PoB AI settings, **Character refresh** binds a chosen account character to the currently saved PoB file. Pick a 1, 2, 5 or 10 minute interval and turn on **Automatic refresh** (off by default). It refreshes passives, jewels, equipment and skills, preserves the main skill and calculation settings, then saves the same file. Unsaved edits, another open file or sign-out pause refresh. A missing or ambiguous main skill leaves the previous build intact and requires a manual import. The previous file is backed up under `%LOCALAPPDATA%\pob-ai\backups\character-sync`. Keep PoB open through PoB AI and signed in; refresh uses the character snapshot available on the game server.
+
+In poe2way desktop, load that same XML file and enable **Settings → PoB → Automatically reload changed save file** (also off by default). It checks every five seconds and updates the current build and open Alt+E comparison.
+
 Path of Building is the most precise tool for Path of Exile 2 builds, and it takes years to learn
 where everything lives. PoB AI lets an AI agent do the clicking for you, through a complete
 command line, so every step is real PoB work you can see, undo and save.
 
 - **Download once.** PoB AI attaches to the Path of Building you already have, without changing a
   single PoB file. PoB keeps updating itself and PoB AI follows; PoB AI updates itself with one click.
-- **The whole editor from the command line.** 142 commands cover builds and folders, loadouts,
+- **The whole editor from the command line.** 144 commands cover builds and folders, loadouts,
   character import, passive tree, skills and gems, items (crafting, anoints, runes, corruption),
   trade searches, configuration, calculations, party, notes and PoB's own options.
 - **It shows you where.** Ask "where do I set the enemy type?" and the agent switches PoB to the

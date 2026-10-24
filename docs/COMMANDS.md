@@ -853,6 +853,26 @@ Change a PoB option (saved in the PoB window)
 
 Whether PoB is signed in to your Path of Exile account *(needs the PoB window)*
 
+### `pob account sync-context`
+
+Saved PoB file and account characters available for optional automatic refresh *(needs the PoB window)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--reload` | boolean | Refresh the account character list |
+
+### `pob account refresh`
+
+Refresh one character into the same saved PoB file, preserving calculation settings and main skill *(needs the PoB window)* *(changes the build)*
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `--character` (required) | string | Exact account character name |
+| `--file` (required) | string | Exact open PoB file |
+| `--character-id` | string | Bound character ID |
+| `--previous-hash` | string | Previous character snapshot |
+| `--previous-file-hash` | string | Previous saved file snapshot |
+
 ### `pob account login`
 
 Sign PoB in to Path of Exile (opens your browser to approve) *(needs the PoB window)*

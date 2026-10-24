@@ -22,6 +22,7 @@ import { systemLocale, windowLocale } from '../i18n/system-locale.mjs';
 import { normalizeLocalePreference } from '../../ui/locale.js';
 import { resolveTheme } from '../../ui/themes.js';
 import { listenHttp } from './http-port.mjs';
+import { CharacterSync } from './character-sync.mjs';
 
 const UI_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../ui');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -65,6 +66,8 @@ export async function createService({ port, log = line => process.stderr.write(`
     return openSettingsPanel(service.url, { ownerPid: Number.isSafeInteger(ownerPid) && ownerPid > 0 ? ownerPid : 0, focus: focus === 'pob-path' ? focus : undefined });
   };
   runtime.service = service;
+  const characterSync = new CharacterSync({ runtime, broadcast });
+  service.characterSync = characterSync;
   service.openPob = (options = {}) => {
     if (bridge.connected) return { alreadyOpen: true, ...bridge.info };
     if (service.pobProcess?.exitCode === null && !service.pobProcess.signalCode) return { opening: true, pid: service.pobProcess.pid };
@@ -185,6 +188,14 @@ export async function createService({ port, log = line => process.stderr.write(`
   async function api(req, res, url) {
     const route = `${req.method} ${url.pathname}`;
     if (route === 'GET /api/health') return send(res, 200, { ok: true });
+    if (route === 'GET /api/character-sync') return send(res, 200, { ok: true, ...characterSync.status() });
+    if (route === 'GET /api/character-sync/context') return send(res, 200, { ok: true, ...await characterSync.context(url.searchParams.get('reload') === '1') });
+    if (route === 'POST /api/character-sync' || route === 'POST /api/character-sync/refresh') {
+      try {
+        const status = route.endsWith('/refresh') ? await characterSync.refresh() : await characterSync.configure(await readBody(req));
+        return send(res, 200, { ok: true, ...status });
+      } catch (error) { return send(res, 200, { ok: false, error: { code: error.code ?? 'REFRESH_FAILED' } }); }
+    }
     if (route === 'POST /api/settings/open') {
       const body = await readBody(req);
       const result = await service.openSettings(body.focus);
@@ -237,7 +248,7 @@ export async function createService({ port, log = line => process.stderr.write(`
 
   try { await listenHttp(server, port ?? previous.port ?? 0, { fixed: Boolean(port), log }); }
   catch (error) {
-    atlas.close(); agents.close(); runtime.close(); bridge.close();
+    characterSync.close(); atlas.close(); agents.close(); runtime.close(); bridge.close();
     throw error;
   }
   service.port = server.address().port;
@@ -253,6 +264,7 @@ export async function createService({ port, log = line => process.stderr.write(`
   }
   service.close = () => {
     service.closed = true;
+    characterSync.close();
     atlas.close();
     agents.close();
     runtime.close();
