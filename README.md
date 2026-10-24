@@ -244,8 +244,9 @@ Local PoB and WebView2 checks cover all six themes, unchanged calculation result
 switches, separate AI/settings windows, chat drafts, and compact layouts. Real PoE account import,
 Windows 10, multiple monitors and Windows display scaling still need manual verification.
 Antigravity 1.4.7 was also checked against a local response server for its native image/tool protocol,
-model/effort selection and conversation resumption. A real Google OAuth completion and paid model
-responses have not been tested.
+model/effort selection and conversation resumption. The local Google sign-in state and a live
+Korean response were verified. When Auto mode is unavailable for an account, command execution
+requires an explicit permission choice; the panel's permission-recovery flow was verified too.
 
 ## Development
 
