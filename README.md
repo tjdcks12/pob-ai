@@ -182,6 +182,7 @@ One language selection in Settings applies to the panel and PoB window together.
 | **PoB window** | `pob ui language ko` (or the settings modal): English, 한국어, 日本語, 繁體中文, Русский, Deutsch, Français, Español, Português (Brasil), ไทย. Official names from the game client; about 2,000 PoB interface phrases translated by PoB AI. |
 | **Agent and commands** | Answers in your language; game names are accepted and returned in it (`--lang`). |
 | **Items** | Text copied from the game client in any of the ten languages is converted for PoB. Lines that cannot be converted are reported, never dropped silently. |
+| **Item display** | Lists, unique names, bases, modifier ranges and flavour text use official game translations. Tooltip text is translated before wrapping; missing or ambiguous matches stay in English, and PoB's unsupported-modifier warning remains visible. Display translation does not change item data or calculations. |
 | **Themes** | PoB original, Dark, Light, Ocean, Forest and Sand (`pob ui theme pob\|dark\|light\|ocean\|forest\|sand`). One choice in Settings applies to the panel and PoB window together, and is used the next time PoB opens if it is closed. New installations start with PoB original. Custom themes use Pretendard and responsive calculation tables while keeping PoB's category colours. |
 | **Panel window** | A separate Edge WebView2 window with the poe2way logo, one draggable header and custom minimize/maximize/close controls. Windows supplies the Evergreen WebView2 Runtime; the normal Edge app is a fallback. Local source checkouts build the small window shell on first launch, or with `npm run build:panel`. |
 
@@ -234,10 +235,10 @@ Chats go to the agent you chose, under its own terms.
 
 ## Status
 
-This README describes v0.2.4, including Antigravity and its authorization-code sign-in flow.
+This README describes v0.2.5, including expanded official item and modifier translations.
 Download the release ZIP from [GitHub Releases](https://github.com/tjdcks12/pob-ai/releases/latest).
 Compatibility has been checked on Windows 11 with PoB PoE2 0.22.0 and 0.23.1. The current suite
-has **165 passing tests**, covering editor operations, agent sessions, login, permissions and failure diagnostics, language selection, shared
+has **173 passing tests**, covering editor operations, agent sessions, login, permissions and failure diagnostics, item and modifier translation, language selection, shared
 theme persistence, popup rendering and updates.
 
 Local PoB and WebView2 checks cover all six themes, unchanged calculation results across theme

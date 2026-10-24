@@ -1,6 +1,7 @@
 // Refreshes the game text PoB AI bundles after a game patch:
 //   data/items/  item language packs and name tables, the same files poe2way-overlay ships
 //   data/terms/  official names per language (rebuilt by build-terms.mjs)
+//   data/window-game-text/ complete official modifier/flavour text for display (read-only GGPK)
 //
 //   node scripts/sync-game-data.mjs <poe2way-overlay folder> <poe2way folder>
 //
@@ -47,6 +48,7 @@ for (const name of fs.readdirSync(packsTo)) {
 }
 
 execFileSync(process.execPath, [path.join(root, 'scripts', 'build-terms.mjs'), '--passives', passives], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(root, 'scripts', 'extract-window-game-text.mjs'), web, ...process.argv.slice(4)], { stdio: 'inherit' });
 
 console.log(changed.length ? `Updated:\n  ${changed.join('\n  ')}` : 'data/items is already up to date.');
-console.log('Next: npm test, then commit data/items and data/terms.');
+console.log('Next: npm test, then commit data/items, data/terms and data/window-game-text.');

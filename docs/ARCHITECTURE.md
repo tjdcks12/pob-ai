@@ -82,6 +82,16 @@ the game client data (`data/terms`, `data/items`) and PoB's interface text trans
 `data/ui/<language>.json` (extracted with `scripts/extract-ui-strings.mjs`); text with no
 translation is drawn as before.
 
+Item list rows translate the unique/template name and base separately. Numeric modifier text uses
+the complete official CSD from `data/window-game-text`, joined by description ID, conditions and
+value handlers. Display slots retain their signs, roll ranges, precision and colours; no numeric
+calculation or item input changes. General item descriptions take precedence over passive-only
+wording; other conflicting meanings and unsupported handlers keep their English text. Tooltip
+prose translates before PoB wraps it, with its unsupported-calculation warning preserved.
+`scripts/extract-window-game-text.mjs <poe2way folder> [--ggpk <Content.ggpk>]` reuses poe2way's
+read-only GGPK extractor and records member/pack hashes. `sync-game-data.mjs` also refreshes it;
+release builds use the bundled ten-language files and never require an installed game client.
+
 `adapter/live/theme.lua` recolours the window by mapping the colours passed to `SetDrawColor`,
 the colour codes inside text and the clear colour.
 
