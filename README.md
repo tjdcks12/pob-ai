@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/poe2way-logo.svg" width="88" height="88" alt="PoB AI (poe2way logo)">
+<img src="ui/icon.svg" width="88" height="88" alt="PoB AI">
 
 # PoB AI
 
