@@ -159,7 +159,7 @@ class Driver {
         Application.DoEvents(); var original = owner.Bounds;
         dock.SetEnabled(true); dock.Sync(); Check(dock.Attached, "full width target attaches"); Inside(panel, owner);
         Check(owner.Bounds == original, "outer frame stays unchanged");
-        dock.Width=460; dock.Sync(); Check(panel.Width==460, "splitter can change pane width");
+        dock.Width=460; dock.Sync(); Check(panel.Width==460, "splitter can change pane width: actual=" + panel.Width + " ownerClient=" + owner.ClientSize + " requested=" + dock.Width + " ownerState=" + owner.WindowState);
         dock.SetEnabled(false); Application.DoEvents(); Check(owner.Bounds == original, "detaching restores unmodified owner placement");
         dock.SetEnabled(true); dock.SetTarget(IntPtr.Zero); Check(dock.Enabled && !dock.Attached && panel.Bounds == floating, "disconnect floats panel while remembering preference");
         dock.SetTarget(owner.Handle); Check(dock.Attached, "reattaches after reconnect");
