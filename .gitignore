@@ -2,6 +2,7 @@ node_modules/
 .state/
 *.log
 test/artifacts/
+/artifacts/
 dist/
 desktop/bin/
 PoB AI.exe
