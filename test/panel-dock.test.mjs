@@ -149,7 +149,14 @@ class Driver {
         ShowWindow(owner.Handle, 6); Application.DoEvents(); dock.Sync();
         dock.ActivateOwner(); Application.DoEvents(); dock.Sync(); Check(panel.Visible, "activation restores the minimized owner and panel"); Inside(panel, owner);
         dock.SetEnabled(false); Check(!dock.Attached && panel.Bounds == floating, "detaching restores floating placement");
-        owner.Bounds = area; Application.DoEvents(); var original = owner.Bounds;
+        owner.ClientSize = new Size(900, 650); Application.DoEvents();
+        dock.SetEnabled(true); dock.Sync();
+        Check(!dock.Attached && panel.Bounds == floating, "a narrow owner keeps chat floating instead of covering the build");
+        dock.SetEnabled(false);
+        // Hosted Windows runners can have only a 1024px desktop: the layout assertion needs
+        // enough client space for both minimum widths, independently of monitor resolution.
+        owner.Bounds = new Rectangle(area.Left, area.Top, Math.Max(1320, area.Width), Math.Max(800, area.Height));
+        Application.DoEvents(); var original = owner.Bounds;
         dock.SetEnabled(true); dock.Sync(); Check(dock.Attached, "full width target attaches"); Inside(panel, owner);
         Check(owner.Bounds == original, "outer frame stays unchanged");
         dock.Width=460; dock.Sync(); Check(panel.Width==460, "splitter can change pane width");
