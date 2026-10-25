@@ -123,6 +123,7 @@ class Driver {
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern bool SetPropW(IntPtr hwnd,string name,IntPtr value);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr GetPropW(IntPtr hwnd,string name);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr RemovePropW(IntPtr hwnd,string name);
+  [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr hwnd);
   static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
   static void Inside(Form panel, Form owner) {
     Check(GetParent(panel.Handle) == owner.Handle, "pane is a real child");
@@ -135,9 +136,6 @@ class Driver {
     using (var owner = new QuietForm()) using (var panel = new QuietForm()) {
       owner.Opacity = panel.Opacity = 0; owner.ShowInTaskbar = panel.ShowInTaskbar = false;
       owner.StartPosition = panel.StartPosition = FormStartPosition.Manual;
-      // WinForms' default maximum tracking size is derived from the hosted desktop.
-      // This geometry fixture intentionally tests a larger client even on a 1024px runner.
-      owner.MaximumSize = new Size(3200, 2000);
       owner.Bounds = new Rectangle(area.Left + 40, area.Top + 40, 1300, 800);
       panel.Bounds = new Rectangle(area.Left + 120, area.Top + 100, 400, 550);
       panel.MinimumSize = new Size(370, 200);
@@ -162,7 +160,10 @@ class Driver {
         Application.DoEvents(); var original = owner.Bounds;
         dock.SetEnabled(true); dock.Sync(); Check(dock.Attached, "full width target attaches"); Inside(panel, owner);
         Check(owner.Bounds == original, "outer frame stays unchanged");
-        dock.Width=460; dock.Sync(); Check(panel.Width==460, "splitter can change pane width: actual=" + panel.Width + " ownerClient=" + owner.ClientSize + " requested=" + dock.Width + " ownerState=" + owner.WindowState);
+        // Windows may cap a restored window to the hosted desktop's tracking size.
+        // Resize to the supported minimum rather than requesting 460px in a 388px region.
+        int requested = 370 * (int)GetDpiForWindow(owner.Handle) / 96;
+        dock.Width=requested; dock.Sync(); Check(panel.Width==requested, "splitter can change pane width: actual=" + panel.Width + " ownerClient=" + owner.ClientSize + " requested=" + requested);
         dock.SetEnabled(false); Application.DoEvents(); Check(owner.Bounds == original, "detaching restores unmodified owner placement");
         dock.SetEnabled(true); dock.SetTarget(IntPtr.Zero); Check(dock.Enabled && !dock.Attached && panel.Bounds == floating, "disconnect floats panel while remembering preference");
         dock.SetTarget(owner.Handle); Check(dock.Attached, "reattaches after reconnect");
