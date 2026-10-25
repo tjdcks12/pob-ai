@@ -63,6 +63,7 @@ local comctl = ffi.load('comctl32')
 local kernel32 = ffi.load('kernel32')
 local glfw = ffi.load('glfw3')
 local panel = dofile(POBAI_ADAPTER .. '/live/panel.lua')
+local dock = dofile(POBAI_ADAPTER .. '/live/dock.lua')
 
 local WM = { CLOSE = 0x0010, GETMINMAXINFO = 0x0024, NCCALCSIZE = 0x0083, NCHITTEST = 0x0084, NCLBUTTONDOWN = 0x00A1,
 	NCLBUTTONUP = 0x00A2, NCLBUTTONDBLCLK = 0x00A3, SYSCOMMAND = 0x0112, NCMOUSELEAVE = 0x02A2 }
@@ -80,6 +81,7 @@ local raw = {}
 local function log(text) if pobai_log then pobai_log('title bar: ' .. tostring(text)) end end
 local function scale() return GetScreenScale and GetScreenScale() or 1 end
 local function barPx() return math.floor(S.bar * scale() + 0.5) end
+local function dockWidth(w) return dock.width(w, barPx()) end
 
 -- ===== Window procedure (runs inside Windows' message dispatch) =====
 local function frameInset(h)
@@ -168,7 +170,8 @@ local function wndProc(h, msg, wp, lp)
 		local result = comctl.DefSubclassProc(h, msg, wp, lp)
 		local mmi = ffi.cast('POBAI_MINMAXINFO*', lp)
 		local fw, fh = frameSize(h)
-		mmi.minTrackSize.x = math.max(1, mmi.minTrackSize.x - fw)
+		local width = raw.GetScreenSize and raw.GetScreenSize() or 1
+		mmi.minTrackSize.x = math.max(1, mmi.minTrackSize.x - fw) + dockWidth(width)
 		mmi.minTrackSize.y = math.max(1, mmi.minTrackSize.y - fh + barPx())
 		return result
 	end
@@ -342,13 +345,13 @@ local function wrapGlobals()
 		if x == nil then
 			local s = scale()
 			local sw, sh = raw.GetScreenSize()
-			return raw.SetViewport(0, S.bar, sw / s, (sh - barPx()) / s)
+			return raw.SetViewport(0, S.bar, (sw - dockWidth(sw)) / s, (sh - barPx()) / s)
 		end
 		return raw.SetViewport(x, y + S.bar, w, h)
 	end
 	wrappers.GetScreenSize = function()
 		local w, h = raw.GetScreenSize()
-		return w, h - barPx()
+		return math.max(1, w - dockWidth(w)), h - barPx()
 	end
 	wrappers.GetCursorPos = function()
 		local x, y = raw.GetCursorPos()
@@ -465,6 +468,7 @@ local function install()
 	S.subclassed = true
 	wrapGlobals()
 	window.active = true
+	dock.install(h, barPx())
 	if zoomed then
 		setPos(h, 0, 0, 0, 0, SWP.NOMOVE + SWP.NOSIZE + SWP.NOZORDER + SWP.NOACTIVATE + SWP.FRAMECHANGED)
 	else
@@ -477,6 +481,7 @@ jit.off(install)
 --- current area (used when the bar fails while PoB keeps running; at exit the window is left as
 --- it is so PoB saves the size the user saw).
 local function remove(restoreFrame)
+	dock.uninstall()
 	window.active = false
 	unwrapGlobals()
 	local h = S.hwnd

@@ -11,6 +11,8 @@ export function setPobWindow(live) {
 }
 export function refreshWindowChrome() {
   if (!host) return;
+  document.documentElement.dataset.dock = attached ? 'attached' : 'floating';
+  document.querySelector('.window-controls').hidden = attached;
   const button = document.getElementById('window-maximize');
   button.title = t(maximized ? 'restore' : 'maximize');
   button.setAttribute('aria-label', button.title);

@@ -42,6 +42,16 @@ export async function openPanel(url, { ownerPid = 0, replace = false } = {}) {
     finally { building = null; }
   }
   if (!fs.existsSync(host)) return browserPanel(url);
+  if (!ownerPid) {
+    // Choose the native DPI context before the host creates any HWND/WebView2 controls.
+    try {
+      const target = new URL(url), token = target.searchParams.get('token');
+      const status = await fetch(new URL('/api/status', target), {
+        headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(2000),
+      }).then(r => r.json());
+      if (status.live?.connected && Number.isSafeInteger(status.live.pid)) ownerPid = status.live.pid;
+    } catch { /* the panel can still open while PoB reconnects */ }
+  }
   const args = [url, statePath('panel-webview')];
   if (Number.isSafeInteger(ownerPid) && ownerPid > 0) args.push('', '', String(ownerPid));
   const child = spawn(host, args, { detached: true, stdio: 'ignore' });
@@ -61,18 +71,20 @@ using System.Text;
 public static class PoBAIPanelRestart {
   private delegate bool EnumProc(IntPtr hwnd, IntPtr data);
   [DllImport("user32.dll")] private static extern bool EnumWindows(EnumProc callback, IntPtr data);
+  [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, EnumProc callback, IntPtr data);
   [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int count);
   [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hwnd, uint message, IntPtr wp, IntPtr lp);
   public static void Close(uint pid) {
-    EnumWindows((hwnd, data) => {
+    EnumProc close = (hwnd, data) => {
       uint windowPid; GetWindowThreadProcessId(hwnd, out windowPid);
       if (windowPid == pid) {
         var title = new StringBuilder(256); GetWindowText(hwnd, title, title.Capacity);
         if (title.ToString() == "PoB AI" || title.ToString() == "PoB AI Settings") PostMessage(hwnd, 0x10, IntPtr.Zero, IntPtr.Zero);
       }
       return true;
-    }, IntPtr.Zero);
+    };
+    EnumWindows((hwnd, data) => { close(hwnd, data); EnumChildWindows(hwnd, close, data); return true; }, IntPtr.Zero);
   }
 }
 '@

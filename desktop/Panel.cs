@@ -26,6 +26,8 @@ internal sealed class AgentWindow : Form
     private readonly IntPtr ownerHandle;
     private PanelDock dock;
     private bool dockPreference;
+    private int dockWidth;
+    private bool resizingDock;
     private bool ready;
     private const int Frame = 4;
 
@@ -39,6 +41,10 @@ internal sealed class AgentWindow : Form
     private static extern bool EnableWindow(IntPtr hwnd, bool enabled);
     [DllImport("user32.dll")]
     private static extern bool IsWindowEnabled(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern IntPtr GetWindowDpiAwarenessContext(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, EntryPoint="GetPropW")]
+    private static extern IntPtr GetProp(IntPtr hwnd, string name);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
     private static extern int GetWindowStyle(IntPtr hwnd, int index);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -57,7 +63,7 @@ internal sealed class AgentWindow : Form
         bool settings = Array.Exists(url.Query.TrimStart('?').Split('&'), part => part == "view=settings");
         IntPtr owner = IntPtr.Zero;
         int ownerPid;
-        if (settings && args.Length > 4 && int.TryParse(args[4], out ownerPid))
+        if (args.Length > 4 && int.TryParse(args[4], out ownerPid))
         {
             owner = PobHandle(ownerPid);
         }
@@ -69,10 +75,14 @@ internal sealed class AgentWindow : Form
         {
             if (!single.IsOwner)
             {
+                var pane = owner != IntPtr.Zero ? GetProp(owner, PanelDock.PaneProperty) : IntPtr.Zero;
+                if (!settings && pane != IntPtr.Zero) PostMessage(pane, PanelDock.FocusMessage, IntPtr.Zero, IntPtr.Zero);
                 PostMessage(new IntPtr(0xffff), RegisterWindowMessage("PoBAI.Panel.Activate." + identity), IntPtr.Zero, IntPtr.Zero);
                 return;
             }
             SetCurrentProcessExplicitAppUserModelID("PoBAI.AgentPanel");
+            // Every HWND, including WebView2, must be born in the same context as the parent.
+            if (owner != IntPtr.Zero) SetThreadDpiAwarenessContext(GetWindowDpiAwarenessContext(owner));
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             string snapshot = args.Length > 2 && args[2] != "" ? args[2] : null;
@@ -121,6 +131,8 @@ internal sealed class AgentWindow : Form
         if (!settings)
         {
             dock = new PanelDock(this, SendState);
+            if (dockWidth > 0) dock.Width = dockWidth;
+            dock.SetTarget(owner);
             dock.SetEnabled(dockPreference);
         }
     }
@@ -254,13 +266,14 @@ internal sealed class AgentWindow : Form
 
     private void ThemeFrame()
     {
-        int dark = BackColor.GetBrightness() > .5 ? 0 : 1, rounded = 2;
+        int dark = BackColor.GetBrightness() > .5 ? 0 : 1, rounded = dock != null && dock.Attached ? 1 : 2;
         DwmSetWindowAttribute(Handle, 20, ref dark, 4);
         DwmSetWindowAttribute(Handle, 33, ref rounded, 4);
     }
 
     private void SendState()
     {
+        if (IsHandleCreated) ThemeFrame();
         if (ready && !IsDisposed)
             web.CoreWebView2.PostWebMessageAsJson(json.Serialize(new {
                 kind = "window-state", maximized = WindowState == FormWindowState.Maximized,
@@ -283,14 +296,21 @@ internal sealed class AgentWindow : Form
 
     protected override void WndProc(ref Message m)
     {
+        if (dock != null && m.Msg == PanelDock.ReleaseMessage) { dock.ReleaseTarget(); return; }
+        if (dock != null && m.Msg == PanelDock.FocusMessage)
+        {
+            dock.ActivateOwner(); web.Focus(); return;
+        }
         if (m.Msg == activateMessage && activateMessage != 0)
         {
             if (dock != null) dock.ActivateOwner();
             if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
             Show();
-            SetForegroundWindow(Handle);
+            if (dock == null || !dock.Attached) SetForegroundWindow(Handle);
+            web.Focus();
             return;
         }
+        if (dock != null && dock.Attached && m.Msg == 0x84) { m.Result = new IntPtr(1); return; }
         if (m.Msg == 0x83) { m.Result = IntPtr.Zero; return; } // WM_NCCALCSIZE: all client area
         if (m.Msg == 0x84 && WindowState == FormWindowState.Normal) // WM_NCHITTEST, outside WebView's 4px gutter
         {
@@ -310,6 +330,7 @@ internal sealed class AgentWindow : Form
         {
             var saved = json.Deserialize<Placement>(File.ReadAllText(Path.Combine(profile, settingsView ? "settings-window.json" : "window.json")));
             dockPreference = saved.Docked;
+            dockWidth = saved.DockWidth;
             var rect = new Rectangle(saved.X, saved.Y, Math.Max(settingsView ? 430 : 370, saved.Width), Math.Max(500, saved.Height));
             foreach (var screen in Screen.AllScreens)
                 if (Rectangle.Intersect(screen.WorkingArea, rect).Width >= 100 && Rectangle.Intersect(screen.WorkingArea, rect).Height >= 100)
@@ -332,7 +353,8 @@ internal sealed class AgentWindow : Form
         try
         {
             File.WriteAllText(Path.Combine(profile, settingsView ? "settings-window.json" : "window.json"), json.Serialize(new Placement {
-                X = bounds.X, Y = bounds.Y, Width = bounds.Width, Height = bounds.Height, Docked = dock != null && dock.Enabled
+                X = bounds.X, Y = bounds.Y, Width = bounds.Width, Height = bounds.Height, Docked = dock != null && dock.Enabled,
+                DockWidth = dock != null ? dock.Width : 0
             }));
         }
         catch (IOException) { }
@@ -343,6 +365,27 @@ internal sealed class AgentWindow : Form
     {
         ready = false;
         base.OnFormClosing(e);
+    }
+
+    protected override void OnMouseDown(MouseEventArgs e)
+    {
+        if (dock != null && dock.Attached && e.Button == MouseButtons.Left && e.X < Frame)
+        { resizingDock = true; Capture = true; }
+        base.OnMouseDown(e);
+    }
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        if (dock != null && dock.Attached)
+        {
+            Cursor = resizingDock || e.X < Frame ? Cursors.SizeWE : Cursors.Default;
+            if (resizingDock) dock.ResizeFromScreenX(PointToScreen(e.Location).X);
+        }
+        base.OnMouseMove(e);
+    }
+    protected override void OnMouseUp(MouseEventArgs e)
+    {
+        if (resizingDock) { resizingDock = false; Capture = false; SavePlacement(); }
+        base.OnMouseUp(e);
     }
 
     private async Task CaptureVerification()
@@ -390,7 +433,7 @@ internal sealed class AgentWindow : Form
         if (verification != null) BeginInvoke(new Action(Close));
     }
 
-    private sealed class Placement { public int X, Y, Width, Height; public bool Docked; }
+    private sealed class Placement { public int X, Y, Width, Height, DockWidth; public bool Docked; }
     private sealed class WindowOwner : IWin32Window
     {
         public IntPtr Handle { get; private set; }

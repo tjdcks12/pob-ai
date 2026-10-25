@@ -3,19 +3,24 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-// Keeps a separate panel beside PoB without reparenting either process or recreating the webview.
+// Lua reserves the viewport; this HWND occupies that space under PoB's shared caption.
 internal sealed class PanelDock : IDisposable
 {
+    internal const string HostProperty = "PoBAI.DockHost.v1", WidthProperty = "PoBAI.DockWidth.v1", PaneProperty = "PoBAI.DockPane.v1";
+    internal static readonly uint ReleaseMessage = RegisterWindowMessage("PoBAI.Dock.Release.v1");
+    internal static readonly uint FocusMessage = RegisterWindowMessage("PoBAI.Dock.Focus.v1");
     private readonly Form panel;
     private readonly Action changed;
-    private readonly Timer timer = new Timer { Interval = 120 };
-    private IntPtr target;
+    private readonly Timer timer = new Timer { Interval = 80 };
+    private IntPtr target, style, exStyle;
     private uint targetPid;
-    private Rectangle floating, lastOwner;
-    private Placement originalOwner;
-    private bool restoreOwner, savedOwner, hiddenByDock, disposing;
+    private Rectangle floating;
+    private Size minimum;
+    private Padding padding;
+    private bool clipAdded, releasing;
     internal bool Enabled { get; private set; }
     internal bool Attached { get; private set; }
+    internal int Width { get; set; }
     internal Rectangle FloatingBounds { get { return Enabled ? floating : NormalBounds(); } }
 
     internal PanelDock(Form panel, Action changed)
@@ -23,6 +28,7 @@ internal sealed class PanelDock : IDisposable
         this.panel = panel;
         this.changed = changed;
         floating = NormalBounds();
+        Width = panel.Width;
         timer.Tick += (s, e) => Sync();
         timer.Start();
     }
@@ -37,13 +43,7 @@ internal sealed class PanelDock : IDisposable
             Enabled = true;
             Sync();
         }
-        else
-        {
-            Enabled = false;
-            ReleaseTarget();
-            panel.WindowState = FormWindowState.Normal;
-            panel.Bounds = floating;
-        }
+        else { Enabled = false; ReleaseTarget(); }
         changed();
     }
 
@@ -51,137 +51,120 @@ internal sealed class PanelDock : IDisposable
     {
         if (target == handle) { Sync(); return; }
         ReleaseTarget();
-        if (Enabled) panel.Bounds = floating;
         target = handle;
         targetPid = 0;
         if (target != IntPtr.Zero) GetWindowThreadProcessId(target, out targetPid);
         Sync();
     }
 
-    private Rectangle NormalBounds()
-    {
-        return panel.WindowState == FormWindowState.Normal ? panel.Bounds : panel.RestoreBounds;
-    }
-
-    // Prefer the right side, then the left. A maximized/full-width PoB gets room on the right.
-    internal static Rectangle PanelBounds(Rectangle owner, Rectangle area, int width)
-    {
-        int x = owner.Right + width <= area.Right ? owner.Right : owner.Left - width;
-        return new Rectangle(x, owner.Top, width, owner.Height);
-    }
-
-    internal static Rectangle MakeRoom(Rectangle owner, Rectangle area, int width)
-    {
-        if ((owner.Right >= area.Left && owner.Right + width <= area.Right)
-            || (owner.Left <= area.Right && owner.Left - width >= area.Left)) return owner;
-        int height = Math.Min(owner.Height, area.Height);
-        return new Rectangle(area.Left, Math.Max(area.Top, Math.Min(owner.Top, area.Bottom - height)), area.Width - width, height);
-    }
+    private Rectangle NormalBounds() { return panel.WindowState == FormWindowState.Normal ? panel.Bounds : panel.RestoreBounds; }
 
     internal void Sync()
     {
-        if (!Enabled || panel.IsDisposed) return;
+        if (!Enabled || panel.IsDisposed || releasing) return;
         uint pid;
-        if (target == IntPtr.Zero || !IsWindow(target) || GetWindowThreadProcessId(target, out pid) == 0 || pid != targetPid)
-        {
-            if (Attached || hiddenByDock) { ReleaseTarget(); panel.Bounds = floating; }
-            return;
-        }
-        if (IsIconic(target) || !IsWindowVisible(target))
-        {
-            if (panel.Visible) { hiddenByDock = true; panel.Hide(); }
-            return;
-        }
-        if (hiddenByDock) { hiddenByDock = false; ShowWindow(panel.Handle, 4); } // SW_SHOWNOACTIVATE
-        NativeRect native;
-        if (!GetWindowRect(target, out native)) return;
-        var owner = native.Rectangle;
-        var area = Screen.FromHandle(target).WorkingArea;
-        // Keep both windows useful on narrow displays instead of shrinking PoB below 640px.
-        int width = Math.Min(Math.Max(panel.MinimumSize.Width, panel.Width), area.Width - 640);
-        if (width < panel.MinimumSize.Width) { ReleaseTarget(); panel.Bounds = floating; return; }
+        if (target == IntPtr.Zero || !IsWindow(target) || GetWindowThreadProcessId(target, out pid) == 0 || pid != targetPid
+            || GetProp(target, HostProperty) == IntPtr.Zero)
+        { ReleaseTarget(); return; }
+        if (IsIconic(target)) return;
+        NativeRect client;
+        if (!GetClientRect(target, out client)) return;
+        int bar = GetProp(target, HostProperty).ToInt32();
+        int dpi = (int)GetDpiForWindow(target);
+        int minWidth = 370 * dpi / 96, minContent = 640 * dpi / 96;
+        int width = Math.Min(Math.Max(minWidth, Width), client.Right - minContent);
+        if (width < minWidth || client.Bottom <= bar) { ReleaseTarget(); return; }
         if (!Attached)
         {
-            originalOwner = new Placement { length = Marshal.SizeOf(typeof(Placement)) };
-            savedOwner = GetWindowPlacement(target, ref originalOwner);
-            restoreOwner = false;
+            var other = GetProp(target, PaneProperty);
+            if (other != IntPtr.Zero && other != panel.Handle && IsWindow(other)) return;
+            // Mismatched awareness in cross-process SetParent can reset the child's process.
+            // Main creates the panel in PoB's DPI context; never attempt an unsafe match.
+            if (!AreDpiAwarenessContextsEqual(GetWindowDpiAwarenessContext(target), GetWindowDpiAwarenessContext(panel.Handle))) return;
+            style = GetWindowLongPtr(panel.Handle, -16); exStyle = GetWindowLongPtr(panel.Handle, -20);
+            minimum = panel.MinimumSize; padding = panel.Padding;
+            panel.MinimumSize = Size.Empty;
+            panel.Padding = new Padding(4, 0, 0, 0);
+            SetWindowLongPtr(panel.Handle, -16, new IntPtr((style.ToInt64() & ~0x80cf0000L) | 0x40000000L));
+            SetWindowLongPtr(panel.Handle, -20, new IntPtr(exStyle.ToInt64() & ~0x00040300L));
+            SetParent(panel.Handle, target);
+            if (GetParent(panel.Handle) != target) { RestorePanel(); return; }
+            clipAdded = (GetWindowLongPtr(target, -16).ToInt64() & 0x02000000L) == 0;
+            if (clipAdded) SetWindowLongPtr(target, -16, new IntPtr(GetWindowLongPtr(target, -16).ToInt64() | 0x02000000L));
+            SetProp(target, PaneProperty, panel.Handle);
             Attached = true;
             changed();
         }
-        else if (owner != lastOwner) restoreOwner = false;
-        var adjusted = MakeRoom(owner, area, width);
-        if (adjusted != owner)
-        {
-            if (IsZoomed(target)) ShowWindow(target, 9); // SW_RESTORE before assigning normal bounds
-            SetWindowPos(target, IntPtr.Zero, adjusted.X, adjusted.Y, adjusted.Width, adjusted.Height, 0x0014);
-            if (GetWindowRect(target, out native)) owner = native.Rectangle;
-            if (lastOwner.IsEmpty) restoreOwner = savedOwner;
-        }
-        lastOwner = owner;
-        // PoB may enforce its own minimum width, or run at a higher integrity level.
-        // Keep the panel on screen if Windows could not make enough room beside it.
-        if (owner.Right + width > area.Right && owner.Left - width < area.Left)
-        {
-            ReleaseTarget();
-            panel.Bounds = floating;
-            return;
-        }
-        var bounds = PanelBounds(owner, area, width);
-        if (panel.WindowState == FormWindowState.Normal && panel.Bounds != bounds)
-            SetWindowPos(panel.Handle, IntPtr.Zero, bounds.X, bounds.Y, bounds.Width, bounds.Height, 0x0014); // NOZORDER | NOACTIVATE
+        SetProp(target, WidthProperty, new IntPtr(width));
+        SetWindowPos(panel.Handle, IntPtr.Zero, client.Right - width, bar, width, client.Bottom - bar, 0x0050);
     }
 
     internal void ActivateOwner()
     {
-        if (Enabled && target != IntPtr.Zero && IsWindow(target) && IsIconic(target)) ShowWindow(target, 9);
+        if (Enabled && target != IntPtr.Zero && IsWindow(target))
+        {
+            if (IsIconic(target)) ShowWindow(target, 9);
+            if (Attached) SetForegroundWindow(target);
+        }
         Sync();
     }
 
-    private void ReleaseTarget()
+    internal void ResizeFromScreenX(int x)
     {
-        NativeRect current;
-        if (restoreOwner && target != IntPtr.Zero && IsWindow(target) && !IsIconic(target)
-            && GetWindowRect(target, out current) && current.Rectangle == lastOwner)
-            SetWindowPlacement(target, ref originalOwner);
-        restoreOwner = false;
-        lastOwner = Rectangle.Empty;
-        if (hiddenByDock)
+        if (!Attached) return;
+        var point = new Point(x, 0);
+        ScreenToClient(target, ref point);
+        NativeRect client;
+        if (GetClientRect(target, out client)) { Width = client.Right - point.X; Sync(); Width = panel.Width; }
+    }
+
+    // The Lua adapter calls this synchronously before PoB destroys its HWND.
+    internal void ReleaseTarget()
+    {
+        if (!Attached || releasing) return;
+        releasing = true;
+        if (IsWindow(target) && GetProp(target, PaneProperty) == panel.Handle)
         {
-            hiddenByDock = false;
-            if (!disposing && !panel.IsDisposed) ShowWindow(panel.Handle, 4);
+            RemoveProp(target, WidthProperty); RemoveProp(target, PaneProperty);
+            if (clipAdded) SetWindowLongPtr(target, -16, new IntPtr(GetWindowLongPtr(target, -16).ToInt64() & ~0x02000000L));
         }
-        if (Attached) { Attached = false; changed(); }
+        Attached = false;
+        if (!panel.IsDisposed && IsWindow(panel.Handle))
+        {
+            SetParent(panel.Handle, IntPtr.Zero);
+            RestorePanel();
+        }
+        releasing = false;
+        changed();
     }
 
-    public void Dispose()
+    private void RestorePanel()
     {
-        disposing = true;
-        timer.Stop();
-        timer.Dispose();
-        ReleaseTarget();
+        SetWindowLongPtr(panel.Handle, -16, style); SetWindowLongPtr(panel.Handle, -20, exStyle);
+        panel.MinimumSize = minimum; panel.Padding = padding;
+        SetWindowPos(panel.Handle, IntPtr.Zero, floating.X, floating.Y, floating.Width, floating.Height, 0x0074);
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeRect
-    {
-        internal int Left, Top, Right, Bottom;
-        internal Rectangle Rectangle { get { return Rectangle.FromLTRB(Left, Top, Right, Bottom); } }
-    }
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Placement
-    {
-        internal int length, flags, showCmd;
-        internal Point minPosition, maxPosition;
-        internal NativeRect normalPosition;
-    }
+    public void Dispose() { timer.Stop(); timer.Dispose(); ReleaseTarget(); }
+
+    [StructLayout(LayoutKind.Sequential)] private struct NativeRect { internal int Left, Top, Right, Bottom; }
     [DllImport("user32.dll")] private static extern bool IsWindow(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern bool IsZoomed(IntPtr hwnd);
-    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect rect);
+    [DllImport("user32.dll")] private static extern bool GetClientRect(IntPtr hwnd, out NativeRect rect);
+    [DllImport("user32.dll")] private static extern bool ScreenToClient(IntPtr hwnd, ref Point point);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int w, int h, uint flags);
     [DllImport("user32.dll")] private static extern bool ShowWindow(IntPtr hwnd, int command);
-    [DllImport("user32.dll")] private static extern bool GetWindowPlacement(IntPtr hwnd, ref Placement placement);
-    [DllImport("user32.dll")] private static extern bool SetWindowPlacement(IntPtr hwnd, ref Placement placement);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern IntPtr SetParent(IntPtr child, IntPtr parent);
+    [DllImport("user32.dll")] private static extern IntPtr GetParent(IntPtr child);
+    [DllImport("user32.dll", EntryPoint="GetWindowLongPtrW")] private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
+    [DllImport("user32.dll", EntryPoint="SetWindowLongPtrW")] private static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int index, IntPtr value);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode, EntryPoint="GetPropW")] private static extern IntPtr GetProp(IntPtr hwnd, string name);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode, EntryPoint="SetPropW")] private static extern bool SetProp(IntPtr hwnd, string name, IntPtr value);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode, EntryPoint="RemovePropW")] private static extern IntPtr RemoveProp(IntPtr hwnd, string name);
+    [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern uint RegisterWindowMessage(string name);
+    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern IntPtr GetWindowDpiAwarenessContext(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern bool AreDpiAwarenessContextsEqual(IntPtr first, IntPtr second);
 }

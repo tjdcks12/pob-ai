@@ -28,9 +28,12 @@ test('native toggle changes docking through the host and reflects confirmed stat
   assert.equal(toggle.attributes['aria-checked'], 'true');
   assert.equal(toggle.attributes['aria-label'], 'dockPanel', 'switch name stays stable');
   assert.equal(toggle.title, 'undockPanel');
+  assert.equal(f.controls.hidden, true, 'the shared PoB frame owns minimize, maximize and close');
+  assert.equal(f.context.document.documentElement.dataset.dock, 'attached');
   f.receive({ kind: 'window-state', maximized: false, docked: true, attached: false });
   assert.equal(toggle.attributes['aria-checked'], 'true');
   assert.equal(toggle.title, 'dockWaiting');
+  assert.equal(f.controls.hidden, false, 'waiting is still a usable independent window');
   f.receive({ kind: 'window-state', maximized: false, docked: false, attached: false });
   assert.equal(toggle.attributes['aria-checked'], 'false');
   assert.equal(toggle.title, 'dockPanel');

@@ -9,6 +9,8 @@ int IsWindowVisible(void*);
 int ShowWindowAsync(void*, int);
 int SetForegroundWindow(void*);
 int AllowSetForegroundWindow(uint32_t);
+uint32_t RegisterWindowMessageW(const uint16_t*);
+int PostMessageW(void*, uint32_t, uintptr_t, intptr_t);
 void* OpenProcess(uint32_t, int, uint32_t);
 int QueryFullProcessImageNameW(void*, uint32_t, uint16_t*, uint32_t*);
 int CloseHandle(void*);
@@ -45,6 +47,14 @@ jit.off(isPanel)
 
 function panel.focus()
   user32.AllowSetForegroundWindow(0xffffffff)
+  local child, owner
+  if POBAI_DOCK then child, owner = POBAI_DOCK.pane() end
+  if child ~= nil and isPanel(child) then
+    if user32.IsIconic(owner) ~= 0 then user32.ShowWindowAsync(owner, 9) end
+    local focused = user32.SetForegroundWindow(owner) ~= 0
+    user32.PostMessageW(child, user32.RegisterWindowMessageW(wide('PoBAI.Dock.Focus.v1')), 0, 0)
+    return { found = true, focused = focused }
+  end
   local previous
   while true do
     local hwnd = user32.FindWindowExW(nil, previous, nil, TITLE)
