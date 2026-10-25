@@ -135,6 +135,9 @@ class Driver {
     using (var owner = new QuietForm()) using (var panel = new QuietForm()) {
       owner.Opacity = panel.Opacity = 0; owner.ShowInTaskbar = panel.ShowInTaskbar = false;
       owner.StartPosition = panel.StartPosition = FormStartPosition.Manual;
+      // WinForms' default maximum tracking size is derived from the hosted desktop.
+      // This geometry fixture intentionally tests a larger client even on a 1024px runner.
+      owner.MaximumSize = new Size(3200, 2000);
       owner.Bounds = new Rectangle(area.Left + 40, area.Top + 40, 1300, 800);
       panel.Bounds = new Rectangle(area.Left + 120, area.Top + 100, 400, 550);
       panel.MinimumSize = new Size(370, 200);
