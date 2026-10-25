@@ -23,6 +23,7 @@ if (running) {
   try { running = await upgradeRunningService(running, { log }); }
   catch (error) {
     log(`Could not update the running PoB AI: ${error.message}`);
+    if (error.restartRequested) running = { ...running, restarted: true };
   }
 }
 if (running) {

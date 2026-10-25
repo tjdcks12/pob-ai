@@ -14,7 +14,7 @@ const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf
 const previous = version.replace(/\d+$/, number => String(Number(number) - 1));
 const next = version.replace(/\d+$/, number => String(Number(number) + 1));
 
-async function launchAgainst({ runningVersion = previous, agentBusy = false, syncBusy = false, fail = false, legacy = false, open = false } = {}) {
+async function launchAgainst({ runningVersion = previous, agentBusy = false, syncBusy = false, fail = false, legacy = false, open = false, stagedVersion } = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'pobai-startup-'));
   const token = 'a'.repeat(48), requests = [];
   const server = http.createServer(async (request, response) => {
@@ -31,7 +31,7 @@ async function launchAgainst({ runningVersion = previous, agentBusy = false, syn
       let text = ''; for await (const chunk of request) text += chunk;
       const body = JSON.parse(text); requests.push(body);
       if (fail) return send({ ok: false, error: { code: 'DOWNLOAD_FAILED', message: 'fixture offline' } });
-      if (body.args.restart) runningVersion = version;
+      if (body.args.restart) runningVersion = stagedVersion && requests.length === 1 ? stagedVersion : version;
       return send({ ok: true, target: 'app', result: { installed: version, restarting: body.args.restart, restartNeeded: true } });
     }
     response.statusCode = 404; send({ ok: false });
@@ -65,6 +65,14 @@ test('starting a newer copy prepares the update without interrupting an AI turn 
     assert.equal(result.requests[0].args.restart, false);
     assert.equal(result.runningVersion, previous);
   }
+});
+
+test('an older prepared update is applied first, then the newly launched release is reached without opening another PoB', async () => {
+  const older = version.replace(/\d+$/, number => String(Number(number) - 2));
+  const result = await launchAgainst({ runningVersion: older, stagedVersion: previous, open: true });
+  assert.equal(result.requests.length, 2);
+  assert.ok(result.requests.every(request => request.command === 'update.apply' && request.args.restart));
+  assert.equal(result.runningVersion, version);
 });
 
 test('the same or a newer running service is reused without reinstalling or downgrading it', async () => {
