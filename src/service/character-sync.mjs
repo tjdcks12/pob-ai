@@ -45,21 +45,23 @@ export class CharacterSync {
     const intervalSeconds = patch.intervalSeconds ?? current.intervalSeconds;
     if (![60, 120, 300, 600].includes(intervalSeconds)) throw Object.assign(new Error('Invalid refresh interval'), { code: 'BAD_INTERVAL' });
     let next = { ...current, intervalSeconds, enabled: patch.enabled === true, recoveryRequired: false };
+    let phase = 'off';
     if (next.enabled) {
       let context = await this.context();
       if (!context.characters?.length && context.signedIn) context = await this.context(true);
       if (!context.available) throw Object.assign(new Error('Reconnect PoB to use character refresh'), { code: context.phase === 'waiting' ? 'LIVE_REQUIRED' : 'RESTART_REQUIRED' });
       if (!context.signedIn) throw Object.assign(new Error('Sign in to Path of Exile in PoB first'), { code: 'NOT_SIGNED_IN' });
-      if (!context.file || context.unsaved) throw Object.assign(new Error('Save the open PoB build first'), { code: 'UNSAVED' });
+      if (!context.file) throw Object.assign(new Error('Save the open PoB build first'), { code: 'UNSAVED' });
       const character = patch.character || current.character || context.suggestedCharacter;
       const selected = context.characters?.find(entry => entry.name === character);
       if (!selected) throw Object.assign(new Error('Select a character from the account'), { code: 'CHARACTER_REQUIRED' });
       next = { ...next, file: context.file, character: selected.name, characterId: selected.id };
+      phase = context.unsaved ? 'unsaved' : 'ready';
     }
     this.generation++;
     this.write({ characterSync: next });
     this.failures = 0;
-    this.emit({ phase: next.enabled ? 'ready' : 'off', error: undefined, retryAt: undefined,
+    this.emit({ phase, error: undefined, retryAt: undefined,
       file: next.file, character: next.character, snapshotHash: undefined, fileHash: undefined });
     this.schedule(next.enabled ? 0 : undefined);
     return this.status();

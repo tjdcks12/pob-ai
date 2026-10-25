@@ -39,7 +39,7 @@ test('overlapping timer and manual refreshes share one request', async () => {
 });
 test('configuration needs an actual saved build, explicit character and valid cadence', async () => {
   const f = fixture(); await assert.rejects(f.sync.configure({ enabled: true, character: 'Unknown' }), { code: 'CHARACTER_REQUIRED' });
-  f.context.unsaved = true; await assert.rejects(f.sync.configure({ enabled: true, character: 'My Character' }), { code: 'UNSAVED' });
+  f.context.file = null; await assert.rejects(f.sync.configure({ enabled: true, character: 'My Character' }), { code: 'UNSAVED' });
   await assert.rejects(f.sync.configure({ enabled: true, intervalSeconds: 1 }), { code: 'BAD_INTERVAL' }); assert.equal(f.sync.status().enabled, false);
 });
 
