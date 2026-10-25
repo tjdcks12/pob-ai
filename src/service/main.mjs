@@ -6,6 +6,7 @@ import { statePath } from '../state.mjs';
 import { callService, serviceInfo } from './client.mjs';
 import { openPanel } from './panel.mjs';
 import { createService } from './server.mjs';
+import { upgradeRunningService } from './startup-upgrade.mjs';
 
 const argv = new Set(process.argv.slice(2));
 fs.mkdirSync(statePath('logs'), { recursive: true });
@@ -16,14 +17,21 @@ const log = line => {
   if (!argv.has('--quiet')) process.stderr.write(`${stamped}\n`);
 };
 
-// Started again while PoB AI already runs (e.g. "PoB AI.cmd" clicked twice): use that one
-// and let this process end by itself.
-const running = await serviceInfo();
+// Reuse the same/newer service; a newer ZIP first asks the old service to apply its update.
+let running = await serviceInfo();
 if (running) {
-  if (argv.has('--open')) await callService(running, 'open', {}).catch(error => log(`Could not open PoB: ${error.message}`));
+  try { running = await upgradeRunningService(running, { log }); }
+  catch (error) {
+    log(`Could not update the running PoB AI: ${error.message}`);
+  }
+}
+if (running) {
+  // The restart launcher already opens/reconnects PoB and replaces the panel. Repeating open
+  // here while its bridge reconnects could create a second PoB window.
+  if (argv.has('--open') && !running.restarted) await callService(running, 'open', {}).catch(error => log(`Could not open PoB: ${error.message}`));
   if (argv.has('--settings')) {
     await fetch(`http://127.0.0.1:${running.port}/api/settings/open`, { method: 'POST', headers: { authorization: `Bearer ${running.token}`, 'content-type': 'application/json' }, body: '{}' });
-  } else if (!argv.has('--no-browser') || argv.has('--reopen-panel')) await openPanel(`http://127.0.0.1:${running.port}/?token=${running.token}`, { replace: argv.has('--reopen-panel') });
+  } else if (!running.restarted && (!argv.has('--no-browser') || argv.has('--reopen-panel'))) await openPanel(`http://127.0.0.1:${running.port}/?token=${running.token}`, { replace: argv.has('--reopen-panel') });
   logFile.end();
 } else {
   await start();
