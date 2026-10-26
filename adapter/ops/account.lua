@@ -54,7 +54,13 @@ return function(ops, util)
 		end
 		util.onMain(tab.DownloadCharacterList, tab)
 		local done = waitFor(function() return tab.charImportMode ~= 'DOWNLOADCHARLIST' end, 60)
-		util.check(done and tab.charImportMode == 'SELECTCHAR', 'DOWNLOAD_FAILED', 'Character list: ' .. strip(tab.charImportStatus))
+		if not (done and tab.charImportMode == 'SELECTCHAR') then
+			local message = strip(tab.charImportStatus)
+			-- A rate-limited request sends the Import tab back to its first step although the account
+			-- stays signed in; keep showing the character list that is still loaded.
+			if tab.charImportMode == 'GETACCOUNTNAME' and tab.lastCharList and #tab.lastCharList > 0 then tab.charImportMode = 'SELECTCHAR' end
+			util.fail(message:find('too fast', 1, true) and 'RATE_LIMITED' or 'DOWNLOAD_FAILED', 'Character list: ' .. message)
+		end
 		return tab.lastCharList or {}
 	end
 

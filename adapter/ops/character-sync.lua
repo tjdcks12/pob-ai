@@ -27,6 +27,15 @@ return function(ops, util)
 		for _, key in ipairs(keys) do entries[#entries + 1] = json.encode(tostring(key)) .. ':' .. canonical(value[key]) end
 		return '{' .. table.concat(entries, ',') .. '}'
 	end
+	local function strip(text)
+		if type(text) == 'function' then text = text() end
+		return tostring(text or '')
+	end
+	-- A rate-limited request sends PoB's Import tab back to its first step although the account stays
+	-- signed in; keep showing the character list that is still loaded.
+	local function keepList(tab)
+		if tab.charImportMode == 'GETACCOUNTNAME' and tab.lastCharList and #tab.lastCharList > 0 then tab.charImportMode = 'SELECTCHAR' end
+	end
 	local function normalize(file) return tostring(file or ''):gsub('\\', '/'):lower() end
 	local function dirty(build)
 		if build.unsaved or build.modFlag then return true end
@@ -35,14 +44,18 @@ return function(ops, util)
 	end
 	ops['account.sync_context'] = function(args)
 		local tab, build = context()
-		if args.reload then ops['account.characters']({}) end
+		local reloadError
+		if args.reload then
+			local ok, err = pcall(ops['account.characters'], {})
+			if not ok then reloadError = type(err) == 'table' and err.code or 'DOWNLOAD_FAILED' end
+		end
 		local characters, suggested = {}, nil
 		for _, char in ipairs(tab.lastCharList or {}) do
 			characters[#characters + 1] = {name = char.name, id = char.id, class = char.class, level = char.level, league = char.league}
 			if tab.lastCharacterHash == common.sha1(char.name) then suggested = char.name end
 		end
 		return {available = true, signedIn = POBAI_MAIN.api and POBAI_MAIN.api.authToken ~= nil or false,
-			file = build.dbFileName or nil, unsaved = dirty(build), characters = characters, suggestedCharacter = suggested}
+			file = build.dbFileName or nil, unsaved = dirty(build), characters = characters, suggestedCharacter = suggested, reloadError = reloadError}
 	end
 	ops['account.refresh'] = function(args)
 		local tab, build = context()
@@ -57,18 +70,27 @@ return function(ops, util)
 		local selectedSlot, selectedSource = oldGroup and oldGroup.slot, oldGroup and oldGroup.source
 		local weapon = build.itemsTab.activeItemSet.useSecondWeaponSet
 		local input = {}; for key, value in pairs(build.configTab.input) do input[key] = value end
-		ops['account.characters']({})
-		tab:BuildCharacterList(nil)
-		local found
-		for i, entry in ipairs(tab.controls.charSelect.list) do
-			if entry.char and entry.char.name == args.character and (not args.characterId or entry.char.id == args.characterId) then found = i; break end
+		-- The character list has its own strict rate limit; download it only when the loaded one lacks the character.
+		local function find()
+			if not tab.lastCharList then return nil end
+			tab:BuildCharacterList(nil)
+			for i, entry in ipairs(tab.controls.charSelect.list) do
+				if entry.char and entry.char.name == args.character and (not args.characterId or entry.char.id == args.characterId) then return i end
+			end
 		end
+		local found = find()
+		if not found then ops['account.characters']({}); found = find() end
 		util.check(found, 'NOT_FOUND', 'The selected account character no longer exists.')
 		tab.controls.charSelect.selIndex = found
 		local data
 		util.onMain(tab.DownloadCharacter, tab, function(character) data = character end)
 		local deadline = GetTime() + 60000
 		while GetTime() < deadline and not data and tab.charImportMode == 'IMPORTING' do util.waitFrame() end
+		if not data then
+			local limited = strip(tab.charImportStatus):find('too fast', 1, true)
+			keepList(tab)
+			util.check(not limited, 'RATE_LIMITED', 'Path of Exile is rate limiting character requests; retrying later.')
+		end
 		util.check(data and data.name == args.character, 'DOWNLOAD_FAILED', 'Character download did not complete.')
 		util.check(util.build() == build and build.dbFileName == file and not dirty(build) and build:SaveDB(name) == original,
 			'SYNC_BUILD_CHANGED', 'The PoB build changed during the character download.')

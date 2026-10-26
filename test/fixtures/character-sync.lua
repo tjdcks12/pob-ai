@@ -23,12 +23,13 @@ return function(modulePath, scenario)
 	function util.recalc(value) value.calcsTab.mainEnv.player.mainSkill = value.skillsTab.socketGroupList[value.mainSocketGroup].displaySkillList[1] end
 	build.calcsTab = {mainEnv={player={mainSkill=build.skillsTab.socketGroupList[1].displaySkillList[1]}}}
 	local char = {name='My Character', id='character-id', class='Witch', level=40, passives={hashes={42}}, equipment={{id='item-id'}}, jewels={}, skills={{}}}
-	local tab = {lastCharacterHash='hash:My Character', lastCharList={char}, controls={charSelect={list={{char=char}}}}}
+	local tab = {lastCharacterHash='hash:My Character', lastCharList=scenario ~= 'uncached' and {char} or nil, charImportMode='SELECTCHAR', controls={charSelect={list={}}}}
 	for _, key in ipairs({'charImportTreeClearJewels','charImportItemsClearItems','charImportItemsClearSkills','charImportItemsIgnoreWeaponSwap'}) do tab.controls[key]={state=false} end
 	build.importTab=tab
-	function tab:BuildCharacterList() end
+	function tab:BuildCharacterList() self.controls.charSelect.list={}; for _, entry in ipairs(self.lastCharList) do table.insert(self.controls.charSelect.list, {char=entry}) end end
 	function tab:DownloadCharacter(callback)
 		network=network+1; self.charImportMode='IMPORTING'
+		if scenario == 'rate-limited' then self.charImportMode='GETACCOUNTNAME'; self.charImportStatus=function() return '^1Requests are being sent too fast, try again in 3 seconds.' end; return end
 		if scenario == 'edited' then build.unsaved=true end
 		if scenario == 'file-edited' then disk='USER SAVE' end
 		callback(char); self.charImportMode='SELECTCHAR'
@@ -38,7 +39,11 @@ return function(modulePath, scenario)
 		build.itemsTab.items={{uniqueID='item-id',base=true}}
 		build.skillsTab.socketGroupList={group('OTHER'),group(scenario == 'missing-main' and 'REMOVED' or 'MAIN')}
 	end
-	ops['account.characters']=function() network=network+1; return {characters={char}} end
+	ops['account.characters']=function()
+		network=network+1
+		if scenario == 'rate-limited-list' then error({code='RATE_LIMITED'},0) end
+		tab.lastCharList={char}; return {characters={char}}
+	end
 	ops.summary=function(value) return {mainGroup=value.mainSocketGroup} end
 	ops['build.save']=function()
 		writes=writes+1; disk='UPDATED FILE'
@@ -50,7 +55,7 @@ return function(modulePath, scenario)
 	_G.pobai_read_file=function() return disk end
 	_G.pobai_write_file=function(_, value) disk=value end
 	dofile(modulePath)(ops,util)
-	if scenario == 'context' then local result=ops['account.sync_context']({}); return {available=result.available,suggested=result.suggestedCharacter,network=network,writes=writes} end
+	if scenario == 'context' or scenario == 'rate-limited-list' then local result=ops['account.sync_context']({reload=scenario == 'rate-limited-list'}); return {available=result.available,suggested=result.suggestedCharacter,characters=#result.characters,reloadError=result.reloadError,network=network,writes=writes} end
 	local args={file=build.dbFileName,character=char.name,characterId=char.id}
 	local ok, result=pcall(ops['account.refresh'],args)
 	if ok and scenario == 'unchanged' then
@@ -60,5 +65,5 @@ return function(modulePath, scenario)
 	return {ok=ok,code=not ok and type(result)=='table' and result.code or nil,unchanged=ok and result.unchanged or false,
 		imports=imports,writes=writes,network=network,disk=disk,main=build.mainSocketGroup,
 		boss=build.configTab.input.enemyIsBoss,quest=build.configTab.input.questNew,resistance=build.configTab.input.resistancePenalty,
-		weapon=build.itemsTab.activeItemSet.useSecondWeaponSet,rollbacks=rollbacks,unsaved=build.unsaved,dirty=ops['account.sync_context']({}).unsaved}
+		weapon=build.itemsTab.activeItemSet.useSecondWeaponSet,rollbacks=rollbacks,unsaved=build.unsaved,mode=tab.charImportMode,dirty=ops['account.sync_context']({}).unsaved}
 end

@@ -69,3 +69,8 @@ test('failed rollback disables future automatic attempts, including after restar
   const restarted = new CharacterSync({ runtime: f.runtime, read: f.config, timer: () => { throw new Error('must not schedule'); } });
   assert.equal(restarted.status().phase, 'recovery'); assert.equal(restarted.status().enabled, false); restarted.close();
 });
+test('a rate-limited refresh pauses until the next interval instead of backing off', async () => {
+  const f = fixture(); await f.sync.configure({ enabled: true, character: 'My Character', intervalSeconds: 120 });
+  const run = f.runtime.run; f.runtime.run = async (op, ...rest) => { if (op === 'account.refresh') throw Object.assign(new Error('limited'), { code: 'RATE_LIMITED' }); return run(op, ...rest); };
+  await f.sync.refresh(); assert.equal(f.sync.status().phase, 'rateLimited'); assert.equal(f.sync.status().retryAt, undefined); assert.equal(f.timers.at(-1).delay, 120000);
+});

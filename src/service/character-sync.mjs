@@ -7,7 +7,7 @@ const paused = new Map([
   ['LIVE_REQUIRED', 'waiting'], ['NOT_SIGNED_IN', 'signIn'], ['UNSAVED', 'unsaved'],
   ['SYNC_BUILD_CHANGED', 'differentBuild'], ['SYNC_FILE_CHANGED', 'changed'],
   ['UNKNOWN_OPERATION', 'restart'], ['UNKNOWN_OP', 'restart'],
-  ['SYNC_SKILL_CHANGED', 'skillChanged'],
+  ['SYNC_SKILL_CHANGED', 'skillChanged'], ['RATE_LIMITED', 'rateLimited'],
   ['SYNC_ROLLBACK_FAILED', 'recovery'],
 ]);
 export class CharacterSync {

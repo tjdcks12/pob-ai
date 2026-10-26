@@ -6,9 +6,9 @@ export function characterSyncSettings({ api, t, locale }) {
   let requestedEnabled, draftCharacter, draftInterval, errorKey, optionsKey, contextRevision = 0, loading;
   const accept = next => { if ((next.revision ?? 0) >= (status.revision ?? 0)) status = next; };
   const phaseKeys = { off: 'syncOff', ready: 'syncReady', refreshing: 'syncRefreshing', updated: 'syncUpdated', unchanged: 'syncUnchanged',
-    waiting: 'syncWaiting', restart: 'syncRestart', signIn: 'syncSignIn', unsaved: 'syncUnsaved', differentBuild: 'syncDifferentBuild', changed: 'syncChanged', skillChanged: 'syncSkillChanged', recovery: 'syncRecovery', error: 'syncError' };
+    waiting: 'syncWaiting', restart: 'syncRestart', signIn: 'syncSignIn', unsaved: 'syncUnsaved', differentBuild: 'syncDifferentBuild', changed: 'syncChanged', skillChanged: 'syncSkillChanged', rateLimited: 'syncRateLimited', recovery: 'syncRecovery', error: 'syncError' };
   const errorKeys = { UNSAVED: 'syncUnsaved', NOT_SIGNED_IN: 'syncSignIn', LIVE_REQUIRED: 'syncWaiting',
-    RESTART_REQUIRED: 'syncRestart', CHARACTER_REQUIRED: 'syncSelectCharacter', SYNC_BUSY: 'syncRefreshing' };
+    RESTART_REQUIRED: 'syncRestart', CHARACTER_REQUIRED: 'syncSelectCharacter', SYNC_BUSY: 'syncRefreshing', RATE_LIMITED: 'syncRateLimited' };
   function render() {
     const blocked = busy || status.running === true;
     $('sync-enabled').checked = requestedEnabled ?? status.enabled;
@@ -45,6 +45,7 @@ export function characterSyncSettings({ api, t, locale }) {
     const reply = await api('/api/character-sync/context' + (reload ? '?reload=1' : ''));
     if (!reply.ok || revision !== contextRevision) return;
     context = reply;
+    if (reload) errorKey = reply.reloadError ? errorKeys[reply.reloadError] ?? 'syncError' : undefined;
     render();
   }
   async function action(path, body) {

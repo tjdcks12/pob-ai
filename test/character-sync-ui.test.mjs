@@ -20,7 +20,7 @@ function fixture(t, handleAction = async () => ({ ok: true, enabled: true, phase
   const context = { available: true, signedIn: true, file: 'C:/Builds/test.xml', unsaved: false,
     suggestedCharacter: 'Character A', characters: [{ name: 'Character A', id: 'a', level: 38, league: 'Test' }, { name: 'Character B', id: 'b', level: 40, league: 'Test' }] };
   const controller = characterSyncSettings({ locale: () => 'en', t: key => key,
-    api: async (route, body) => route.endsWith('/context') ? { ok: true, ...context }
+    api: async (route, body) => route.includes('/context') ? { ok: true, ...context }
       : body === undefined ? { ok: true, ...status } : handleAction(route, body) });
   return { controls, controller, status, context };
 }
@@ -75,4 +75,12 @@ test('an unsaved build explains the pause after later routine refreshes too', as
   f.controls['sync-enabled'].checked = true; await f.controls['sync-enabled'].trigger('change');
   await f.controller.load();
   assert.equal(f.controls['sync-status'].textContent, 'syncUnsaved');
+});
+
+test('a rate-limited character list reload keeps the loaded characters and explains the limit', async t => {
+  const f = fixture(t); await f.controller.load();
+  f.context.reloadError = 'RATE_LIMITED';
+  await f.controls['sync-list'].trigger('click');
+  assert.equal(f.controls['sync-character'].options.length, 3);
+  assert.equal(f.controls['sync-status'].textContent, 'syncRateLimited');
 });
