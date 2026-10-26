@@ -82,7 +82,7 @@ return function(ops, util)
 		if not found then ops['account.characters']({}); found = find() end
 		util.check(found, 'NOT_FOUND', 'The selected account character no longer exists.')
 		tab.controls.charSelect.selIndex = found
-		local data
+		local status, data = tab.charImportStatus
 		util.onMain(tab.DownloadCharacter, tab, function(character) data = character end)
 		local deadline = GetTime() + 60000
 		while GetTime() < deadline and not data and tab.charImportMode == 'IMPORTING' do util.waitFrame() end
@@ -100,6 +100,8 @@ return function(ops, util)
 		local fingerprint = common.sha1(canonical({name=data.name, class=data.class, level=data.level,
 			passives=data.passives, equipment=data.equipment, jewels=data.jewels, skills=data.skills}))
 		if fingerprint == args.previousHash and common.sha1(disk) == args.previousFileHash then
+			-- No import follows to replace PoB's "Retrieving character data..." message.
+			tab.charImportStatus = status
 			return {unchanged=true, file=file, character=args.character, snapshotHash=fingerprint, fileHash=common.sha1(disk)}
 		end
 		local controls = {}

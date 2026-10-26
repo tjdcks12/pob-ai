@@ -1,6 +1,6 @@
 // PoB AI self-update and PoB installation against a local release server (no internet).
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -99,7 +99,14 @@ test('a newer release is found, verified and unpacked into the data folder', asy
   const check = await checkForUpdate();
   assert.equal(check.available, true);
   assert.equal(check.latest, next);
-  const applied = await applyUpdate();
+  // An older unpacked version whose node.exe still runs (e.g. the launcher) cannot be removed.
+  const old = path.join(home, 'app', '0.0.1', 'runtime', 'node');
+  fs.mkdirSync(old, { recursive: true });
+  fs.copyFileSync(process.execPath, path.join(old, 'node.exe'));
+  const running = spawn(path.join(old, 'node.exe'), ['-e', 'setTimeout(() => {}, 60000)'], { stdio: 'ignore' });
+  await new Promise(resolve => running.once('spawn', resolve));
+  let applied;
+  try { applied = await applyUpdate(); } finally { running.kill(); }
   assert.equal(applied.updated, true);
   assert.equal(installedUpdate()?.version, next);
   assert.ok(fs.existsSync(path.join(home, 'app', next, 'package.json')));

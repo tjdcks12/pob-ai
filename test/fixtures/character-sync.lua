@@ -23,12 +23,12 @@ return function(modulePath, scenario)
 	function util.recalc(value) value.calcsTab.mainEnv.player.mainSkill = value.skillsTab.socketGroupList[value.mainSocketGroup].displaySkillList[1] end
 	build.calcsTab = {mainEnv={player={mainSkill=build.skillsTab.socketGroupList[1].displaySkillList[1]}}}
 	local char = {name='My Character', id='character-id', class='Witch', level=40, passives={hashes={42}}, equipment={{id='item-id'}}, jewels={}, skills={{}}}
-	local tab = {lastCharacterHash='hash:My Character', lastCharList=scenario ~= 'uncached' and {char} or nil, charImportMode='SELECTCHAR', controls={charSelect={list={}}}}
+	local tab = {lastCharacterHash='hash:My Character', lastCharList=scenario ~= 'uncached' and {char} or nil, charImportMode='SELECTCHAR', charImportStatus='Items and skills successfully imported.', controls={charSelect={list={}}}}
 	for _, key in ipairs({'charImportTreeClearJewels','charImportItemsClearItems','charImportItemsClearSkills','charImportItemsIgnoreWeaponSwap'}) do tab.controls[key]={state=false} end
 	build.importTab=tab
 	function tab:BuildCharacterList() self.controls.charSelect.list={}; for _, entry in ipairs(self.lastCharList) do table.insert(self.controls.charSelect.list, {char=entry}) end end
 	function tab:DownloadCharacter(callback)
-		network=network+1; self.charImportMode='IMPORTING'
+		network=network+1; self.charImportMode='IMPORTING'; self.charImportStatus='Retrieving character data...'
 		if scenario == 'rate-limited' then self.charImportMode='GETACCOUNTNAME'; self.charImportStatus=function() return '^1Requests are being sent too fast, try again in 3 seconds.' end; return end
 		if scenario == 'edited' then build.unsaved=true end
 		if scenario == 'file-edited' then disk='USER SAVE' end
@@ -36,6 +36,7 @@ return function(modulePath, scenario)
 	end
 	function tab:ImportPassiveTreeAndJewels() imports=imports+1; build.imported=true; build.spec.allocNodes[42]=true; build.configTab.input.enemyIsBoss='Changed'; build.configTab.input.questNew=true; build.configTab.input.resistancePenalty=-40 end
 	function tab:ImportItemsAndSkills()
+		self.charImportStatus='Items and skills successfully imported.'
 		build.itemsTab.items={{uniqueID='item-id',base=true}}
 		build.skillsTab.socketGroupList={group('OTHER'),group(scenario == 'missing-main' and 'REMOVED' or 'MAIN')}
 	end
@@ -65,5 +66,5 @@ return function(modulePath, scenario)
 	return {ok=ok,code=not ok and type(result)=='table' and result.code or nil,unchanged=ok and result.unchanged or false,
 		imports=imports,writes=writes,network=network,disk=disk,main=build.mainSocketGroup,
 		boss=build.configTab.input.enemyIsBoss,quest=build.configTab.input.questNew,resistance=build.configTab.input.resistancePenalty,
-		weapon=build.itemsTab.activeItemSet.useSecondWeaponSet,rollbacks=rollbacks,unsaved=build.unsaved,mode=tab.charImportMode,dirty=ops['account.sync_context']({}).unsaved}
+		weapon=build.itemsTab.activeItemSet.useSecondWeaponSet,rollbacks=rollbacks,unsaved=build.unsaved,mode=tab.charImportMode,status=type(tab.charImportStatus)=='function' and tab.charImportStatus() or tab.charImportStatus,dirty=ops['account.sync_context']({}).unsaved}
 end

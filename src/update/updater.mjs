@@ -157,6 +157,7 @@ function prune(appDir, keep) {
   for (const entry of fs.readdirSync(appDir, { withFileTypes: true })) {
     if (!entry.isDirectory() || !/^\d+\.\d+\.\d+/.test(entry.name) || keep.includes(entry.name)) continue;
     if (path.resolve(appDir, entry.name) === APP_ROOT) continue;
-    fs.rmSync(path.join(appDir, entry.name), { recursive: true, force: true });
+    // A version still in use (e.g. the launcher's node.exe) stays until a later update removes it.
+    try { fs.rmSync(path.join(appDir, entry.name), { recursive: true, force: true }); } catch { /* in use */ }
   }
 }
