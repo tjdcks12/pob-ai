@@ -6,12 +6,13 @@ return function(modulePath, scenario)
 		unsaved=false, modFlag=false, spec={allocNodes={}}, configTab={input={enemyIsBoss='Pinnacle', resistancePenalty=-20}},
 		itemsTab={items={}, activeItemSet={useSecondWeaponSet=true}}, skillsTab={socketGroupList={}}}
 	local function group(id)
-		return {mainActiveSkill=1, gemList={{grantedEffect={id=id}}}, displaySkillList={{activeEffect={grantedEffect={id=id}, srcInstance={}}}}}
+		return {mainActiveSkill=1, gemList={{gemData={grantedEffectId=id}}}, displaySkillList={{activeEffect={grantedEffect={id=id}, srcInstance={}}}}}
 	end
 	build.skillsTab.socketGroupList = {group('MAIN')}
 	function build:SaveDB() return self.imported and 'UPDATED BUILD' or 'ORIGINAL BUILD' end
 	function build:Shutdown() rollbacks = rollbacks + 1 end
-	function build:Init() self.imported=false; self.unsaved=false; self.modFlag=false; self.mainSocketGroup=1; self.skillsTab.socketGroupList={group('MAIN')}; self.configTab.input.enemyIsBoss='Pinnacle' end
+	function build:Init(_, _, xml) self.imported=false; self.unsaved=false; self.modFlag=xml ~= nil; self.mainSocketGroup=1; self.skillsTab.socketGroupList={group('MAIN')}; self.configTab.input.enemyIsBoss='Pinnacle' end
+	function build:ResetModFlags() self.modFlag=false end
 	function build.configTab:BuildModList() end
 	function build.itemsTab:PopulateSlots() end
 	local util = {}
@@ -59,5 +60,5 @@ return function(modulePath, scenario)
 	return {ok=ok,code=not ok and type(result)=='table' and result.code or nil,unchanged=ok and result.unchanged or false,
 		imports=imports,writes=writes,network=network,disk=disk,main=build.mainSocketGroup,
 		boss=build.configTab.input.enemyIsBoss,quest=build.configTab.input.questNew,resistance=build.configTab.input.resistancePenalty,
-		weapon=build.itemsTab.activeItemSet.useSecondWeaponSet,rollbacks=rollbacks,unsaved=build.unsaved}
+		weapon=build.itemsTab.activeItemSet.useSecondWeaponSet,rollbacks=rollbacks,unsaved=build.unsaved,dirty=ops['account.sync_context']({}).unsaved}
 end

@@ -106,7 +106,7 @@ return function(ops, util)
 			local expected, actual = 0, 0
 			for _, skill in ipairs(data.skills) do expected = expected + 1 + #(skill.socketedItems or {}) end
 			for _, group in ipairs(build.skillsTab.socketGroupList) do
-				for _, gem in ipairs(group.gemList or {}) do if gem.grantedEffect then actual = actual + 1 end end
+				for _, gem in ipairs(group.gemList or {}) do if gem.gemData or gem.grantedEffect then actual = actual + 1 end end
 			end
 			util.check(actual >= expected, 'IMPORT_INCOMPLETE', 'A skill or support could not be imported.')
 			for key, value in pairs(input) do if not tostring(key):match('^quest') and key ~= 'resistancePenalty' then build.configTab.input[key] = value end end
@@ -139,6 +139,8 @@ return function(ops, util)
 			if writeAttempted then diskRestored = pcall(function() pobai_write_file(file, disk); assert(pobai_read_file(file) == disk) end) end
 			local liveRestored = pcall(function()
 				build:Shutdown(); build:Init(file, name, original, false, nil)
+				-- Init from XML marks the build modified; the restored state was clean, so later refreshes must not stall on UNSAVED.
+				build:ResetModFlags()
 				build.viewMode = view
 				util.recalc(build)
 			end)
