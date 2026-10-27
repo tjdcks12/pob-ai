@@ -9,6 +9,7 @@ import { AgentHub } from '../agent/hub.mjs';
 import { COMMANDS, findCommand } from '../commands/registry.mjs';
 import { BridgeServer } from '../live/bridge-server.mjs';
 import { GlyphAtlas } from '../live/glyph-atlas.mjs';
+import { prepareItemText } from '../items/prepare.mjs';
 import { writeDictionary } from '../live/window-language.mjs';
 import { launchPob } from '../pob/launch.mjs';
 import { closePob, listPobProcesses } from '../pob/processes.mjs';
@@ -146,6 +147,20 @@ export async function createService({ port, log = line => process.stderr.write(`
       atlas.render(event)
         .then(page => bridge.send({ type: 'rendered', atlas: event.key, id: event.id, ...page }))
         .catch(error => bridge.send({ type: 'rendered', atlas: event.key, id: event.id, error: error.message }));
+      return;
+    }
+    // Ctrl+V of a copy PoB could not read (adapter/live/paste.lua): answer with the English text
+    // only when it was converted, so PoB never receives the same unreadable text back.
+    if (event?.kind === 'item-paste') {
+      prepareItemText(String(event.text ?? ''), { log })
+        .then(({ text, conversion }) => {
+          if (conversion) log(`Pasted ${conversion.language} item converted (${conversion.status}, ${conversion.converted}/${conversion.total} modifier lines)`);
+          bridge.send({ type: 'item-converted', id: event.id, ...(conversion ? { text } : {}) });
+        })
+        .catch(error => {
+          log(`item paste: ${error.message}`);
+          bridge.send({ type: 'item-converted', id: event.id });
+        });
       return;
     }
     broadcast('pob-event', event);

@@ -17,6 +17,7 @@ local skinOk, skin = pcall(dofile, POBAI_ADAPTER .. '/live/skin.lua')
 if skinOk then POBAI_SKIN = skin else pobai_log('skin failed to load: ' .. tostring(skin)) end
 POBAI_THEME = dofile(POBAI_ADAPTER .. '/live/theme.lua')
 POBAI_TRANSLATE = dofile(POBAI_ADAPTER .. '/live/translate.lua')
+POBAI_PASTE = dofile(POBAI_ADAPTER .. '/live/paste.lua')
 local savedTheme = os.getenv('POBAI_THEME')
 if savedTheme and savedTheme ~= '' then POBAI_THEME.apply(savedTheme) end
 
@@ -56,6 +57,7 @@ local function finish(reply)
 end
 
 local function poll()
+	POBAI_PASTE.install()
 	if not client then return connect() end
 	if job then
 		local reply = job.step()
@@ -75,6 +77,9 @@ local function poll()
 		if line:find('^{"type":"rendered"') then
 			local message = json.decode(line)
 			if message then POBAI_TRANSLATE.onRendered(message) end
+		elseif line:find('^{"type":"item%-converted"') then
+			local message = json.decode(line)
+			if message then POBAI_PASTE.onConverted(message) end
 		else
 			job = pobai_job(line)
 			local reply = job.step()
