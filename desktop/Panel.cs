@@ -296,7 +296,7 @@ internal sealed class AgentWindow : Form
 
     protected override void WndProc(ref Message m)
     {
-        if (dock != null && m.Msg == PanelDock.ReleaseMessage) { dock.ReleaseTarget(); return; }
+        if (dock != null && m.Msg == PanelDock.ReleaseMessage) { dock.OwnerClosing(); return; }
         if (dock != null && m.Msg == PanelDock.FocusMessage)
         {
             dock.ActivateOwner(); web.Focus(); return;

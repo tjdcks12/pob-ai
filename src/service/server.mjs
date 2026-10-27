@@ -70,9 +70,11 @@ export async function createService({ port, log = line => process.stderr.write(`
   runtime.service = service;
   const characterSync = new CharacterSync({ runtime, broadcast });
   service.characterSync = characterSync;
+  const pobOpening = () => service.pobProcess?.exitCode === null && !service.pobProcess.signalCode;
   service.openPob = (options = {}) => {
     if (bridge.connected) return { alreadyOpen: true, ...bridge.info };
-    if (service.pobProcess?.exitCode === null && !service.pobProcess.signalCode) return { opening: true, pid: service.pobProcess.pid };
+    if (pobOpening()) return { opening: true, pid: service.pobProcess.pid };
+    if (service.closing) throw Object.assign(new Error('PoB AI is closing with the PoB window; start PoB AI again.'), { code: 'SERVICE_CLOSING' });
     const child = launchPob(runtime.install(), { port: bridge.port, token: bridge.token }, options);
     service.pobProcess = child;
     // A PoB that exits before connecting may be applying an update on its first run.
@@ -136,7 +138,9 @@ export async function createService({ port, log = line => process.stderr.write(`
       await new Promise(r => setTimeout(r, pobClosedGraceMs));
       if (bridge.connected || updating || reopening || service.closed) return;
       const windows = await Promise.resolve().then(() => listPobProcesses(runtime.install())).catch(() => []);
-      if (bridge.connected || windows.some(p => p.shim)) return;
+      // A PoB opened meanwhile (the panel's "Open PoB") keeps PoB AI; from here on none can open.
+      if (bridge.connected || pobOpening() || windows.some(p => p.shim)) return;
+      service.closing = true;
       log('PoB was closed; PoB AI is closing.');
       await onPobClosed();
     } catch (error) { log(`Could not close PoB AI: ${error.message}`); }

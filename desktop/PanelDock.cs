@@ -18,6 +18,10 @@ internal sealed class PanelDock : IDisposable
     private Size minimum;
     private Padding padding;
     private bool clipAdded, releasing;
+    // While PoB closes the pane stays hidden: F5 brings the same window back, a real close ends
+    // PoB AI. A window that never returns gets the chat back as a floating window.
+    private DateTime hiddenUntil;
+    internal TimeSpan OwnerReturnTimeout = TimeSpan.FromSeconds(20);
     internal bool Enabled { get; private set; }
     internal bool Attached { get; private set; }
     internal int Width { get; set; }
@@ -61,11 +65,13 @@ internal sealed class PanelDock : IDisposable
 
     internal void Sync()
     {
-        if (!Enabled || panel.IsDisposed || releasing) return;
+        if (panel.IsDisposed || releasing) return;
+        if (hiddenUntil != DateTime.MinValue && DateTime.UtcNow >= hiddenUntil) { hiddenUntil = DateTime.MinValue; panel.Show(); }
+        if (!Enabled) return;
         uint pid;
         if (target == IntPtr.Zero || !IsWindow(target) || GetWindowThreadProcessId(target, out pid) == 0 || pid != targetPid
             || GetProp(target, HostProperty) == IntPtr.Zero)
-        { ReleaseTarget(); return; }
+        { OwnerClosing(); return; }
         if (IsIconic(target)) return;
         NativeRect client;
         if (!GetClientRect(target, out client)) return;
@@ -88,11 +94,12 @@ internal sealed class PanelDock : IDisposable
             SetWindowLongPtr(panel.Handle, -16, new IntPtr((style.ToInt64() & ~0x80cf0000L) | 0x40000000L));
             SetWindowLongPtr(panel.Handle, -20, new IntPtr(exStyle.ToInt64() & ~0x00040300L));
             SetParent(panel.Handle, target);
-            if (GetParent(panel.Handle) != target) { RestorePanel(); return; }
+            if (GetParent(panel.Handle) != target) { RestorePanel(true); return; }
             clipAdded = (GetWindowLongPtr(target, -16).ToInt64() & 0x02000000L) == 0;
             if (clipAdded) SetWindowLongPtr(target, -16, new IntPtr(GetWindowLongPtr(target, -16).ToInt64() | 0x02000000L));
             SetProp(target, PaneProperty, panel.Handle);
             Attached = true;
+            if (hiddenUntil != DateTime.MinValue) { hiddenUntil = DateTime.MinValue; panel.Show(); }
             changed();
         }
         SetProp(target, WidthProperty, new IntPtr(width));
@@ -119,7 +126,17 @@ internal sealed class PanelDock : IDisposable
     }
 
     // The Lua adapter calls this synchronously before PoB destroys its HWND.
-    internal void ReleaseTarget()
+    internal void OwnerClosing()
+    {
+        if (!Attached || releasing || panel.IsDisposed) return;
+        panel.Hide();
+        hiddenUntil = DateTime.UtcNow + OwnerReturnTimeout;
+        ReleaseTarget(false);
+    }
+
+    internal void ReleaseTarget() { ReleaseTarget(true); }
+
+    private void ReleaseTarget(bool show)
     {
         if (!Attached || releasing) return;
         releasing = true;
@@ -132,17 +149,18 @@ internal sealed class PanelDock : IDisposable
         if (!panel.IsDisposed && IsWindow(panel.Handle))
         {
             SetParent(panel.Handle, IntPtr.Zero);
-            RestorePanel();
+            RestorePanel(show);
         }
         releasing = false;
         changed();
     }
 
-    private void RestorePanel()
+    private void RestorePanel(bool show)
     {
-        SetWindowLongPtr(panel.Handle, -16, style); SetWindowLongPtr(panel.Handle, -20, exStyle);
+        // The saved style carries WS_VISIBLE; a hidden pane must not get it back.
+        SetWindowLongPtr(panel.Handle, -16, show ? style : new IntPtr(style.ToInt64() & ~0x10000000L)); SetWindowLongPtr(panel.Handle, -20, exStyle);
         panel.MinimumSize = minimum; panel.Padding = padding;
-        SetWindowPos(panel.Handle, IntPtr.Zero, floating.X, floating.Y, floating.Width, floating.Height, 0x0074);
+        SetWindowPos(panel.Handle, IntPtr.Zero, floating.X, floating.Y, floating.Width, floating.Height, show ? 0x0074u : 0x0034u);
     }
 
     public void Dispose() { timer.Stop(); timer.Dispose(); ReleaseTarget(); }

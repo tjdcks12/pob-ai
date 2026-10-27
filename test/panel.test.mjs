@@ -94,7 +94,24 @@ test('closing the PoB window ends PoB AI unless PoB is restarting or updating', 
     service.bridge.emit('disconnected');
     await done;
     assert.equal(closed, 1, 'the closed PoB window takes the panel and the service with it');
+    assert.throws(() => service.openPob(), { code: 'SERVICE_CLOSING' }, 'a PoB opened while PoB AI closes would be left without it');
   } finally {
+    service.close();
+  }
+});
+
+test('opening PoB while the closed one is being noticed keeps PoB AI running', async () => {
+  let closed = 0;
+  const service = await createService({ port: 0, log: () => {}, pobClosedGraceMs: 50, onPobClosed: () => { closed++; } });
+  const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { windowsHide: true, stdio: 'ignore' });
+  await once(child, 'spawn');
+  try {
+    service.bridge.emit('disconnected');
+    service.pobProcess = child;
+    await new Promise(r => setTimeout(r, 1500));
+    assert.equal(closed, 0, 'the PoB being opened (its "Open PoB" button) cancels closing');
+  } finally {
+    const stopped = once(child, 'close'); child.kill(); await stopped;
     service.close();
   }
 });

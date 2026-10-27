@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const run = promisify(execFile);
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-test('a cross-process pane survives graceful owner exit and owner crash', { skip: process.platform !== 'win32' }, async () => {
+test('a cross-process pane hides through graceful owner exit and owner crash, then floats if PoB does not return', { skip: process.platform !== 'win32' }, async () => {
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'pobai-dock-process-'));
   try {
     const driver=path.join(dir,'process.cs'), exe=path.join(dir,'process.exe');
@@ -18,13 +18,14 @@ using System; using System.Diagnostics; using System.Drawing; using System.IO; u
 class Quiet : Form {
   internal PanelDock Dock;
   protected override bool ShowWithoutActivation { get { return true; } }
-  protected override void WndProc(ref Message m) { if(Dock!=null && m.Msg==PanelDock.ReleaseMessage) { Dock.ReleaseTarget(); return; } base.WndProc(ref m); }
+  protected override void WndProc(ref Message m) { if(Dock!=null && m.Msg==PanelDock.ReleaseMessage) { Dock.OwnerClosing(); return; } base.WndProc(ref m); }
 }
 class Driver {
   [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern bool SetPropW(IntPtr h,string s,IntPtr v);
   [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern IntPtr RemovePropW(IntPtr h,string s);
   [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern IntPtr GetPropW(IntPtr h,string s);
   [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h,uint m,IntPtr w,IntPtr l);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
   static void Check(bool v,string m) { if(!v) throw new Exception(m); }
   [STAThread] static void Main(string[] args) {
     string state=Path.Combine(Path.GetDirectoryName(Application.ExecutablePath),"owner.txt");
@@ -45,13 +46,15 @@ class Driver {
         var until=DateTime.UtcNow.AddSeconds(5); while(!File.Exists(state) && DateTime.UtcNow<until) System.Threading.Thread.Sleep(10);
         panel.Opacity=0;panel.ShowInTaskbar=false; panel.Bounds=new Rectangle(100,100,400,550); panel.Show();
         using(var dock=new PanelDock(panel,()=>{})) {
-          panel.Dock=dock; dock.SetTarget(new IntPtr(long.Parse(File.ReadAllText(state)))); dock.SetEnabled(true);
+          panel.Dock=dock; dock.OwnerReturnTimeout=TimeSpan.FromMilliseconds(300); dock.SetTarget(new IntPtr(long.Parse(File.ReadAllText(state)))); dock.SetEnabled(true);
           Check(dock.Attached,"cross-process attachment");
           if(crash) owner.Kill(); else File.WriteAllText(state+".close","");
           until=DateTime.UtcNow.AddSeconds(5); while(!owner.HasExited && DateTime.UtcNow<until) { Application.DoEvents(); System.Threading.Thread.Sleep(10); }
           Check(owner.HasExited,"fixture owner exited"); Application.DoEvents(); dock.Sync();
           Check(!panel.IsDisposed && panel.IsHandleCreated,"owner exit must not destroy chat HWND (crash="+crash+")");
-          Check(!dock.Attached && panel.Visible,"chat floats after owner exit");
+          Check(!dock.Attached && !panel.Visible && !IsWindowVisible(panel.Handle),"closing PoB hides the chat instead of floating it (crash="+crash+")");
+          until=DateTime.UtcNow.AddSeconds(3); while(!panel.Visible && DateTime.UtcNow<until) { Application.DoEvents(); dock.Sync(); System.Threading.Thread.Sleep(20); }
+          Check(panel.Visible && IsWindowVisible(panel.Handle),"a PoB window that never returns gives the chat back as a floating window");
         } panel.Close();
       }
     } Console.WriteLine("cross-process exit passed");
@@ -124,6 +127,7 @@ class Driver {
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr GetPropW(IntPtr hwnd,string name);
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] static extern IntPtr RemovePropW(IntPtr hwnd,string name);
   [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr hwnd);
+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
   static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
   static void Inside(Form panel, Form owner) {
     Check(GetParent(panel.Handle) == owner.Handle, "pane is a real child");
@@ -167,6 +171,10 @@ class Driver {
         dock.SetEnabled(false); Application.DoEvents(); Check(owner.Bounds == original, "detaching restores unmodified owner placement");
         dock.SetEnabled(true); dock.SetTarget(IntPtr.Zero); Check(dock.Enabled && !dock.Attached && panel.Bounds == floating, "disconnect floats panel while remembering preference");
         dock.SetTarget(owner.Handle); Check(dock.Attached, "reattaches after reconnect");
+        RemovePropW(owner.Handle, "PoBAI.DockHost.v1"); dock.OwnerClosing();
+        Check(!dock.Attached && !panel.Visible && !IsWindowVisible(panel.Handle), "PoB shutting down hides the chat");
+        SetPropW(owner.Handle, "PoBAI.DockHost.v1", new IntPtr(36)); dock.Sync();
+        Check(dock.Attached && panel.Visible && IsWindowVisible(panel.Handle), "PoB coming back (F5) shows the docked chat again"); Inside(panel, owner);
         RemovePropW(owner.Handle, "PoBAI.DockHost.v1"); dock.ReleaseTarget();
         owner.Close(); Application.DoEvents(); dock.Sync(); Check(dock.Enabled && !dock.Attached && panel.Visible, "owner exit keeps the chat panel available");
         dock.SetEnabled(false);
