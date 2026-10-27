@@ -79,3 +79,22 @@ test('a browser subscriber does not suppress opening the desktop panel', async (
     service.close();
   }
 });
+
+test('closing the PoB window ends PoB AI unless PoB is restarting or updating', async () => {
+  let closed = 0, ended;
+  const done = new Promise(r => { ended = r; });
+  const service = await createService({ port: 0, log: () => {}, pobClosedGraceMs: 20, onPobClosed: () => { closed++; ended(); } });
+  const settle = () => new Promise(r => setTimeout(r, 100));
+  try {
+    service.bridge.emit('event', { kind: 'pob-updating', mode: 'normal' });
+    service.bridge.emit('disconnected');
+    await settle();
+    assert.equal(closed, 0, 'a "normal" PoB update restarts in place and reconnects');
+    service.bridge.emit('connected', { version: '0.23.1' });
+    service.bridge.emit('disconnected');
+    await done;
+    assert.equal(closed, 1, 'the closed PoB window takes the panel and the service with it');
+  } finally {
+    service.close();
+  }
+});

@@ -30,7 +30,7 @@ const UI_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png', '.ico': 'image/x-icon' };
 
-export async function createService({ port, log = line => process.stderr.write(`${line}\n`), openAgentPanel = openPanel, openSettingsPanel = openSettings } = {}) {
+export async function createService({ port, log = line => process.stderr.write(`${line}\n`), openAgentPanel = openPanel, openSettingsPanel = openSettings, onPobClosed = () => {}, pobClosedGraceMs = 5000 } = {}) {
   // The address of the previous run is reused when free, so an open agent panel reconnects
   // after a restart (an update) instead of pointing at a dead port.
   const previous = readJson(SERVICE_FILE(), {});
@@ -126,7 +126,22 @@ export async function createService({ port, log = line => process.stderr.write(`
     broadcast('pob', { connected: false, updating: updating?.mode });
     // A "normal" update restarts PoB in place and the shim reconnects by itself.
     if (updating?.mode === 'basic') reopenAfterUpdate();
+    else if (!updating) endWithPob();
   });
+  // Closing the PoB window ends PoB AI: its panel, an answer in progress and this service.
+  // PoB's own Restart() (F5) keeps the process alive and reconnects.
+  let ending = null;
+  const endWithPob = () => ending ??= (async () => {
+    try {
+      await new Promise(r => setTimeout(r, pobClosedGraceMs));
+      if (bridge.connected || updating || reopening || service.closed) return;
+      const windows = await Promise.resolve().then(() => listPobProcesses(runtime.install())).catch(() => []);
+      if (bridge.connected || windows.some(p => p.shim)) return;
+      log('PoB was closed; PoB AI is closing.');
+      await onPobClosed();
+    } catch (error) { log(`Could not close PoB AI: ${error.message}`); }
+    finally { ending = null; }
+  })();
   bridge.on('event', event => {
     if (event?.kind === 'open-settings') {
       Promise.resolve(service.openSettings(undefined, event.ownerPid)).catch(error => log(`settings: ${error.message}`));

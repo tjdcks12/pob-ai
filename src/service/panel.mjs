@@ -62,7 +62,7 @@ export async function openPanel(url, { ownerPid = 0, replace = false } = {}) {
 
 // An update must replace the old native shell as well as reload the HTTP service.
 // Match this exact WebView profile; other PoB AI installations keep their windows.
-async function closePreviousPanels() {
+export async function closePreviousPanels() {
   const script = `
     Add-Type -TypeDefinition @'
 using System;

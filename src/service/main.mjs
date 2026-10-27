@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { listPobProcesses } from '../pob/processes.mjs';
 import { statePath } from '../state.mjs';
 import { callService, serviceInfo } from './client.mjs';
-import { openPanel } from './panel.mjs';
+import { closePreviousPanels, openPanel } from './panel.mjs';
 import { createService } from './server.mjs';
 import { upgradeRunningService } from './startup-upgrade.mjs';
 
@@ -39,7 +39,11 @@ if (running) {
 }
 
 async function start() {
-  const service = await createService({ log });
+  const service = await createService({ log, onPobClosed: async () => {
+    if (process.platform === 'win32') await closePreviousPanels().catch(error => log(`Could not close the panel: ${error.message}`));
+    service.close();
+    logFile.end(() => process.exit(0));
+  } });
   log(`PoB AI service on ${service.url.replace(/token=.*/, 'token=…')}`);
 
   if (argv.has('--open')) {
