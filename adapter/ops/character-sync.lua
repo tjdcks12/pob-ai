@@ -37,9 +37,13 @@ return function(ops, util)
 		if tab.charImportMode == 'GETACCOUNTNAME' and tab.lastCharList and #tab.lastCharList > 0 then tab.charImportMode = 'SELECTCHAR' end
 	end
 	local function normalize(file) return tostring(file or ''):gsub('\\', '/'):lower() end
+	-- PoB's own `unsaved` also turns on while text sits in the passive tree search box, which is no
+	-- edit and would pause every refresh; read the tabs' edit flags instead.
 	local function dirty(build)
-		if build.unsaved or build.modFlag then return true end
-		for _, owner in ipairs({build.spec, build.itemsTab, build.skillsTab, build.configTab}) do if owner and owner.modFlag then return true end end
+		if build.modFlag then return true end
+		for _, owner in ipairs({build.spec, build.itemsTab, build.skillsTab, build.configTab, build.treeTab, build.notesTab, build.partyTab, build.calcsTab}) do
+			if owner and owner.modFlag then return true end
+		end
 		return false
 	end
 	ops['account.sync_context'] = function(args)

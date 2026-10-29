@@ -4,7 +4,7 @@ return function(modulePath, scenario)
 	local disk = 'ORIGINAL FILE'
 	local build = {dbFileName='C:/Builds/Character.xml', buildName='Character', viewMode='TREE', mainSocketGroup=1,
 		unsaved=false, modFlag=false, spec={allocNodes={}}, configTab={input={enemyIsBoss='Pinnacle', resistancePenalty=-20}},
-		itemsTab={items={}, activeItemSet={useSecondWeaponSet=true}}, skillsTab={socketGroupList={}}}
+		itemsTab={items={}, activeItemSet={useSecondWeaponSet=true}}, skillsTab={socketGroupList={}}, treeTab={}}
 	local function group(id)
 		return {mainActiveSkill=1, gemList={{gemData={grantedEffectId=id}}}, displaySkillList={{activeEffect={grantedEffect={id=id}, srcInstance={}}}}}
 	end
@@ -12,7 +12,7 @@ return function(modulePath, scenario)
 	function build:SaveDB() return self.imported and 'UPDATED BUILD' or 'ORIGINAL BUILD' end
 	function build:Shutdown() rollbacks = rollbacks + 1 end
 	function build:Init(_, _, xml) self.imported=false; self.unsaved=false; self.modFlag=xml ~= nil; self.mainSocketGroup=1; self.skillsTab.socketGroupList={group('MAIN')}; self.configTab.input.enemyIsBoss='Pinnacle' end
-	function build:ResetModFlags() self.modFlag=false end
+	function build:ResetModFlags() self.modFlag=false; self.itemsTab.modFlag=false; self.treeTab.searchFlag=false end
 	function build.configTab:BuildModList() end
 	function build.itemsTab:PopulateSlots() end
 	local util = {}
@@ -30,7 +30,7 @@ return function(modulePath, scenario)
 	function tab:DownloadCharacter(callback)
 		network=network+1; self.charImportMode='IMPORTING'; self.charImportStatus='Retrieving character data...'
 		if scenario == 'rate-limited' then self.charImportMode='GETACCOUNTNAME'; self.charImportStatus=function() return '^1Requests are being sent too fast, try again in 3 seconds.' end; return end
-		if scenario == 'edited' then build.unsaved=true end
+		if scenario == 'edited' then build.itemsTab.modFlag=true; build.unsaved=true end
 		if scenario == 'file-edited' then disk='USER SAVE' end
 		callback(char); self.charImportMode='SELECTCHAR'
 	end
@@ -56,6 +56,8 @@ return function(modulePath, scenario)
 	_G.pobai_read_file=function() return disk end
 	_G.pobai_write_file=function(_, value) disk=value end
 	dofile(modulePath)(ops,util)
+	-- Text in the passive tree search box makes PoB's own `unsaved` true, but it is no edit.
+	if scenario == 'searching' then build.treeTab.searchFlag=true; build.unsaved=true; return {dirty=ops['account.sync_context']({}).unsaved} end
 	if scenario == 'context' or scenario == 'rate-limited-list' then local result=ops['account.sync_context']({reload=scenario == 'rate-limited-list'}); return {available=result.available,suggested=result.suggestedCharacter,characters=#result.characters,reloadError=result.reloadError,network=network,writes=writes} end
 	local args={file=build.dbFileName,character=char.name,characterId=char.id}
 	local ok, result=pcall(ops['account.refresh'],args)
